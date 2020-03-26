@@ -1,0 +1,7 @@
+domain: nais.io
+repo: github.com/nais/azureator
+resources:
+- group: nais.io
+  kind: AzureAdCredential
+  version: v1alpha1
+version: "2"
