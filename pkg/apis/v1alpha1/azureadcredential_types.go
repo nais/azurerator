@@ -28,18 +28,56 @@ type AzureAdCredentialList struct {
 
 // AzureAdCredentialSpec defines the desired state of AzureAdCredential
 type AzureAdCredentialSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	ReplyUrls                 []AzureAdReplyUrl                 `json:"replyUrls,omitempty"`
 	PreAuthorizedApplications []AzureAdPreAuthorizedApplication `json:"preAuthorizedApplications,omitempty"`
 }
 
 // AzureAdCredentialStatus defines the observed state of AzureAdCredential
 type AzureAdCredentialStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Conditions lists the latest available observations of the object's current state
+	Conditions []AzureAdCredentialCondition `json:"conditions,omitempty"`
+	// PasswordKeyId is the key ID for the latest valid password credential
+	PasswordKeyId *string `json:"passwordKeyId"`
+	// CertificateKeyId is the certificate ID for the latest valid certificate credential
+	CertificateKeyId *string `json:"certificateKeyId"`
+	// SynchronizationHash is the hash of the AzureAdCredential object
+	SynchronizationHash *string `json:"synchronizationHash,omitempty"`
+	// SynchronizationTime is the time when the resource completed synchronization
+	SynchronizationTime *metav1.Time `json:"synchronizationTime,omitempty"`
 }
+
+type AzureAdCredentialCondition struct {
+	// Type is the type of condition for this resource
+	// +kubebuilder:validation:Enum=Initializing;Completed;Failed
+	Type ConditionType `json:"type"`
+	// Status is the status of the condition, one of True, False, Unknown
+	// +kubebuilder:validation:Enum=True;False;Unknown
+	Status ConditionStatus `json:"status"`
+	// Reason is a one-word CamelCase reason for the condition's last transition
+	Reason *string `json:"reason,omitempty"`
+	// Message is a human-readable message indicating details about last transition
+	Message *string `json:"message,omitempty"`
+	// LastHeartbeatTIme is the last time we got an update on a given condition
+	LastHeartbeatTime *metav1.Time `json:"lastHeartbeatTime,omitempty"`
+	// LastTransitionTime is the last time the condition transit from one status to another
+	LastTransitionTime *metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
+type ConditionType string
+
+const (
+	Initializating ConditionType = "Initializing"
+	Completed      ConditionType = "Completed"
+	Failed         ConditionType = "Failed"
+)
+
+type ConditionStatus string
+
+const (
+	True    ConditionStatus = "True"
+	False   ConditionStatus = "False"
+	Unknown ConditionStatus = "Unknown"
+)
 
 // AzureAdReplyUrl defines the valid reply URLs for callbacks after OIDC flows for this application
 type AzureAdReplyUrl struct {
