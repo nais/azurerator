@@ -37,13 +37,13 @@ type AzureAdCredentialStatus struct {
 	// Conditions lists the latest available observations of the object's current state
 	Conditions []AzureAdCredentialCondition `json:"conditions,omitempty"`
 	// PasswordKeyId is the key ID for the latest valid password credential
-	PasswordKeyId *string `json:"passwordKeyId"`
+	PasswordKeyId string `json:"passwordKeyId"`
 	// CertificateKeyId is the certificate ID for the latest valid certificate credential
-	CertificateKeyId *string `json:"certificateKeyId"`
+	CertificateKeyId string `json:"certificateKeyId"`
 	// SynchronizationHash is the hash of the AzureAdCredential object
-	SynchronizationHash *string `json:"synchronizationHash,omitempty"`
+	SynchronizationHash string `json:"synchronizationHash,omitempty"`
 	// SynchronizationTime is the time when the resource completed synchronization
-	SynchronizationTime *metav1.Time `json:"synchronizationTime,omitempty"`
+	SynchronizationTime metav1.Time `json:"synchronizationTime,omitempty"`
 }
 
 type AzureAdCredentialCondition struct {
@@ -54,13 +54,13 @@ type AzureAdCredentialCondition struct {
 	// +kubebuilder:validation:Enum=True;False;Unknown
 	Status ConditionStatus `json:"status"`
 	// Reason is a one-word CamelCase reason for the condition's last transition
-	Reason *string `json:"reason,omitempty"`
+	Reason string `json:"reason,omitempty"`
 	// Message is a human-readable message indicating details about last transition
-	Message *string `json:"message,omitempty"`
+	Message string `json:"message,omitempty"`
 	// LastHeartbeatTIme is the last time we got an update on a given condition
-	LastHeartbeatTime *metav1.Time `json:"lastHeartbeatTime,omitempty"`
+	LastHeartbeatTime metav1.Time `json:"lastHeartbeatTime,omitempty"`
 	// LastTransitionTime is the last time the condition transit from one status to another
-	LastTransitionTime *metav1.Time `json:"lastTransitionTime,omitempty"`
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 type ConditionType string
