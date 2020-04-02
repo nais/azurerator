@@ -22,14 +22,14 @@ type Credentials struct {
 }
 
 type Public struct {
-	ClientId     string `json:"clientId"`
-	Key          Key    `json:"key"`
+	ClientId string `json:"clientId"`
+	Key      Key    `json:"key"`
 }
 
 type Private struct {
-	ClientId string `json:"clientId"`
+	ClientId     string `json:"clientId"`
 	ClientSecret string `json:"clientSecret"`
-	Key      Key    `json:"key"`
+	Key          Key    `json:"key"`
 }
 
 type Key struct {

@@ -35,7 +35,7 @@ type AzureAdCredentialSpec struct {
 // AzureAdCredentialStatus defines the observed state of AzureAdCredential
 type AzureAdCredentialStatus struct {
 	// Conditions lists the latest available observations of the object's current state
-	Conditions []AzureAdCredentialCondition `json:"conditions,omitempty"`
+	Conditions []Condition `json:"conditions,omitempty"`
 	// PasswordKeyId is the key ID for the latest valid password credential
 	PasswordKeyId string `json:"passwordKeyId"`
 	// CertificateKeyId is the certificate ID for the latest valid certificate credential
@@ -46,7 +46,7 @@ type AzureAdCredentialStatus struct {
 	SynchronizationTime metav1.Time `json:"synchronizationTime,omitempty"`
 }
 
-type AzureAdCredentialCondition struct {
+type Condition struct {
 	// Type is the type of condition for this resource
 	// +kubebuilder:validation:Enum=Initializing;Completed;Failed
 	Type ConditionType `json:"type"`
@@ -64,6 +64,10 @@ type AzureAdCredentialCondition struct {
 }
 
 type ConditionType string
+
+func (c Condition) Reconciled() bool {
+	return c.Type == Completed && c.Status == True
+}
 
 const (
 	Initializating ConditionType = "Initializing"
