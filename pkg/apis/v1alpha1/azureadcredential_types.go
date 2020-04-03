@@ -7,6 +7,7 @@ import (
 )
 
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:shortName=aad
 
 // AzureAdCredential is the Schema for the azureadcredentials API
 type AzureAdCredential struct {
