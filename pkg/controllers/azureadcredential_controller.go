@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -25,12 +26,17 @@ type AzureAdCredentialReconciler struct {
 
 func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	_ = r.Log.WithValues("azureadcredential", req.NamespacedName)
+	r.Log.WithValues("azureadcredential", req.NamespacedName)
 
 	var azureAdCredential naisiov1alpha1.AzureAdCredential
 	if err := r.Get(ctx, req.NamespacedName, &azureAdCredential); err != nil {
-		r.Log.Error(err, "deleted AzureAdCredential") // todo: should clean up
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		if errors.IsNotFound(err) {
+			// todo: should clean up in Azure AD
+			r.Log.Info("AzureAdCredential was deleted", "namespace/name", req.NamespacedName)
+			return ctrl.Result{}, client.IgnoreNotFound(err)
+		}
+		r.Log.Error(err, "unable to fetch AzureAdCredential", "namespace/name", req.NamespacedName)
+		return ctrl.Result{}, err
 	}
 
 	var c = azureAdCredential.Status.Conditions
