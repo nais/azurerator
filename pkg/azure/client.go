@@ -1,7 +1,7 @@
 package azure
 
 import (
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/graphrbac/graphrbac"
+	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 )
 
