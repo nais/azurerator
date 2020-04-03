@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 
+	"github.com/nais/azureator/pkg/azure"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -50,10 +51,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	azureClient, err := azure.NewClient(&azure.Config{})
+	if err != nil {
+		setupLog.Error(err, "unable to create Azure client")
+		// os.Exit(1)
+	}
+
 	if err = (&controllers.AzureAdCredentialReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("AzureAdCredential"),
-		Scheme: mgr.GetScheme(),
+		Client:      mgr.GetClient(),
+		Log:         ctrl.Log.WithName("controllers").WithName("AzureAdCredential"),
+		Scheme:      mgr.GetScheme(),
+		AzureClient: azureClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AzureAdCredential")
 		os.Exit(1)

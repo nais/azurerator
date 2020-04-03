@@ -2,11 +2,10 @@ package controllers
 
 import (
 	"context"
-	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/nais/azureator/pkg/azure"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,8 +16,9 @@ import (
 // AzureAdCredentialReconciler reconciles a AzureAdCredential object
 type AzureAdCredentialReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log         logr.Logger
+	Scheme      *runtime.Scheme
+	AzureClient azure.Client
 }
 
 // +kubebuilder:rbac:groups=nais.io,resources=azureadcredentials,verbs=get;list;watch;create;update;patch;delete
@@ -31,35 +31,36 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 	var azureAdCredential naisiov1alpha1.AzureAdCredential
 	if err := r.Get(ctx, req.NamespacedName, &azureAdCredential); err != nil {
 		if errors.IsNotFound(err) {
-			// todo: should clean up in Azure AD
-			r.Log.Info("AzureAdCredential was deleted", "namespace/name", req.NamespacedName)
+			// todo: should garbage collect in Azure AD
+			r.Log.Info("AzureAdCredential was deleted")
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
-		r.Log.Error(err, "unable to fetch AzureAdCredential", "namespace/name", req.NamespacedName)
+		r.Log.Error(err, "unable to fetch AzureAdCredential")
 		return ctrl.Result{}, err
 	}
 
-	var c = azureAdCredential.Status.Conditions
-	if len(c) > 0 {
-		if lastCondition := c[len(c)-1]; lastCondition.Reconciled() {
-			return ctrl.Result{}, nil
-		}
+	azureAdCredentialHash, err := azureAdCredential.Hash()
+	if err != nil {
+		return ctrl.Result{Requeue: true}, err
+	}
+
+	if azureAdCredential.Status.ProvisionHash == azureAdCredentialHash {
+		r.Log.Info("object state already reconciled, nothing to do")
+		return ctrl.Result{}, nil
 	}
 
 	r.Log.Info("processing AzureAdCredential", "azureAdCredential", azureAdCredential)
-	azureAdCredential.Status.Conditions = append(azureAdCredential.Status.Conditions, naisiov1alpha1.Condition{
-		Type:               naisiov1alpha1.Completed,
-		Status:             naisiov1alpha1.True,
-		Reason:             "Completed",
-		Message:            "Successfully processed AzureAdCredential",
-		LastHeartbeatTime:  azureAdCredential.ObjectMeta.CreationTimestamp,
-		LastTransitionTime: metav1.Now(),
+
+	azureAdCredential.Status = azureAdCredential.Status.Provisioned(naisiov1alpha1.Provision{
+		AadCredentialSpec: &azureAdCredential.Spec,
+		Hash:              azureAdCredentialHash,
 	})
 
-	azureAdCredential.Status.SynchronizationTime = metav1.Now()
-	if err := r.Client.Update(ctx, &azureAdCredential); err != nil {
-		r.Log.Error(err, "could not update status for AzureAdCredential") // todo
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	if err := r.Status().Update(ctx, &azureAdCredential); err != nil {
+		r.Log.Error(err, "could not update status for AzureAdCredential")
+		azureAdCredential.Status = azureAdCredential.Status.Retrying()
+		_ = r.Status().Update(ctx, &azureAdCredential)
+		return ctrl.Result{Requeue: true}, nil
 	}
 	return ctrl.Result{}, nil
 }

@@ -3,11 +3,16 @@ package v1alpha1
 // +groupName="nais.io"
 
 import (
+	"encoding/json"
+	"fmt"
+
+	hash "github.com/mitchellh/hashstructure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=aad
+// +kubebuilder:subresource:status
 
 // AzureAdCredential is the Schema for the azureadcredentials API
 type AzureAdCredential struct {
@@ -35,53 +40,38 @@ type AzureAdCredentialSpec struct {
 
 // AzureAdCredentialStatus defines the observed state of AzureAdCredential
 type AzureAdCredentialStatus struct {
-	// Conditions lists the latest available observations of the object's current state
-	Conditions []Condition `json:"conditions,omitempty"`
+	// ProvisionStatus denotes whether the provisioning of the AzureAdCredential has been initialized, completed successfully, or if the status is unknown
+	// +kubebuilder:validation:Enum=initializing;unknown;complete
+	ProvisionStatus ProvisionStatus `json:"provisionStatus"`
+	// ProvisionState is a one-word CamelCase machine-readable representation of the current state of the object
+	ProvisionState ProvisionState `json:"provisionState,omitempty"`
+	// LastStateTransitionTime is the last time the state transitioned from one state to another
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// ProvisionHash is the hash of the AzureAdCredential object
+	ProvisionHash string `json:"provisionHash,omitempty"`
+	// ProvisionTime is the time when the resource completed synchronization
+	ProvisionTime metav1.Time `json:"provisionTime,omitempty"`
 	// PasswordKeyId is the key ID for the latest valid password credential
 	PasswordKeyId string `json:"passwordKeyId"`
 	// CertificateKeyId is the certificate ID for the latest valid certificate credential
 	CertificateKeyId string `json:"certificateKeyId"`
-	// SynchronizationHash is the hash of the AzureAdCredential object
-	SynchronizationHash string `json:"synchronizationHash,omitempty"`
-	// SynchronizationTime is the time when the resource completed synchronization
-	SynchronizationTime metav1.Time `json:"synchronizationTime,omitempty"`
 }
 
-type Condition struct {
-	// Type is the type of condition for this resource
-	// +kubebuilder:validation:Enum=Initializing;Completed;Failed
-	Type ConditionType `json:"type"`
-	// Status is the status of the condition, one of True, False, Unknown
-	// +kubebuilder:validation:Enum=True;False;Unknown
-	Status ConditionStatus `json:"status"`
-	// Reason is a one-word CamelCase reason for the condition's last transition
-	Reason string `json:"reason,omitempty"`
-	// Message is a human-readable message indicating details about last transition
-	Message string `json:"message,omitempty"`
-	// LastHeartbeatTIme is the last time we got an update on a given condition
-	LastHeartbeatTime metav1.Time `json:"lastHeartbeatTime,omitempty"`
-	// LastTransitionTime is the last time the condition transit from one status to another
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-}
-
-type ConditionType string
-
-func (c Condition) Reconciled() bool {
-	return c.Type == Completed && c.Status == True
-}
+type ProvisionState string
 
 const (
-	Initializating ConditionType = "Initializing"
-	Completed      ConditionType = "Completed"
-	Failed         ConditionType = "Failed"
+	StateNewProvisioning    ProvisionState = "NewProvisioning"
+	StateRotateProvisioning ProvisionState = "RotateProvisioning"
+	StateRetrying           ProvisionState = "Retrying"
+	StateProvisioned        ProvisionState = "Provisioned"
 )
 
-type ConditionStatus string
+type ProvisionStatus string
 
 const (
-	True    ConditionStatus = "True"
-	False   ConditionStatus = "False"
-	Unknown ConditionStatus = "Unknown"
+	Initializing ProvisionStatus = "initializing"
+	Unknown      ProvisionStatus = "unknown"
+	Complete     ProvisionStatus = "complete"
 )
 
 // AzureAdReplyUrl defines the valid reply URLs for callbacks after OIDC flows for this application
@@ -97,4 +87,74 @@ type AzureAdPreAuthorizedApplication struct {
 
 func init() {
 	SchemeBuilder.Register(&AzureAdCredential{}, &AzureAdCredentialList{})
+}
+
+func (in AzureAdCredentialStatus) NewProvisioning() AzureAdCredentialStatus {
+	return AzureAdCredentialStatus{
+		ProvisionStatus:    Initializing,
+		ProvisionState:     StateNewProvisioning,
+		LastTransitionTime: metav1.Now(),
+	}
+}
+
+func (in AzureAdCredentialStatus) RotateProvisioning() AzureAdCredentialStatus {
+	return AzureAdCredentialStatus{
+		ProvisionStatus:    Initializing,
+		ProvisionState:     StateRotateProvisioning,
+		LastTransitionTime: metav1.Now(),
+	}
+}
+
+func (in AzureAdCredentialStatus) Retrying() AzureAdCredentialStatus {
+	return AzureAdCredentialStatus{
+		ProvisionState:     StateRetrying,
+		LastTransitionTime: metav1.Now(),
+	}
+}
+
+func (in AzureAdCredentialStatus) Provisioned(provision Provision) AzureAdCredentialStatus {
+	return AzureAdCredentialStatus{
+		ProvisionStatus:    Complete,
+		ProvisionState:     StateProvisioned,
+		LastTransitionTime: metav1.Now(),
+		ProvisionTime:      metav1.Now(),
+		ProvisionHash:      provision.Hash,
+		CertificateKeyId:   provision.CertificateKeyId,
+		PasswordKeyId:      provision.PasswordKeyId,
+	}
+}
+
+// Provision contains the necessary information needed to provision an Azure AD application
+type Provision struct {
+	AadCredentialSpec *AzureAdCredentialSpec
+	CertificateKeyId  string
+	PasswordKeyId     string
+	Hash              string
+}
+
+func (in AzureAdCredential) Hash() (string, error) {
+	// struct including the relevant fields for
+	// creating a hash of an AzureAdCredential object
+	var changeCause string
+	if in.Annotations != nil {
+		changeCause = in.Annotations["kubernetes.io/change-cause"]
+	}
+	relevantValues := struct {
+		AzureAdCredentialSpec AzureAdCredentialSpec
+		CertificateKeyId      string
+		SecretKeyid           string
+		ChangeCause           string
+	}{
+		in.Spec,
+		in.Status.CertificateKeyId,
+		in.Status.PasswordKeyId,
+		changeCause,
+	}
+
+	marshalled, err := json.Marshal(relevantValues)
+	if err != nil {
+		return "", err
+	}
+	h, err := hash.Hash(marshalled, nil)
+	return fmt.Sprintf("%x", h), err
 }
