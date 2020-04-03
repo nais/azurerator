@@ -44,7 +44,7 @@ type AzureAdCredentialStatus struct {
 	// +kubebuilder:validation:Enum=initializing;unknown;complete
 	ProvisionStatus ProvisionStatus `json:"provisionStatus"`
 	// ProvisionState is a one-word CamelCase machine-readable representation of the current state of the object
-	ProvisionState ProvisionState `json:"provisionState,omitempty"`
+	ProvisionState ProvisionState `json:"provisionState"`
 	// LastStateTransitionTime is the last time the state transitioned from one state to another
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	// ProvisionHash is the hash of the AzureAdCredential object
