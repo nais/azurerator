@@ -39,7 +39,8 @@ func main() {
 }
 
 func run() error {
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+	log := zap.New(zap.UseDevMode(true))
+	ctrl.SetLogger(log)
 
 	cfg, err := config.New()
 	if err != nil {

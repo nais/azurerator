@@ -26,16 +26,16 @@ type AzureAdCredentialReconciler struct {
 
 func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	r.Log.WithValues("azureadcredential", req.NamespacedName)
+	log := r.Log.WithValues("azureadcredential", req.NamespacedName)
 
 	var azureAdCredential naisiov1alpha1.AzureAdCredential
 	if err := r.Get(ctx, req.NamespacedName, &azureAdCredential); err != nil {
 		if errors.IsNotFound(err) {
 			// todo: should garbage collect in Azure AD
-			r.Log.Info("AzureAdCredential was deleted")
+			log.Info("AzureAdCredential was deleted")
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
-		r.Log.Error(err, "unable to fetch AzureAdCredential")
+		log.Error(err, "unable to fetch AzureAdCredential")
 		return ctrl.Result{}, err
 	}
 
@@ -45,11 +45,11 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 	}
 
 	if azureAdCredential.Status.ProvisionHash == azureAdCredentialHash {
-		r.Log.Info("object state already reconciled, nothing to do")
+		log.Info("object state already reconciled, nothing to do")
 		return ctrl.Result{}, nil
 	}
 
-	r.Log.Info("processing AzureAdCredential", "azureAdCredential", azureAdCredential)
+	log.Info("processing AzureAdCredential", "azureAdCredential", azureAdCredential)
 
 	azureAdCredential.Status = azureAdCredential.Status.Provisioned(naisiov1alpha1.Provision{
 		AadCredentialSpec: &azureAdCredential.Spec,
@@ -57,7 +57,7 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 	})
 
 	if err := r.Status().Update(ctx, &azureAdCredential); err != nil {
-		r.Log.Error(err, "could not update status for AzureAdCredential")
+		log.Error(err, "could not update status for AzureAdCredential")
 		azureAdCredential.Status = azureAdCredential.Status.Retrying()
 		_ = r.Status().Update(ctx, &azureAdCredential)
 		return ctrl.Result{Requeue: true}, nil
