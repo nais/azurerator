@@ -51,6 +51,16 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 
 	log.Info("processing AzureAdCredential", "azureAdCredential", azureAdCredential)
 
+	credentials, err := r.AzureClient.CreateOrUpdateApplication(azureAdCredential)
+	if err != nil {
+		log.Error(err, "failed to register application")
+		azureAdCredential.Status = azureAdCredential.Status.Retrying()
+		_ = r.Status().Update(ctx, &azureAdCredential)
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	log.Info("successfully registered application", "clientId", credentials.Public.ClientId)
+
 	azureAdCredential.Status = azureAdCredential.Status.Provisioned(naisiov1alpha1.Provision{
 		AadCredentialSpec: &azureAdCredential.Spec,
 		Hash:              azureAdCredentialHash,

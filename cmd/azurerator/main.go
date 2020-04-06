@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -63,10 +64,10 @@ func run() error {
 		os.Exit(1)
 	}
 
-	azureClient, err := azure.NewClient(&azure.Config{})
+	azureClient, err := azure.NewClient(context.TODO(), &cfg.AzureAd)
 	if err != nil {
 		setupLog.Error(err, "unable to create Azure client")
-		// os.Exit(1)
+		os.Exit(1)
 	}
 
 	if err = (&controllers.AzureAdCredentialReconciler{

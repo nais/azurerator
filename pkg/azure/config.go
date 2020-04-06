@@ -12,8 +12,8 @@ type Config struct {
 }
 
 type Auth struct {
-	ClientId     string `json:"clientId"`
-	ClientSecret string `json:"clientSecret"`
+	ClientId     string `json:"client-id"`
+	ClientSecret string `json:"client-secret"`
 }
 
 type Endpoints struct {
@@ -22,8 +22,8 @@ type Endpoints struct {
 }
 
 const (
-	ClientId                  = "azure.auth.clientId"
-	ClientSecret              = "azure.auth.clientSecret"
+	ClientId                  = "azure.auth.client-id"
+	ClientSecret              = "azure.auth.client-secret"
 	Tenant                    = "azure.tenant"
 	EndpointsGraph            = "azure.endpoints.graph"
 	EndpointsDirectory        = "azure.endpoints.directory"
@@ -34,7 +34,7 @@ func SetupFlags() {
 	flag.String(ClientId, "", "Client ID for Azure AD authentication")
 	flag.String(ClientSecret, "", "Client secret for Azure AD authentication")
 	flag.String(Tenant, "", "Tenant for Azure AD")
-	flag.String(EndpointsGraph, "", "Endpoint to Graph API")
-	flag.String(EndpointsDirectory, "", "Endpoint to Azure AD")
+	flag.String(EndpointsGraph, "https://graph.windows.net/", "Endpoint to Graph API")
+	flag.String(EndpointsDirectory, "https://login.microsoftonline.com/", "Endpoint to Azure AD")
 	flag.String(PermissionGrantResourceId, "", "Resource ID for permissions grant")
 }

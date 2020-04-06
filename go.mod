@@ -6,7 +6,8 @@ require (
 	github.com/Azure/azure-sdk-for-go v41.1.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.10.0
 	github.com/Azure/go-autorest/autorest/adal v0.8.2
-	github.com/Azure/go-autorest/autorest/to v0.3.0 // indirect
+	github.com/Azure/go-autorest/autorest/date v0.2.0
+	github.com/Azure/go-autorest/autorest/to v0.3.0
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/mitchellh/hashstructure v1.0.0
@@ -19,6 +20,7 @@ require (
 	github.com/spf13/viper v1.4.0
 	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59 // indirect
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b // indirect
+	golang.org/x/tools v0.0.0-20190920225731-5eefd052ad72
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v0.17.2
