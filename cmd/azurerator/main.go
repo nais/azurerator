@@ -1,10 +1,10 @@
 package main
 
 import (
-	"flag"
 	"os"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/config"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -23,27 +23,38 @@ var (
 
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
-
 	_ = naisiov1alpha1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-	flag.Parse()
+	err := run()
 
+	if err != nil {
+		setupLog.Error(err, "Run loop errored")
+		os.Exit(1)
+	}
+
+	setupLog.Info("Manager shutting down")
+}
+
+func run() error {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+
+	cfg, err := config.New()
+	if err != nil {
+		return err
+	}
+
+	config.Print([]string{
+		azure.ClientSecret,
+	})
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
+		MetricsBindAddress: cfg.MetricsAddr,
 		Port:               9443,
-		LeaderElection:     enableLeaderElection,
+		LeaderElection:     cfg.EnableLeaderElection,
 		LeaderElectionID:   "43d2b63b.nais.io",
 	})
 	if err != nil {
@@ -73,4 +84,6 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+
+	return nil
 }

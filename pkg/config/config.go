@@ -12,8 +12,15 @@ import (
 )
 
 type Config struct {
-	AzureAd azure.Config `json:"azure"`
+	AzureAd              azure.Config `json:"azure"`
+	MetricsAddr          string       `json:"metrics-address"`
+	EnableLeaderElection bool         `json:"enable-leader-election"`
 }
+
+const (
+	MetricsAddress       = "metrics-address"
+	EnableLeaderElection = "enable-leader-election"
+)
 
 func init() {
 	// Automatically read configuration options from environment variables.
@@ -28,12 +35,10 @@ func init() {
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("/etc")
 
-	flag.String(azure.ClientId, "", "Client ID for Azure AD authentication")
-	flag.String(azure.ClientSecret, "", "Client secret for Azure AD authentication")
-	flag.String(azure.Tenant, "", "Tenant for Azure AD")
-	flag.String(azure.EndpointsGraph, "", "Endpoint to Graph API")
-	flag.String(azure.EndpointsDirectory, "", "Endpoint to Azure AD")
-	flag.String(azure.PermissionGrantResourceId, "", "Resource ID for permissions grant")
+	azure.SetupFlags()
+
+	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
+	flag.Bool(EnableLeaderElection, false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 }
 
 // Print out all configuration options except secret stuff.
