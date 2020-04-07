@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -60,14 +61,12 @@ func run() error {
 		LeaderElectionID:   "43d2b63b.nais.io",
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
 	azureClient, err := azure.NewClient(context.TODO(), &cfg.AzureAd)
 	if err != nil {
-		setupLog.Error(err, "unable to create Azure client")
-		os.Exit(1)
+		return fmt.Errorf("unable to create Azure client: %w", err)
 	}
 
 	if err = (&controllers.AzureAdCredentialReconciler{
@@ -76,15 +75,13 @@ func run() error {
 		Scheme:      mgr.GetScheme(),
 		AzureClient: azureClient,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "AzureAdCredential")
-		os.Exit(1)
+		return fmt.Errorf("unable to create controller: %w", err)
 	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		return fmt.Errorf("problem running manager: %w", err)
 	}
 
 	return nil
