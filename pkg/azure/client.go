@@ -53,12 +53,12 @@ const (
 func NewClient(ctx context.Context, cfg *Config) (Client, error) {
 	spClient, err := getServicePrincipalsClient(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to instantiate service principal client: %w", err)
 	}
 
 	appClient, err := getApplicationsClient(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to instantiate applications client: %w", err)
 	}
 
 	return newClient(ctx, cfg, spClient, appClient), nil
@@ -68,7 +68,7 @@ func NewClient(ctx context.Context, cfg *Config) (Client, error) {
 func (c client) RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Credentials, error) {
 	exists, err := c.applicationExists(credential)
 	if err != nil {
-		return Credentials{}, err
+		return Credentials{}, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
 	if exists {
 		return c.updateApplication(credential)
@@ -79,15 +79,21 @@ func (c client) RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredentia
 
 // DeleteApplication deletes the specified AAD application.
 func (c client) DeleteApplication(credential v1alpha1.AzureAdCredential) error {
-	// TODO
-	return nil
+	exists, err := c.applicationExists(credential)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return c.deleteApplication(credential)
+	}
+	return fmt.Errorf("application does not exist %s", "todo")
 }
 
 func getServicePrincipalsClient(cfg *Config) (graphrbac.ServicePrincipalsClient, error) {
 	spClient := graphrbac.NewServicePrincipalsClient(cfg.Tenant)
 	a, err := GetGraphAuthorizer(cfg)
 	if err != nil {
-		return spClient, err
+		return spClient, fmt.Errorf("failed to get graph authorizer: %w", err)
 	}
 	spClient.Authorizer = a
 	return spClient, nil
@@ -97,7 +103,7 @@ func getApplicationsClient(cfg *Config) (graphrbac.ApplicationsClient, error) {
 	appClient := graphrbac.NewApplicationsClient(cfg.Tenant)
 	a, err := GetGraphAuthorizer(cfg)
 	if err != nil {
-		return appClient, err
+		return appClient, fmt.Errorf("failed to get graph authorizer: %w", err)
 	}
 	appClient.Authorizer = a
 	return appClient, nil
@@ -118,13 +124,13 @@ func (c client) allApplications(filters ...string) ([]graphrbac.Application, err
 
 	result, err := c.applicationsClient.List(c.ctx, mapFiltersToFilter(filters))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get list applications: %w", err)
 	}
 	for {
 		applications = append(applications, result.Values()...)
 		err = result.NextWithContext(c.ctx)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get list applications: %w", err)
 		}
 		if !result.NotDone() {
 			return applications, nil
@@ -149,7 +155,7 @@ func (c client) addClientSecret(credential v1alpha1.AzureAdCredential) {
 func (c client) applicationExists(credential v1alpha1.AzureAdCredential) (bool, error) {
 	applications, err := c.allApplications(filterByName(credential.GetName()))
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
 	return len(applications) > 0, nil
 }
@@ -206,8 +212,7 @@ func getReplyUrlsStringSlice(credential v1alpha1.AzureAdCredential) []string {
 func (c client) registerApplication(credential v1alpha1.AzureAdCredential) (Credentials, error) {
 	application, err := c.applicationsClient.Create(c.ctx, applicationCreateParameters(credential))
 	if err != nil {
-		return Credentials{}, err
-
+		return Credentials{}, fmt.Errorf("failed to register application: %w", err)
 	}
 	return Credentials{
 		Public: Public{
@@ -226,6 +231,14 @@ func (c client) registerApplication(credential v1alpha1.AzureAdCredential) (Cred
 			},
 		},
 	}, nil
+}
+
+func (c client) deleteApplication(credential v1alpha1.AzureAdCredential) error {
+	_, err := c.applicationsClient.Delete(c.ctx, "todo")
+	if err != nil {
+		return fmt.Errorf("failed delete application: %w", err)
+	}
+	return nil
 }
 
 // TODO
