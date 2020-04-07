@@ -13,7 +13,7 @@ import (
 )
 
 type Client interface {
-	CreateOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Credentials, error)
+	RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Credentials, error)
 	DeleteApplication(credential v1alpha1.AzureAdCredential) error
 }
 
@@ -64,7 +64,8 @@ func NewClient(ctx context.Context, cfg *Config) (Client, error) {
 	return newClient(ctx, cfg, spClient, appClient), nil
 }
 
-func (c client) CreateOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Credentials, error) {
+// RegisterOrUpdateApplication registers an AAD application if it does not exist, otherwise updates the existing application.
+func (c client) RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Credentials, error) {
 	exists, err := c.applicationExists(credential)
 	if err != nil {
 		return Credentials{}, err
@@ -72,10 +73,11 @@ func (c client) CreateOrUpdateApplication(credential v1alpha1.AzureAdCredential)
 	if exists {
 		return c.updateApplication(credential)
 	} else {
-		return c.createApplication(credential)
+		return c.registerApplication(credential)
 	}
 }
 
+// DeleteApplication deletes the specified AAD application.
 func (c client) DeleteApplication(credential v1alpha1.AzureAdCredential) error {
 	// TODO
 	return nil
@@ -201,7 +203,7 @@ func getReplyUrlsStringSlice(credential v1alpha1.AzureAdCredential) []string {
 	return replyUrls
 }
 
-func (c client) createApplication(credential v1alpha1.AzureAdCredential) (Credentials, error) {
+func (c client) registerApplication(credential v1alpha1.AzureAdCredential) (Credentials, error) {
 	application, err := c.applicationsClient.Create(c.ctx, applicationCreateParameters(credential))
 	if err != nil {
 		return Credentials{}, err

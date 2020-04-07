@@ -51,7 +51,7 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 
 	log.Info("processing AzureAdCredential", "azureAdCredential", azureAdCredential)
 
-	credentials, err := r.AzureClient.CreateOrUpdateApplication(azureAdCredential)
+	credentials, err := r.AzureClient.RegisterOrUpdateApplication(azureAdCredential)
 	if err != nil {
 		log.Error(err, "failed to register application")
 		azureAdCredential.Status = azureAdCredential.Status.Retrying()
