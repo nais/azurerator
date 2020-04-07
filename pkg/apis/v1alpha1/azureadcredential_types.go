@@ -93,47 +93,41 @@ func init() {
 	SchemeBuilder.Register(&AzureAdCredential{}, &AzureAdCredentialList{})
 }
 
-func (in AzureAdCredentialStatus) NewProvisioning() AzureAdCredentialStatus {
-	return AzureAdCredentialStatus{
-		ProvisionStatus:    Initializing,
-		ProvisionState:     StateNewProvisioning,
-		LastTransitionTime: metav1.Now(),
-	}
+func (in *AzureAdCredential) StatusNewProvisioning() {
+	in.Status.ProvisionStatus = Initializing
+	in.Status.ProvisionState = StateNewProvisioning
+	in.Status.LastTransitionTime = metav1.Now()
 }
 
-func (in AzureAdCredentialStatus) RotateProvisioning() AzureAdCredentialStatus {
-	return AzureAdCredentialStatus{
-		ProvisionStatus:    Initializing,
-		ProvisionState:     StateRotateProvisioning,
-		LastTransitionTime: metav1.Now(),
-	}
+func (in *AzureAdCredential) StatusRotateProvisioning() {
+	in.Status.ProvisionStatus = Initializing
+	in.Status.ProvisionState = StateRotateProvisioning
+	in.Status.LastTransitionTime = metav1.Now()
 }
 
-func (in AzureAdCredentialStatus) Retrying() AzureAdCredentialStatus {
-	return AzureAdCredentialStatus{
-		ProvisionState:     StateRetrying,
-		LastTransitionTime: metav1.Now(),
-	}
+func (in *AzureAdCredential) StatusRetrying() {
+	in.Status.ProvisionState = StateRetrying
+	in.Status.LastTransitionTime = metav1.Now()
 }
 
-func (in AzureAdCredentialStatus) Provisioned(provision Provision) AzureAdCredentialStatus {
-	return AzureAdCredentialStatus{
-		ProvisionStatus:    Complete,
-		ProvisionState:     StateProvisioned,
-		LastTransitionTime: metav1.Now(),
-		ProvisionTime:      metav1.Now(),
-		ProvisionHash:      provision.Hash,
-		CertificateKeyId:   provision.CertificateKeyId,
-		PasswordKeyId:      provision.PasswordKeyId,
-	}
+func (in *AzureAdCredential) StatusProvisioned() {
+	in.Status.ProvisionStatus = Complete
+	in.Status.ProvisionState = StateProvisioned
+	in.Status.LastTransitionTime = metav1.Now()
+	in.Status.ProvisionTime = metav1.Now()
 }
 
-// Provision contains the necessary information needed to provision an Azure AD application
-type Provision struct {
-	AadCredentialSpec *AzureAdCredentialSpec
-	CertificateKeyId  string
-	PasswordKeyId     string
-	Hash              string
+func (in *AzureAdCredential) SetCertificateKeyId(keyId string) {
+	in.Status.CertificateKeyId = keyId
+}
+func (in *AzureAdCredential) SetPasswordKeyId(keyId string) {
+	in.Status.PasswordKeyId = keyId
+}
+func (in *AzureAdCredential) SetClientId(id string) {
+	in.Status.ClientId = id
+}
+func (in *AzureAdCredential) SetObjectId(id string) {
+	in.Status.ObjectId = id
 }
 
 func (in AzureAdCredential) Hash() (string, error) {

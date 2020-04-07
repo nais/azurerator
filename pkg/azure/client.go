@@ -186,21 +186,21 @@ func (c client) registerApplication(credential v1alpha1.AzureAdCredential) (Appl
 			Public: Public{
 				ClientId: *application.AppID,
 				Key: Key{
-					KeyBase64: "",
-					KeyId:     "",
+					Base64: "",
 				},
 			},
 			Private: Private{
 				ClientId:     *application.AppID,
 				ClientSecret: "",
 				Key: Key{
-					KeyBase64: "",
-					KeyId:     "",
+					Base64: "",
 				},
 			},
 		},
-		ClientId: *application.AppID,
-		ObjectId: *application.ObjectID,
+		ClientId:         *application.AppID,
+		ObjectId:         *application.ObjectID,
+		PasswordKeyId:    "",
+		CertificateKeyId: "",
 	}, nil
 }
 

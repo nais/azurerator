@@ -20,9 +20,11 @@ type client struct {
 }
 
 type Application struct {
-	Credentials Credentials `json:"credentials"`
-	ClientId    string      `json:"clientId"`
-	ObjectId    string      `json:"objectId"`
+	Credentials      Credentials `json:"credentials"`
+	ClientId         string      `json:"clientId"`
+	ObjectId         string      `json:"objectId"`
+	CertificateKeyId string      `json:"certificateKeyId"`
+	PasswordKeyId    string      `json:"passwordKeyId"`
 }
 
 type Credentials struct {
@@ -42,6 +44,5 @@ type Private struct {
 }
 
 type Key struct {
-	KeyBase64 string `json:"keyBase64"`
-	KeyId     string `json:"keyId"`
+	Base64 string `json:"base64"`
 }
