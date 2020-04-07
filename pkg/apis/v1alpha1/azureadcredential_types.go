@@ -55,6 +55,10 @@ type AzureAdCredentialStatus struct {
 	PasswordKeyId string `json:"passwordKeyId"`
 	// CertificateKeyId is the certificate ID for the latest valid certificate credential
 	CertificateKeyId string `json:"certificateKeyId"`
+	// ClientId is the Azure application client ID
+	ClientId string `json:"clientId"`
+	// ApplicationObjectId is the Azure object ID
+	ObjectId string `json:"objectId"`
 }
 
 type ProvisionState string
@@ -143,11 +147,15 @@ func (in AzureAdCredential) Hash() (string, error) {
 		AzureAdCredentialSpec AzureAdCredentialSpec
 		CertificateKeyId      string
 		SecretKeyid           string
+		ClientId              string
+		ObjectId              string
 		ChangeCause           string
 	}{
 		in.Spec,
 		in.Status.CertificateKeyId,
 		in.Status.PasswordKeyId,
+		in.Status.ClientId,
+		in.Status.ObjectId,
 		changeCause,
 	}
 
