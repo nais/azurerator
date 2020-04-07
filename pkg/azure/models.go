@@ -8,7 +8,9 @@ import (
 )
 
 type Client interface {
-	RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Application, error)
+	ApplicationExists(credential v1alpha1.AzureAdCredential) (bool, error)
+	RegisterApplication(credential v1alpha1.AzureAdCredential) (Application, error)
+	UpdateApplication(credential v1alpha1.AzureAdCredential) (Application, error)
 	DeleteApplication(credential v1alpha1.AzureAdCredential) error
 }
 

@@ -58,16 +58,31 @@ func (r *AzureAdCredentialReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *AzureAdCredentialReconciler) processAzureApplication(ctx *context.Context, credential *naisiov1alpha1.AzureAdCredential) (ctrl.Result, error) {
-	// Register or update (if exists) Azure application
-	application, err := r.AzureClient.RegisterOrUpdateApplication(*credential)
+func (r *AzureAdCredentialReconciler) registerOrUpdateAzureApplication(credential *naisiov1alpha1.AzureAdCredential) (azure.Application, error) {
+	exists, err := r.AzureClient.ApplicationExists(*credential)
 	if err != nil {
-		log.Error(err, "failed to register application")
+		return azure.Application{}, fmt.Errorf("failed to lookup existence of application: %w", err)
+	}
+	if exists {
+		log.Info("application already exists, updating...")
+		credential.StatusRotateProvisioning()
+		return r.AzureClient.UpdateApplication(*credential)
+	} else {
+		log.Info("application not found, registering...")
+		credential.StatusNewProvisioning()
+		return r.AzureClient.RegisterApplication(*credential)
+	}
+}
+
+func (r *AzureAdCredentialReconciler) processAzureApplication(ctx *context.Context, credential *naisiov1alpha1.AzureAdCredential) (ctrl.Result, error) {
+	application, err := r.registerOrUpdateAzureApplication(credential)
+	if err != nil {
+		log.Error(err, "failed to register/update application")
 		credential.StatusRetrying()
 		_ = r.Status().Update(*ctx, credential)
 		return ctrl.Result{Requeue: true}, nil
 	}
-	log.Info("successfully registered application", "clientId", application.ClientId)
+	log.Info("successfully registered/updated application", "clientId", application.ClientId)
 
 	// Update AzureAdCredential.Status
 	credential.StatusProvisioned()

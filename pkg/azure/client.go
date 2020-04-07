@@ -31,17 +31,23 @@ func NewClient(ctx context.Context, cfg *Config) (Client, error) {
 	return newClient(ctx, cfg, spClient, appClient), nil
 }
 
-// RegisterOrUpdateApplication registers an AAD application if it does not exist, otherwise updates the existing application.
-func (c client) RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Application, error) {
+// ApplicationExists returns an indication of whether the application exists in AAD or not
+func (c client) ApplicationExists(credential v1alpha1.AzureAdCredential) (bool, error) {
 	exists, err := c.applicationExists(credential)
 	if err != nil {
-		return Application{}, fmt.Errorf("failed to lookup existence of application: %w", err)
+		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
-	if exists {
-		return c.updateApplication(credential)
-	} else {
-		return c.registerApplication(credential)
-	}
+	return exists, nil
+}
+
+// RegisterApplication registers a new AAD application
+func (c client) RegisterApplication(credential v1alpha1.AzureAdCredential) (Application, error) {
+	return c.registerApplication(credential)
+}
+
+// UpdateApplication updates an existing AAD application
+func (c client) UpdateApplication(credential v1alpha1.AzureAdCredential) (Application, error) {
+	return c.updateApplication(credential)
 }
 
 // DeleteApplication deletes the specified AAD application.
