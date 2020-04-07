@@ -8,7 +8,7 @@ import (
 )
 
 type Client interface {
-	RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Credentials, error)
+	RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Application, error)
 	DeleteApplication(credential v1alpha1.AzureAdCredential) error
 }
 
@@ -17,6 +17,12 @@ type client struct {
 	config                 *Config
 	servicePrincipalClient graphrbac.ServicePrincipalsClient
 	applicationsClient     graphrbac.ApplicationsClient
+}
+
+type Application struct {
+	Credentials Credentials `json:"credentials"`
+	ClientId    string      `json:"clientId"`
+	ObjectId    string      `json:"objectId"`
 }
 
 type Credentials struct {

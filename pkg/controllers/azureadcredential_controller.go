@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/nais/azureator/pkg/azure"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,17 +25,14 @@ type AzureAdCredentialReconciler struct {
 
 func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("azureadcredential", req.NamespacedName)
+	r.Log = r.Log.WithValues("azureadcredential", req.NamespacedName)
 
 	var azureAdCredential naisiov1alpha1.AzureAdCredential
 	if err := r.Get(ctx, req.NamespacedName, &azureAdCredential); err != nil {
-		if errors.IsNotFound(err) {
-			// todo: should garbage collect in Azure AD
-			log.Info("AzureAdCredential was deleted")
-			return ctrl.Result{}, client.IgnoreNotFound(err)
-		}
-		log.Error(err, "unable to fetch AzureAdCredential")
-		return ctrl.Result{}, err
+		// we'll ignore not-found errors, since they can't be fixed by an immediate
+		// requeue (we'll need to wait for a new notification), and we can get them
+		// on deleted requests.
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	azureAdCredentialHash, err := azureAdCredential.Hash()
@@ -45,21 +41,21 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 	}
 
 	if azureAdCredential.Status.ProvisionHash == azureAdCredentialHash {
-		log.Info("object state already reconciled, nothing to do")
+		r.Log.Info("object state already reconciled, nothing to do")
 		return ctrl.Result{}, nil
 	}
 
-	log.Info("processing AzureAdCredential", "azureAdCredential", azureAdCredential)
+	r.Log.Info("processing AzureAdCredential", "azureAdCredential", azureAdCredential)
 
-	credentials, err := r.AzureClient.RegisterOrUpdateApplication(azureAdCredential)
+	application, err := r.AzureClient.RegisterOrUpdateApplication(azureAdCredential)
 	if err != nil {
-		log.Error(err, "failed to register application")
+		r.Log.Error(err, "failed to register application")
 		azureAdCredential.Status = azureAdCredential.Status.Retrying()
 		_ = r.Status().Update(ctx, &azureAdCredential)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	log.Info("successfully registered application", "clientId", credentials.Public.ClientId)
+	r.Log.Info("successfully registered application", "clientId", application.Credentials.Public.ClientId)
 
 	azureAdCredential.Status = azureAdCredential.Status.Provisioned(naisiov1alpha1.Provision{
 		AadCredentialSpec: &azureAdCredential.Spec,
@@ -67,7 +63,7 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 	})
 
 	if err := r.Status().Update(ctx, &azureAdCredential); err != nil {
-		log.Error(err, "could not update status for AzureAdCredential")
+		r.Log.Error(err, "could not update status for AzureAdCredential")
 		azureAdCredential.Status = azureAdCredential.Status.Retrying()
 		_ = r.Status().Update(ctx, &azureAdCredential)
 		return ctrl.Result{Requeue: true}, nil

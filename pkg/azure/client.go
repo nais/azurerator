@@ -32,10 +32,10 @@ func NewClient(ctx context.Context, cfg *Config) (Client, error) {
 }
 
 // RegisterOrUpdateApplication registers an AAD application if it does not exist, otherwise updates the existing application.
-func (c client) RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Credentials, error) {
+func (c client) RegisterOrUpdateApplication(credential v1alpha1.AzureAdCredential) (Application, error) {
 	exists, err := c.applicationExists(credential)
 	if err != nil {
-		return Credentials{}, fmt.Errorf("failed to lookup existence of application: %w", err)
+		return Application{}, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
 	if exists {
 		return c.updateApplication(credential)
@@ -53,7 +53,7 @@ func (c client) DeleteApplication(credential v1alpha1.AzureAdCredential) error {
 	if exists {
 		return c.deleteApplication(credential)
 	}
-	return fmt.Errorf("application does not exist %s", "todo")
+	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", credential.Name, credential.Status.ClientId, credential.Status.ObjectId)
 }
 
 func getServicePrincipalsClient(cfg *Config) (graphrbac.ServicePrincipalsClient, error) {
@@ -176,39 +176,42 @@ func getReplyUrlsStringSlice(credential v1alpha1.AzureAdCredential) []string {
 	return replyUrls
 }
 
-func (c client) registerApplication(credential v1alpha1.AzureAdCredential) (Credentials, error) {
+func (c client) registerApplication(credential v1alpha1.AzureAdCredential) (Application, error) {
 	application, err := c.applicationsClient.Create(c.ctx, applicationCreateParameters(credential))
 	if err != nil {
-		return Credentials{}, fmt.Errorf("failed to register application: %w", err)
+		return Application{}, fmt.Errorf("failed to register application: %w", err)
 	}
-	return Credentials{
-		Public: Public{
-			ClientId: *application.AppID,
-			Key: Key{
-				KeyBase64: "",
-				KeyId:     "",
+	return Application{
+		Credentials: Credentials{
+			Public: Public{
+				ClientId: *application.AppID,
+				Key: Key{
+					KeyBase64: "",
+					KeyId:     "",
+				},
+			},
+			Private: Private{
+				ClientId:     *application.AppID,
+				ClientSecret: "",
+				Key: Key{
+					KeyBase64: "",
+					KeyId:     "",
+				},
 			},
 		},
-		Private: Private{
-			ClientId:     *application.AppID,
-			ClientSecret: "",
-			Key: Key{
-				KeyBase64: "",
-				KeyId:     "",
-			},
-		},
+		ClientId: *application.AppID,
+		ObjectId: *application.ObjectID,
 	}, nil
 }
 
 func (c client) deleteApplication(credential v1alpha1.AzureAdCredential) error {
-	_, err := c.applicationsClient.Delete(c.ctx, "todo")
-	if err != nil {
+	if _, err := c.applicationsClient.Delete(c.ctx, credential.Status.ObjectId); err != nil {
 		return fmt.Errorf("failed delete application: %w", err)
 	}
 	return nil
 }
 
 // TODO
-func (c client) updateApplication(credential v1alpha1.AzureAdCredential) (Credentials, error) {
-	return Credentials{}, nil
+func (c client) updateApplication(credential v1alpha1.AzureAdCredential) (Application, error) {
+	return Application{}, nil
 }
