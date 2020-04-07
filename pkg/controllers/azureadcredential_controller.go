@@ -23,6 +23,8 @@ type AzureAdCredentialReconciler struct {
 
 var log logr.Logger
 
+const finalizer string = "finalizer.azurerator.nais.io"
+
 // +kubebuilder:rbac:groups=nais.io,resources=azureadcredentials,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=nais.io,resources=azureadcredentials/status,verbs=get;update;patch
 
@@ -38,9 +40,24 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// examine DeletionTimestamp to determine if object is under deletion
+	if azureAdCredential.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, register finalizer if it doesn't exist
+		if err := r.registerFinalizer(&ctx, &azureAdCredential); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to register finalizer: %w", err)
+		}
+	} else {
+		// The object is being deleted
+		if err := r.processFinalizer(&ctx, &azureAdCredential); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to process finalizer: %w", err)
+		}
+		// Stop reconciliation as the item is being deleted
+		return ctrl.Result{}, nil
+	}
+
 	azureAdCredentialHash, err := azureAdCredential.Hash()
 	if err != nil {
-		return ctrl.Result{Requeue: true}, fmt.Errorf("failed to calculate application hash: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to calculate application hash: %w", err)
 	}
 
 	if azureAdCredential.Status.ProvisionHash == azureAdCredentialHash {
@@ -48,8 +65,11 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 		return ctrl.Result{}, nil
 	}
 
-	log.Info("processing AzureAdCredential", "azureAdCredential", azureAdCredential)
-	return r.processAzureApplication(&ctx, &azureAdCredential)
+	log.Info("processing AzureAdCredential...", "azureAdCredential", azureAdCredential)
+	if err := r.processAzureApplication(&ctx, &azureAdCredential); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to process Azure application: %w", err)
+	}
+	return ctrl.Result{}, nil
 }
 
 func (r *AzureAdCredentialReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -64,55 +84,109 @@ func (r *AzureAdCredentialReconciler) registerOrUpdateAzureApplication(credentia
 		return azure.Application{}, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
 	if exists {
-		log.Info("application already exists, updating...")
+		log.Info("Azure application already exists, updating...")
 		credential.StatusRotateProvisioning()
 		return r.AzureClient.UpdateApplication(*credential)
 	} else {
-		log.Info("application not found, registering...")
+		log.Info("Azure application not found, registering...")
 		credential.StatusNewProvisioning()
 		return r.AzureClient.RegisterApplication(*credential)
 	}
 }
 
-func (r *AzureAdCredentialReconciler) processAzureApplication(ctx *context.Context, credential *naisiov1alpha1.AzureAdCredential) (ctrl.Result, error) {
+func (r *AzureAdCredentialReconciler) processAzureApplication(ctx *context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
 	application, err := r.registerOrUpdateAzureApplication(credential)
 	if err != nil {
-		log.Error(err, "failed to register/update application")
 		credential.StatusRetrying()
 		_ = r.Status().Update(*ctx, credential)
-		return ctrl.Result{Requeue: true}, nil
+		return fmt.Errorf("failed to register/update Azure application: %w", err)
 	}
-	log.Info("successfully registered/updated application", "clientId", application.ClientId)
+	log.Info("Azure application successfully registered/updated", "clientId", application.ClientId)
 
 	// Update AzureAdCredential.Status
-	credential.StatusProvisioned()
 	credential.SetCertificateKeyId(application.CertificateKeyId)
 	credential.SetPasswordKeyId(application.PasswordKeyId)
 	credential.SetClientId(application.ClientId)
 	credential.SetObjectId(application.ObjectId)
+	credential.StatusProvisioned()
 
 	// Calculate and set new AzureAdCredential.Status.ProvisionHash
 	credentialHash, err := credential.Hash()
 	if err != nil {
-		return ctrl.Result{Requeue: true}, fmt.Errorf("failed to calculate application hash: %w", err)
+		return fmt.Errorf("failed to calculate application hash: %w", err)
 	}
 	credential.Status.ProvisionHash = credentialHash
 
 	// Update Status subresource
 	if err := r.Status().Update(*ctx, credential); err != nil {
-		log.Error(err, "could not update status for AzureAdCredential")
-		credential.StatusRetrying()
-		_ = r.Status().Update(*ctx, credential)
-		return ctrl.Result{Requeue: true}, nil
+		return fmt.Errorf("failed to update status subresource: %w", err)
 	}
-	return ctrl.Result{}, nil
+	return nil
 }
 
-func (r *AzureAdCredentialReconciler) deleteAzureApplication(credential *naisiov1alpha1.AzureAdCredential) (ctrl.Result, error) {
-	if err := r.AzureClient.DeleteApplication(*credential); err != nil {
-		log.Error(err, "could not delete application in AzureAdCredential")
-		return ctrl.Result{Requeue: true}, nil
+// Delete external resources
+func (r *AzureAdCredentialReconciler) delete(credential *naisiov1alpha1.AzureAdCredential) error {
+	if err := r.deleteAzureApplication(credential); err != nil {
+		return err
 	}
-	log.Info("AzureAdCredential was deleted")
-	return ctrl.Result{}, nil
+	return nil
+}
+
+func (r *AzureAdCredentialReconciler) deleteAzureApplication(credential *naisiov1alpha1.AzureAdCredential) error {
+	log.Info("deleting Azure application...")
+	if err := r.AzureClient.DeleteApplication(*credential); err != nil {
+		return fmt.Errorf("failed to delete Azure application: %w", err)
+	}
+	log.Info("Azure application successfully deleted")
+	return nil
+}
+
+func (r *AzureAdCredentialReconciler) registerFinalizer(ctx *context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
+	if !containsString(credential.ObjectMeta.Finalizers, finalizer) {
+		log.Info("finalizer for object not found, registering...")
+		credential.ObjectMeta.Finalizers = append(credential.ObjectMeta.Finalizers, finalizer)
+		if err := r.Update(*ctx, credential); err != nil {
+			return err
+		}
+		log.Info("finalizer successfully registered")
+	}
+	return nil
+}
+
+func (r *AzureAdCredentialReconciler) processFinalizer(ctx *context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
+	if containsString(credential.ObjectMeta.Finalizers, finalizer) {
+		log.Info("finalizer triggered, deleting resources...")
+		// our finalizer is present, so lets handle any external dependency
+		if err := r.delete(credential); err != nil {
+			return fmt.Errorf("failed to delete resources: %w", err)
+		}
+
+		// remove our finalizer from the list and update it.
+		credential.ObjectMeta.Finalizers = removeString(credential.ObjectMeta.Finalizers, finalizer)
+		if err := r.Update(*ctx, credential); err != nil {
+			return fmt.Errorf("failed to remove finalizer from list: %w", err)
+		}
+	}
+	log.Info("finalizer finished successfully")
+	return nil
+}
+
+// Helper functions to check and remove string from a slice of strings.
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func removeString(slice []string, s string) (result []string) {
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
 }
