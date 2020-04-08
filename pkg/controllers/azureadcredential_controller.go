@@ -56,12 +56,11 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 		return ctrl.Result{}, nil
 	}
 
-	azureAdCredentialHash, err := azureAdCredential.Hash()
+	hashUnchanged, err := azureAdCredential.HashUnchanged()
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to calculate application hash: %w", err)
+		return ctrl.Result{}, err
 	}
-
-	if azureAdCredential.Status.ProvisionHash == azureAdCredentialHash {
+	if hashUnchanged {
 		log.Info("object state already reconciled, nothing to do")
 		return ctrl.Result{}, nil
 	}
@@ -111,12 +110,9 @@ func (r *AzureAdCredentialReconciler) processAzureApplication(ctx *context.Conte
 	credential.SetObjectId(application.ObjectId)
 	credential.StatusProvisioned()
 
-	// Calculate and set new AzureAdCredential.Status.ProvisionHash
-	credentialHash, err := credential.Hash()
-	if err != nil {
-		return fmt.Errorf("failed to calculate application hash: %w", err)
+	if err := credential.UpdateHash(); err != nil {
+		return err
 	}
-	credential.Status.ProvisionHash = credentialHash
 
 	// Update Status subresource
 	if err := r.Status().Update(*ctx, credential); err != nil {

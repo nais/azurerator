@@ -120,14 +120,34 @@ func (in *AzureAdCredential) StatusProvisioned() {
 func (in *AzureAdCredential) SetCertificateKeyId(keyId string) {
 	in.Status.CertificateKeyId = keyId
 }
+
 func (in *AzureAdCredential) SetPasswordKeyId(keyId string) {
 	in.Status.PasswordKeyId = keyId
 }
+
 func (in *AzureAdCredential) SetClientId(id string) {
 	in.Status.ClientId = id
 }
+
 func (in *AzureAdCredential) SetObjectId(id string) {
 	in.Status.ObjectId = id
+}
+
+func (in *AzureAdCredential) UpdateHash() error {
+	newHash, err := in.Hash()
+	if err != nil {
+		return fmt.Errorf("failed to calculate application hash: %w", err)
+	}
+	in.Status.ProvisionHash = newHash
+	return nil
+}
+
+func (in *AzureAdCredential) HashUnchanged() (bool, error) {
+	newHash, err := in.Hash()
+	if err != nil {
+		return false, fmt.Errorf("failed to calculate application hash: %w", err)
+	}
+	return in.Status.ProvisionHash == newHash, nil
 }
 
 func (in AzureAdCredential) Hash() (string, error) {
