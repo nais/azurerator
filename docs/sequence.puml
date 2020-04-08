@@ -1,0 +1,125 @@
+@startuml component
+title Azurerator Sequence Flow
+skinparam maxMessageSize 300
+autonumber
+
+actor developer as "Developer"
+participant cluster as "Cluster"
+participant naiserator as "Naiserator"
+participant azurerator as "Azurerator"
+participant azuread as "Azure AD (AAD)"
+participant application as "Application"
+collections applications as "Other applications"
+
+==Deployment==
+developer -> cluster: apply YAML
+cluster <- naiserator: read YAML
+cluster <- naiserator: apply azurerator CRD
+note right: intercepted by validating admission webhook
+naiserator -> cluster: wait for synchronization
+note left: mount expected secret
+
+loop forever
+	azurerator -> cluster: watch azurerator CRD
+end
+
+==Validating admission webhook==
+cluster -> azurerator: validate
+
+loop each app listed in PreAuthorizedApplications
+    azurerator -> azuread: check if preAuthorizedApplication exists
+    alt if preAuthorizedApplication exists in AAD
+        azurerator -> cluster: ok
+    else does not exist in AAD
+        azurerator -> cluster: return error / remove from list (no-op?)
+    end
+end
+azurerator -> azurerator: replyUrls must be actual URLs
+
+note over cluster, azurerator: domains for replyUrls should match possible ingreses
+azurerator -> cluster: check possible ingresses for given cluster
+group if app exists in AAD
+    note over azurerator, azuread
+        deploying team should contain at least one owner registered in AAD
+    end note
+    azurerator -> azuread: check team ownership
+end
+
+note over azurerator, azuread: should be unique within the Azure tenant for the envclass
+azurerator -> azuread: check application name
+
+==Create or update AAD app==
+azurerator -> azurerator: check if app exists
+note left: cached from AAD
+azurerator -> azuread: check if app exists
+alt app does not exist in AAD
+	azurerator -> azuread: register new application
+else app exists in AAD
+    azurerator -> azuread: update application
+    note left
+        owners
+        replyUrls
+        preAuthorizedApplications
+    end note
+end
+
+==Provision credentials==
+
+azurerator -> azurerator: generate new set of clientSecret and keypair
+note over azurerator, azuread
+    should not invalidate credentials for previous app that's still running
+end note
+
+azurerator -> azuread: assign the credentials to the AAD app as additional credentials
+
+alt if rotating
+    azurerator -> cluster: check current KeyIds in status subresource
+    note over azurerator, azuread
+        should ensure that credentials are invalidated on a given condition,
+        and iff new, valid credentials are available and in use by apps
+    end note
+    azurerator -> azuread: invalidate non-matching KeyIds
+else
+
+end
+
+==Create or update cluster resources==
+azurerator -> cluster: update with newly generated KeyIds in AzureAdCredential status subresource
+
+alt resources do not exist
+	azurerator -> cluster: create secret
+	note right
+        clientId
+        clientSecret
+        private key
+    end note
+	azurerator -> cluster: create configMap
+	note right
+        clientId
+        public key
+    end note
+else resources exist
+    azurerator -> cluster: update secret
+    azurerator -> cluster: update configMap
+end
+
+==Complete provisioning==
+    azurerator -> cluster: update CR status
+    azurerator -> cluster: complete reconciliation
+    naiserator -> cluster: synchronized
+    application -> cluster: deployed with mounted secret
+    applications -> cluster: may refer to configMap for public key / clientId
+    note over applications
+        how do we ensure
+        that other running
+        apps have an updated
+        public key?
+    end note
+
+==On deletion==
+    naiserator -> cluster: delete resources
+    azurerator -> azuread: delete application
+    azurerator -> cluster: delete secret
+    azurerator -> cluster: delete configMap
+
+@enduml
