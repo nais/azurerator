@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -134,7 +135,7 @@ func (r *AzureAdCredentialReconciler) delete(credential *naisiov1alpha1.AzureAdC
 
 func (r *AzureAdCredentialReconciler) deleteAzureApplication(credential *naisiov1alpha1.AzureAdCredential) error {
 	log.Info("deleting Azure application...")
-	exists, err := r.AzureClient.ApplicationExists(*credential);
+	exists, err := r.AzureClient.ApplicationExists(*credential)
 	if err != nil {
 		return err
 	}
@@ -150,7 +151,7 @@ func (r *AzureAdCredentialReconciler) deleteAzureApplication(credential *naisiov
 }
 
 func (r *AzureAdCredentialReconciler) registerFinalizer(ctx *context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
-	if !containsString(credential.ObjectMeta.Finalizers, finalizer) {
+	if !util.ContainsString(credential.ObjectMeta.Finalizers, finalizer) {
 		log.Info("finalizer for object not found, registering...")
 		credential.ObjectMeta.Finalizers = append(credential.ObjectMeta.Finalizers, finalizer)
 		if err := r.Update(*ctx, credential); err != nil {
@@ -162,7 +163,7 @@ func (r *AzureAdCredentialReconciler) registerFinalizer(ctx *context.Context, cr
 }
 
 func (r *AzureAdCredentialReconciler) processFinalizer(ctx *context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
-	if containsString(credential.ObjectMeta.Finalizers, finalizer) {
+	if util.ContainsString(credential.ObjectMeta.Finalizers, finalizer) {
 		log.Info("finalizer triggered, deleting resources...")
 		// our finalizer is present, so lets handle any external dependency
 		if err := r.delete(credential); err != nil {
@@ -170,31 +171,11 @@ func (r *AzureAdCredentialReconciler) processFinalizer(ctx *context.Context, cre
 		}
 
 		// remove our finalizer from the list and update it.
-		credential.ObjectMeta.Finalizers = removeString(credential.ObjectMeta.Finalizers, finalizer)
+		credential.ObjectMeta.Finalizers = util.RemoveString(credential.ObjectMeta.Finalizers, finalizer)
 		if err := r.Update(*ctx, credential); err != nil {
 			return fmt.Errorf("failed to remove finalizer from list: %w", err)
 		}
 	}
 	log.Info("finalizer finished successfully")
 	return nil
-}
-
-// Helper functions to check and remove string from a slice of strings.
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-func removeString(slice []string, s string) (result []string) {
-	for _, item := range slice {
-		if item == s {
-			continue
-		}
-		result = append(result, item)
-	}
-	return
 }
