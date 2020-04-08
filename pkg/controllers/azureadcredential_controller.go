@@ -134,6 +134,14 @@ func (r *AzureAdCredentialReconciler) delete(credential *naisiov1alpha1.AzureAdC
 
 func (r *AzureAdCredentialReconciler) deleteAzureApplication(credential *naisiov1alpha1.AzureAdCredential) error {
 	log.Info("deleting Azure application...")
+	exists, err := r.AzureClient.ApplicationExists(*credential);
+	if err != nil {
+		return err
+	}
+	if !exists {
+		log.Info("Azure application does not exist - skipping deletion")
+		return nil
+	}
 	if err := r.AzureClient.DeleteApplication(*credential); err != nil {
 		return fmt.Errorf("failed to delete Azure application: %w", err)
 	}
