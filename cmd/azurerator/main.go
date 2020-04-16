@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/client"
 	"github.com/nais/azureator/pkg/config"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -64,7 +65,7 @@ func run() error {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
-	azureClient, err := azure.NewClient(context.TODO(), &cfg.AzureAd)
+	azureClient, err := client.NewClient(context.TODO(), &cfg.AzureAd)
 	if err != nil {
 		return fmt.Errorf("unable to create Azure client: %w", err)
 	}

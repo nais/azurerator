@@ -1,9 +1,6 @@
 package azure
 
 import (
-	"context"
-
-	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 )
 
@@ -12,13 +9,6 @@ type Client interface {
 	RegisterApplication(credential v1alpha1.AzureAdCredential) (Application, error)
 	UpdateApplication(credential v1alpha1.AzureAdCredential) (Application, error)
 	DeleteApplication(credential v1alpha1.AzureAdCredential) error
-}
-
-type client struct {
-	ctx                    context.Context
-	config                 *Config
-	servicePrincipalClient graphrbac.ServicePrincipalsClient
-	applicationsClient     graphrbac.ApplicationsClient
 }
 
 type Application struct {
