@@ -9,19 +9,18 @@ require (
 	github.com/Azure/go-autorest/autorest/date v0.2.0
 	github.com/Azure/go-autorest/autorest/to v0.3.0
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
-	github.com/dgraph-io/ristretto v0.0.2
 	github.com/go-logr/logr v0.1.0
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.8.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
 	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59 // indirect
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b // indirect
-	golang.org/x/tools v0.0.0-20190920225731-5eefd052ad72
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v0.17.2

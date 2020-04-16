@@ -9,8 +9,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
 	"github.com/Azure/go-autorest/autorest/date"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/dgraph-io/ristretto"
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	gocache "github.com/patrickmn/go-cache"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 	SignInAudience   string = "AzureADMyOrg"
 )
 
-var cache ristretto.Cache
+var cache gocache.Cache
 
 func NewClient(ctx context.Context, cfg *Config) (Client, error) {
 	spClient, err := getServicePrincipalsClient(cfg)
@@ -30,15 +30,7 @@ func NewClient(ctx context.Context, cfg *Config) (Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate applications client: %w", err)
 	}
-	c, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e6,     // number of keys to track frequency of (1M).
-		MaxCost:     1 << 25, // maximum cost of cache (32MB).
-		BufferItems: 64,      // number of keys per Get buffer.
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to construct cache: %w", err)
-	}
-	cache = *c
+	cache = *gocache.New(gocache.NoExpiration, gocache.NoExpiration)
 	return newClient(ctx, cfg, spClient, appClient), nil
 }
 
@@ -125,7 +117,7 @@ func (c client) allApplications(filters ...string) ([]graphrbac.Application, err
 
 func addToCache(applications []graphrbac.Application) {
 	for _, app := range applications {
-		cache.Set(app.DisplayName, app, app.ContentLength)
+		cache.Set(*app.DisplayName, app, gocache.NoExpiration)
 	}
 }
 
@@ -238,7 +230,7 @@ func (c client) deleteApplication(credential v1alpha1.AzureAdCredential) error {
 	if _, err := c.applicationsClient.Delete(c.ctx, credential.Status.ObjectId); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
-	cache.Del(credential.Name)
+	cache.Delete(credential.Name)
 	return nil
 }
 
