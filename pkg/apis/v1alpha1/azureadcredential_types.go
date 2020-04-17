@@ -40,17 +40,14 @@ type AzureAdCredentialSpec struct {
 
 // AzureAdCredentialStatus defines the observed state of AzureAdCredential
 type AzureAdCredentialStatus struct {
-	// ProvisionStatus denotes whether the provisioning of the AzureAdCredential has been initialized, completed successfully, or if the status is unknown
-	// +kubebuilder:validation:Enum=initializing;unknown;complete
-	ProvisionStatus ProvisionStatus `json:"provisionStatus"`
+	// UpToDate denotes whether the provisioning of the AzureAdCredential has been successfully completed or not
+	UpToDate bool `json:"upToDate"`
 	// ProvisionState is a one-word CamelCase machine-readable representation of the current state of the object
 	ProvisionState ProvisionState `json:"provisionState"`
-	// LastStateTransitionTime is the last time the state transitioned from one state to another
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// ProvisionStateTime is the last time the state transitioned from one state to another
+	ProvisionStateTime metav1.Time `json:"provisionStateTime,omitempty"`
 	// ProvisionHash is the hash of the AzureAdCredential object
 	ProvisionHash string `json:"provisionHash,omitempty"`
-	// ProvisionTime is the time when the resource completed synchronization
-	ProvisionTime metav1.Time `json:"provisionTime,omitempty"`
 	// PasswordKeyId is the key ID for the latest valid password credential
 	PasswordKeyId string `json:"passwordKeyId"`
 	// CertificateKeyId is the certificate ID for the latest valid certificate credential
@@ -70,14 +67,6 @@ const (
 	StateProvisioned        ProvisionState = "Provisioned"
 )
 
-type ProvisionStatus string
-
-const (
-	Initializing ProvisionStatus = "initializing"
-	Unknown      ProvisionStatus = "unknown"
-	Complete     ProvisionStatus = "complete"
-)
-
 // AzureAdReplyUrl defines the valid reply URLs for callbacks after OIDC flows for this application
 type AzureAdReplyUrl struct {
 	Url string `json:"url,omitempty"`
@@ -94,27 +83,27 @@ func init() {
 }
 
 func (in *AzureAdCredential) StatusNewProvisioning() {
-	in.Status.ProvisionStatus = Initializing
+	in.Status.UpToDate = false
 	in.Status.ProvisionState = StateNewProvisioning
-	in.Status.LastTransitionTime = metav1.Now()
+	in.Status.ProvisionStateTime = metav1.Now()
 }
 
 func (in *AzureAdCredential) StatusRotateProvisioning() {
-	in.Status.ProvisionStatus = Initializing
+	in.Status.UpToDate = false
 	in.Status.ProvisionState = StateRotateProvisioning
-	in.Status.LastTransitionTime = metav1.Now()
+	in.Status.ProvisionStateTime = metav1.Now()
 }
 
 func (in *AzureAdCredential) StatusRetrying() {
+	in.Status.UpToDate = false
 	in.Status.ProvisionState = StateRetrying
-	in.Status.LastTransitionTime = metav1.Now()
+	in.Status.ProvisionStateTime = metav1.Now()
 }
 
 func (in *AzureAdCredential) StatusProvisioned() {
-	in.Status.ProvisionStatus = Complete
+	in.Status.UpToDate = true
 	in.Status.ProvisionState = StateProvisioned
-	in.Status.LastTransitionTime = metav1.Now()
-	in.Status.ProvisionTime = metav1.Now()
+	in.Status.ProvisionStateTime = metav1.Now()
 }
 
 func (in *AzureAdCredential) SetCertificateKeyId(keyId string) {
