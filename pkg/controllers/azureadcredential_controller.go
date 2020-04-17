@@ -41,6 +41,7 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 		// on deleted requests.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	log.Info("processing AzureAdCredential...", "azureAdCredential", azureAdCredential)
 
 	// examine DeletionTimestamp to determine if object is under deletion
 	if azureAdCredential.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -66,7 +67,6 @@ func (r *AzureAdCredentialReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 		return ctrl.Result{}, nil
 	}
 
-	log.Info("processing AzureAdCredential...", "azureAdCredential", azureAdCredential)
 	if err := r.processAzureApplication(&azureAdCredential); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to process Azure application: %w", err)
 	}
@@ -110,7 +110,7 @@ func (r *AzureAdCredentialReconciler) processAzureApplication(credential *naisio
 		}
 		return fmt.Errorf("failed to register/update Azure application: %w", err)
 	}
-	log.Info("Azure application successfully registered/updated", "clientId", application.ClientId)
+	log.Info("Azure application successfully registered/updated", "AzureApplication", application)
 
 	// Update AzureAdCredential.Status
 	credential.SetCertificateKeyId(application.CertificateKeyId)
@@ -122,10 +122,10 @@ func (r *AzureAdCredentialReconciler) processAzureApplication(credential *naisio
 	if err := credential.UpdateHash(); err != nil {
 		return err
 	}
-
 	if err := r.updateStatusSubresource(credential); err != nil {
 		return err
 	}
+	log.Info("Status subresource successfully updated", "AzureAdCredentialStatus", credential.Status)
 	return nil
 }
 
