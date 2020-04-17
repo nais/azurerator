@@ -3,11 +3,11 @@ package client
 import (
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
-	"github.com/Azure/go-autorest/autorest/date"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/google/uuid"
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/yaegashi/msgraph.go/ptr"
+	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
 // UpdateApplication updates an existing AAD application
@@ -17,19 +17,46 @@ func (c client) UpdateApplication(credential v1alpha1.AzureAdCredential) (azure.
 
 // TODO
 func (c client) updateApplication(credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	return azure.Application{}, nil
+	return azure.Application{
+		Credentials: azure.Credentials{
+			Public: azure.Public{
+				ClientId: credential.Status.ClientId,
+				Key: azure.Key{
+					Base64: "",
+				},
+			},
+			Private: azure.Private{
+				ClientId:     credential.Status.ClientId,
+				ClientSecret: "",
+				Key: azure.Key{
+					Base64: "",
+				},
+			},
+		},
+		ClientId:         credential.Status.ClientId,
+		ObjectId:         credential.Status.ObjectId,
+		PasswordKeyId:    "",
+		CertificateKeyId: "",
+	}, nil
 }
 
 // TODO
-func (c client) addClientSecret(credential v1alpha1.AzureAdCredential) {
-	_, _ = c.applicationsClient.UpdatePasswordCredentials(c.ctx, "", graphrbac.PasswordCredentialsUpdateParameters{
-		Value: &[]graphrbac.PasswordCredential{
-			{
-				StartDate: &date.Time{Time: time.Now()},
-				EndDate:   &date.Time{Time: time.Now().AddDate(0, 0, 1)},
-				KeyID:     to.StringPtr("mykeyid"),
-				Value:     to.StringPtr("mypassword"),
-			},
+func (c client) addClientSecret(objectId string) (*msgraph.PasswordCredential, error) {
+	startDateTime := time.Now()
+	endDateTime := time.Now().AddDate(0, 0, 1)
+	keyId := msgraph.UUID(uuid.New().String())
+	password := &msgraph.ApplicationAddPasswordRequestParameter{
+		PasswordCredential: &msgraph.PasswordCredential{
+			StartDateTime: &startDateTime,
+			EndDateTime:   &endDateTime,
+			KeyID:         &keyId,
+			DisplayName:   ptr.String("azurerator"),
 		},
-	})
+	}
+	request := c.graphClient.Applications().ID(objectId).AddPassword(password).Request()
+	response, err := request.Post(c.ctx)
+	if err != nil {
+		return &msgraph.PasswordCredential{}, err
+	}
+	return response, nil
 }

@@ -3,10 +3,10 @@ package client
 import (
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/yaegashi/msgraph.go/ptr"
+	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
 // RegisterApplication registers a new AAD application
@@ -15,10 +15,15 @@ func (c client) RegisterApplication(credential v1alpha1.AzureAdCredential) (azur
 }
 
 func (c client) registerApplication(credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	application, err := c.applicationsClient.Create(c.ctx, applicationCreateParameters(credential))
+	application, err := c.graphClient.Applications().Request().Add(c.ctx, applicationCreateParameters(credential))
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to register application: %w", err)
 	}
+	clientSecret, err := c.addClientSecret(*application.ID)
+	if err != nil {
+		return azure.Application{}, fmt.Errorf("failed to update credentials for application %w", err)
+	}
+
 	return azure.Application{
 		Credentials: azure.Credentials{
 			Public: azure.Public{
@@ -29,45 +34,40 @@ func (c client) registerApplication(credential v1alpha1.AzureAdCredential) (azur
 			},
 			Private: azure.Private{
 				ClientId:     *application.AppID,
-				ClientSecret: "",
+				ClientSecret: *clientSecret.SecretText,
 				Key: azure.Key{
 					Base64: "",
 				},
 			},
 		},
 		ClientId:         *application.AppID,
-		ObjectId:         *application.ObjectID,
-		PasswordKeyId:    "",
+		ObjectId:         *application.ID,
+		PasswordKeyId:    string(*clientSecret.KeyID),
 		CertificateKeyId: "",
 	}, nil
 }
 
 // TODO
-func applicationCreateParameters(credential v1alpha1.AzureAdCredential) graphrbac.ApplicationCreateParameters {
-	return graphrbac.ApplicationCreateParameters{
-		DisplayName:                to.StringPtr(credential.Name),
-		IdentifierUris:             nil,
-		AppLogoURL:                 nil,
-		AppRoles:                   nil,
-		AppPermissions:             nil,
-		AvailableToOtherTenants:    to.BoolPtr(false),
-		ErrorURL:                   nil,
-		GroupMembershipClaims:      graphrbac.SecurityGroup,
-		Homepage:                   nil,
-		InformationalUrls:          nil,
-		IsDeviceOnlyAuthSupported:  nil,
-		KeyCredentials:             nil,
-		KnownClientApplications:    nil,
-		LogoutURL:                  nil,
-		Oauth2AllowImplicitFlow:    to.BoolPtr(false),
-		Oauth2AllowURLPathMatching: nil,
-		Oauth2Permissions:          nil,
-		Oauth2RequirePostResponse:  nil,
-		OrgRestrictions:            nil,
-		OptionalClaims:             nil,
-		PasswordCredentials:        nil,
-		ReplyUrls:                  to.StringSlicePtr(getReplyUrlsStringSlice(credential)),
-		SignInAudience:             nil,
+func applicationCreateParameters(credential v1alpha1.AzureAdCredential) *msgraph.Application {
+	return &msgraph.Application{
+		DisplayName:           ptr.String(credential.Name),
+		IdentifierUris:        nil,
+		AppRoles:              nil,
+		GroupMembershipClaims: ptr.String(SecurityGroup),
+		KeyCredentials:        nil,
+		OptionalClaims:        nil,
+		Web: &msgraph.WebApplication{
+			RedirectUris: getReplyUrlsStringSlice(credential),
+			ImplicitGrantSettings: &msgraph.ImplicitGrantSettings{
+				EnableIDTokenIssuance:     ptr.Bool(false),
+				EnableAccessTokenIssuance: ptr.Bool(false),
+			},
+		},
+		SignInAudience: ptr.String(SignInAudience),
+		Tags: []string{
+			IaCAppTag,
+			IntegratedAppTag,
+		},
 	}
 }
 

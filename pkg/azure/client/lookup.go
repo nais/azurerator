@@ -3,10 +3,10 @@ package client
 import (
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure/util"
 	gocache "github.com/patrickmn/go-cache"
+	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
 // ApplicationExists returns an indication of whether the application exists in AAD or not
@@ -32,45 +32,37 @@ func (c client) applicationExists(credential v1alpha1.AzureAdCredential) (bool, 
 	return len(applications) > 0, nil
 }
 
-func (c client) getApplication(credential v1alpha1.AzureAdCredential) (graphrbac.Application, error) {
+func (c client) getApplication(credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
 	if application, found := c.applicationsCache.Get(credential.Name); found {
-		return application.(graphrbac.Application), nil
+		return application.(msgraph.Application), nil
 	}
 	applications, err := c.allApplications(util.FilterByName(credential.GetName()))
 	if err != nil {
-		return graphrbac.Application{}, err
+		return msgraph.Application{}, err
 	}
 	if len(applications) == 0 {
-		return graphrbac.Application{}, fmt.Errorf("could not find azure application with name '%s'", credential.GetName())
+		return msgraph.Application{}, fmt.Errorf("could not find azure application with name '%s'", credential.GetName())
 	}
 	if len(applications) > 1 {
-		return graphrbac.Application{}, fmt.Errorf("found more than one azure application with name '%s'", credential.GetName())
+		return msgraph.Application{}, fmt.Errorf("found more than one azure application with name '%s'", credential.GetName())
 	}
 	return applications[0], nil
 }
 
-func (c client) allApplications(filters ...string) ([]graphrbac.Application, error) {
-	var applications []graphrbac.Application
-	var result graphrbac.ApplicationListResultPage
+func (c client) allApplications(filters ...string) ([]msgraph.Application, error) {
+	var applications []msgraph.Application
 
-	result, err := c.applicationsClient.List(c.ctx, util.MapFiltersToFilter(filters))
+	r := c.graphClient.Applications().Request()
+	r.Filter(util.MapFiltersToFilter(filters))
+	applications, err := r.GetN(c.ctx, 1000)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get list applications: %w", err)
 	}
-	for {
-		applications = append(applications, result.Values()...)
-		err = result.NextWithContext(c.ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get list applications: %w", err)
-		}
-		if !result.NotDone() {
-			c.addToCache(applications)
-			return applications, nil
-		}
-	}
+	c.addToCache(applications)
+	return applications, nil
 }
 
-func (c client) addToCache(applications []graphrbac.Application) {
+func (c client) addToCache(applications []msgraph.Application) {
 	for _, app := range applications {
 		c.applicationsCache.Set(*app.DisplayName, app, gocache.NoExpiration)
 	}

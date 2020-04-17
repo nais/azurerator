@@ -4,64 +4,56 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
 	"github.com/nais/azureator/pkg/azure"
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/yaegashi/msgraph.go/msauth"
+	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	"golang.org/x/oauth2"
 )
 
 type client struct {
-	ctx                    context.Context
-	config                 *azure.Config
-	servicePrincipalClient graphrbac.ServicePrincipalsClient
-	applicationsClient     graphrbac.ApplicationsClient
-	applicationsCache      gocache.Cache
+	ctx               context.Context
+	config            *azure.Config
+	graphClient       *msgraph.GraphServiceRequestBuilder
+	applicationsCache gocache.Cache
 }
 
 const (
 	IntegratedAppTag string = "WindowsAzureActiveDirectoryIntegratedApp"
 	SignInAudience   string = "AzureADMyOrg"
+	IaCAppTag        string = "azurerator_appreg"
+)
+
+// GroupMembershipClaimTypes enumerates the values for group membership claim types.
+const (
+	// All ...
+	All string = "All"
+	// None ...
+	None string = "None"
+	// SecurityGroup ...
+	SecurityGroup string = "SecurityGroup"
 )
 
 func NewClient(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
-	spClient, err := getServicePrincipalsClient(cfg)
+	m := msauth.NewManager()
+	scopes := []string{msauth.DefaultMSGraphScope}
+	ts, err := m.ClientCredentialsGrant(ctx, cfg.Tenant, cfg.Auth.ClientId, cfg.Auth.ClientSecret, scopes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to instantiate service principal client: %w", err)
+		return nil, fmt.Errorf("failed to instantiate graph client: %w", err)
 	}
 
-	appClient, err := getApplicationsClient(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to instantiate applications client: %w", err)
-	}
+	httpClient := oauth2.NewClient(ctx, ts)
+	graphClient := msgraph.NewClient(httpClient)
+
 	cache := *gocache.New(gocache.NoExpiration, gocache.NoExpiration)
-	return newClient(ctx, cfg, spClient, appClient, cache), nil
+	return newClient(ctx, cfg, graphClient, cache), nil
 }
 
-func getServicePrincipalsClient(cfg *azure.Config) (graphrbac.ServicePrincipalsClient, error) {
-	spClient := graphrbac.NewServicePrincipalsClient(cfg.Tenant)
-	a, err := azure.GetGraphAuthorizer(cfg)
-	if err != nil {
-		return spClient, fmt.Errorf("failed to get graph authorizer: %w", err)
-	}
-	spClient.Authorizer = a
-	return spClient, nil
-}
-
-func getApplicationsClient(cfg *azure.Config) (graphrbac.ApplicationsClient, error) {
-	appClient := graphrbac.NewApplicationsClient(cfg.Tenant)
-	a, err := azure.GetGraphAuthorizer(cfg)
-	if err != nil {
-		return appClient, fmt.Errorf("failed to get graph authorizer: %w", err)
-	}
-	appClient.Authorizer = a
-	return appClient, nil
-}
-
-func newClient(ctx context.Context, cfg *azure.Config, spClient graphrbac.ServicePrincipalsClient, appClient graphrbac.ApplicationsClient, cache gocache.Cache) client {
+func newClient(ctx context.Context, cfg *azure.Config, graphClient *msgraph.GraphServiceRequestBuilder, cache gocache.Cache) client {
 	return client{
-		ctx:                    ctx,
-		config:                 cfg,
-		servicePrincipalClient: spClient,
-		applicationsClient:     appClient,
-		applicationsCache:      cache,
+		ctx:               ctx,
+		config:            cfg,
+		graphClient:       graphClient,
+		applicationsCache: cache,
 	}
 }
