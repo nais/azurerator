@@ -43,6 +43,7 @@ type AzureAdCredentialStatus struct {
 	// UpToDate denotes whether the provisioning of the AzureAdCredential has been successfully completed or not
 	UpToDate bool `json:"upToDate"`
 	// ProvisionState is a one-word CamelCase machine-readable representation of the current state of the object
+	// +kubebuilder:validation:Enum=NewProvisioning;RotateProvisioning;Retrying;Provisioned
 	ProvisionState ProvisionState `json:"provisionState"`
 	// ProvisionStateTime is the last time the state transitioned from one state to another
 	ProvisionStateTime metav1.Time `json:"provisionStateTime,omitempty"`
