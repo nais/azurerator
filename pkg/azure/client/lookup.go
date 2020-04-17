@@ -18,7 +18,7 @@ func (c client) ApplicationExists(credential v1alpha1.AzureAdCredential) (bool, 
 }
 
 func (c client) applicationExists(credential v1alpha1.AzureAdCredential) (bool, error) {
-	if len(credential.Status.ObjectId) > 0 || len(credential.Status.ClientId) > 0 {
+	if len(credential.Status.ObjectId) > 0 && len(credential.Status.ClientId) > 0 {
 		return true, nil
 	}
 	if _, found := c.applicationsCache.Get(credential.Name); found {
