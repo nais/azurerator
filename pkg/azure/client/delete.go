@@ -19,7 +19,17 @@ func (c client) DeleteApplication(credential v1alpha1.AzureAdCredential) error {
 }
 
 func (c client) deleteApplication(credential v1alpha1.AzureAdCredential) error {
-	if _, err := c.applicationsClient.Delete(c.ctx, credential.Status.ObjectId); err != nil {
+	var objectId string
+	if len(credential.Status.ObjectId) == 0 {
+		application, err := c.getApplication(credential)
+		if err != nil {
+			return err
+		}
+		objectId = *application.ObjectID
+	} else {
+		objectId = credential.Status.ObjectId
+	}
+	if _, err := c.applicationsClient.Delete(c.ctx, objectId); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	c.applicationsCache.Delete(credential.Name)

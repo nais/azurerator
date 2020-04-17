@@ -65,9 +65,3 @@ func newClient(ctx context.Context, cfg *azure.Config, spClient graphrbac.Servic
 		applicationsCache:      cache,
 	}
 }
-
-func (c client) addToCache(applications []graphrbac.Application) {
-	for _, app := range applications {
-		c.applicationsCache.Set(*app.DisplayName, app, gocache.NoExpiration)
-	}
-}

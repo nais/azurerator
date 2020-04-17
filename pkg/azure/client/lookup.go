@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure/util"
+	gocache "github.com/patrickmn/go-cache"
 )
 
 // ApplicationExists returns an indication of whether the application exists in AAD or not
@@ -31,6 +32,23 @@ func (c client) applicationExists(credential v1alpha1.AzureAdCredential) (bool, 
 	return len(applications) > 0, nil
 }
 
+func (c client) getApplication(credential v1alpha1.AzureAdCredential) (graphrbac.Application, error) {
+	if application, found := c.applicationsCache.Get(credential.Name); found {
+		return application.(graphrbac.Application), nil
+	}
+	applications, err := c.allApplications(util.FilterByName(credential.GetName()))
+	if err != nil {
+		return graphrbac.Application{}, err
+	}
+	if len(applications) == 0 {
+		return graphrbac.Application{}, fmt.Errorf("could not find azure application with name '%s'", credential.GetName())
+	}
+	if len(applications) > 1 {
+		return graphrbac.Application{}, fmt.Errorf("found more than one azure application with name '%s'", credential.GetName())
+	}
+	return applications[0], nil
+}
+
 func (c client) allApplications(filters ...string) ([]graphrbac.Application, error) {
 	var applications []graphrbac.Application
 	var result graphrbac.ApplicationListResultPage
@@ -49,5 +67,11 @@ func (c client) allApplications(filters ...string) ([]graphrbac.Application, err
 			c.addToCache(applications)
 			return applications, nil
 		}
+	}
+}
+
+func (c client) addToCache(applications []graphrbac.Application) {
+	for _, app := range applications {
+		c.applicationsCache.Set(*app.DisplayName, app, gocache.NoExpiration)
 	}
 }
