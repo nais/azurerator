@@ -123,7 +123,7 @@ func (in *AzureAdCredential) SetObjectId(id string) {
 	in.Status.ObjectId = id
 }
 
-func (in *AzureAdCredential) UpdateHash() error {
+func (in *AzureAdCredential) CalculateAndSetHash() error {
 	newHash, err := in.Hash()
 	if err != nil {
 		return fmt.Errorf("failed to calculate application hash: %w", err)

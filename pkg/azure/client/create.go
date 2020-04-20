@@ -10,8 +10,8 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-// RegisterApplication registers a new AAD application
-func (c client) RegisterApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
+// Create registers a new AAD application
+func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
 	return c.registerApplication(ctx, credential)
 }
 

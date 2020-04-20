@@ -10,8 +10,8 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-// ApplicationExists returns an indication of whether the application exists in AAD or not
-func (c client) ApplicationExists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error) {
+// Exists returns an indication of whether the application exists in AAD or not
+func (c client) Exists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error) {
 	exists, err := c.applicationExists(ctx, credential)
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)

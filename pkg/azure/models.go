@@ -7,10 +7,10 @@ import (
 )
 
 type Client interface {
-	ApplicationExists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error)
-	RegisterApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
-	UpdateApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
-	DeleteApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) error
+	Exists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error)
+	Create(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
+	Update(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
+	Delete(ctx context.Context, credential v1alpha1.AzureAdCredential) error
 }
 
 type Application struct {

@@ -7,8 +7,8 @@ import (
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 )
 
-// DeleteApplication deletes the specified AAD application.
-func (c client) DeleteApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
+// Delete deletes the specified AAD application.
+func (c client) Delete(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
 	exists, err := c.applicationExists(ctx, credential)
 	if err != nil {
 		return err

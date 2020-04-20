@@ -25,11 +25,8 @@ const (
 
 // GroupMembershipClaimTypes enumerates the values for group membership claim types.
 const (
-	// All ...
-	All string = "All"
-	// None ...
-	None string = "None"
-	// SecurityGroup ...
+	All           string = "All"
+	None          string = "None"
 	SecurityGroup string = "SecurityGroup"
 )
 

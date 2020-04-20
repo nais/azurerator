@@ -11,8 +11,8 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-// UpdateApplication updates an existing AAD application
-func (c client) UpdateApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
+// Update updates an existing AAD application
+func (c client) Update(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
 	return c.updateApplication(ctx, credential)
 }
 

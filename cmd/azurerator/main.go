@@ -8,6 +8,7 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/controllers/azureadcredential"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -15,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	naisiov1alpha1 "github.com/nais/azureator/pkg/apis/v1alpha1"
-	"github.com/nais/azureator/pkg/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -72,7 +72,7 @@ func run() error {
 		return fmt.Errorf("unable to create Azure client: %w", err)
 	}
 
-	if err = (&controllers.AzureAdCredentialReconciler{
+	if err = (&azureadcredential.Reconciler{
 		Client:      mgr.GetClient(),
 		Log:         ctrl.Log.WithName("controllers").WithName("AzureAdCredential"),
 		Scheme:      mgr.GetScheme(),
