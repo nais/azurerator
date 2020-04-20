@@ -96,9 +96,9 @@ func (r *Reconciler) createOrUpdate(ctx context.Context, credential *naisiov1alp
 		return azure.Application{}, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
 	if exists {
-		return r.create(ctx, credential)
-	} else {
 		return r.update(ctx, credential)
+	} else {
+		return r.create(ctx, credential)
 	}
 }
 
