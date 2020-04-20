@@ -11,7 +11,7 @@ import (
 )
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:shortName=aad
+// +kubebuilder:resource:shortName=azuread
 // +kubebuilder:subresource:status
 
 // AzureAdCredential is the Schema for the azureadcredentials API
