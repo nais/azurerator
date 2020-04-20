@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,12 +12,12 @@ import (
 )
 
 // UpdateApplication updates an existing AAD application
-func (c client) UpdateApplication(credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	return c.updateApplication(credential)
+func (c client) UpdateApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
+	return c.updateApplication(ctx, credential)
 }
 
 // TODO
-func (c client) updateApplication(credential v1alpha1.AzureAdCredential) (azure.Application, error) {
+func (c client) updateApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
 	return azure.Application{
 		Credentials: azure.Credentials{
 			Public: azure.Public{
@@ -41,7 +42,7 @@ func (c client) updateApplication(credential v1alpha1.AzureAdCredential) (azure.
 }
 
 // TODO
-func (c client) addClientSecret(objectId string) (*msgraph.PasswordCredential, error) {
+func (c client) addClientSecret(ctx context.Context, objectId string) (*msgraph.PasswordCredential, error) {
 	startDateTime := time.Now()
 	endDateTime := time.Now().AddDate(0, 0, 1)
 	keyId := msgraph.UUID(uuid.New().String())
@@ -54,7 +55,7 @@ func (c client) addClientSecret(objectId string) (*msgraph.PasswordCredential, e
 		},
 	}
 	request := c.graphClient.Applications().ID(objectId).AddPassword(password).Request()
-	response, err := request.Post(c.ctx)
+	response, err := request.Post(ctx)
 	if err != nil {
 		return &msgraph.PasswordCredential{}, err
 	}

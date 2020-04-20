@@ -45,6 +45,8 @@ func run() error {
 	log := zap.New(zap.UseDevMode(true))
 	ctrl.SetLogger(log)
 
+	ctx := context.Background()
+
 	cfg, err := config.New()
 	if err != nil {
 		return err
@@ -65,7 +67,7 @@ func run() error {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
-	azureClient, err := client.NewClient(context.TODO(), &cfg.AzureAd)
+	azureClient, err := client.NewClient(ctx, &cfg.AzureAd)
 	if err != nil {
 		return fmt.Errorf("unable to create Azure client: %w", err)
 	}

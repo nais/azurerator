@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
@@ -10,16 +11,16 @@ import (
 )
 
 // RegisterApplication registers a new AAD application
-func (c client) RegisterApplication(credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	return c.registerApplication(credential)
+func (c client) RegisterApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
+	return c.registerApplication(ctx, credential)
 }
 
-func (c client) registerApplication(credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	application, err := c.graphClient.Applications().Request().Add(c.ctx, applicationCreateParameters(credential))
+func (c client) registerApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
+	application, err := c.graphClient.Applications().Request().Add(ctx, applicationCreateParameters(credential))
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to register application: %w", err)
 	}
-	clientSecret, err := c.addClientSecret(*application.ID)
+	clientSecret, err := c.addClientSecret(ctx, *application.ID)
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to update credentials for application %w", err)
 	}

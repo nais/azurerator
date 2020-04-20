@@ -1,14 +1,16 @@
 package azure
 
 import (
+	"context"
+
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 )
 
 type Client interface {
-	ApplicationExists(credential v1alpha1.AzureAdCredential) (bool, error)
-	RegisterApplication(credential v1alpha1.AzureAdCredential) (Application, error)
-	UpdateApplication(credential v1alpha1.AzureAdCredential) (Application, error)
-	DeleteApplication(credential v1alpha1.AzureAdCredential) error
+	ApplicationExists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error)
+	RegisterApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
+	UpdateApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
+	DeleteApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) error
 }
 
 type Application struct {

@@ -1,27 +1,28 @@
 package client
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 )
 
 // DeleteApplication deletes the specified AAD application.
-func (c client) DeleteApplication(credential v1alpha1.AzureAdCredential) error {
-	exists, err := c.applicationExists(credential)
+func (c client) DeleteApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
+	exists, err := c.applicationExists(ctx, credential)
 	if err != nil {
 		return err
 	}
 	if exists {
-		return c.deleteApplication(credential)
+		return c.deleteApplication(ctx, credential)
 	}
 	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", credential.Name, credential.Status.ClientId, credential.Status.ObjectId)
 }
 
-func (c client) deleteApplication(credential v1alpha1.AzureAdCredential) error {
+func (c client) deleteApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
 	var objectId string
 	if len(credential.Status.ObjectId) == 0 {
-		application, err := c.getApplication(credential)
+		application, err := c.getApplication(ctx, credential)
 		if err != nil {
 			return err
 		}
@@ -30,7 +31,7 @@ func (c client) deleteApplication(credential v1alpha1.AzureAdCredential) error {
 		objectId = credential.Status.ObjectId
 	}
 
-	if err := c.graphClient.Applications().ID(objectId).Request().Delete(c.ctx); err != nil {
+	if err := c.graphClient.Applications().ID(objectId).Request().Delete(ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	c.applicationsCache.Delete(credential.Name)

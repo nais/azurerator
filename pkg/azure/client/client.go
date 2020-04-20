@@ -12,7 +12,6 @@ import (
 )
 
 type client struct {
-	ctx               context.Context
 	config            *azure.Config
 	graphClient       *msgraph.GraphServiceRequestBuilder
 	applicationsCache gocache.Cache
@@ -46,12 +45,11 @@ func NewClient(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
 	graphClient := msgraph.NewClient(httpClient)
 
 	cache := *gocache.New(gocache.NoExpiration, gocache.NoExpiration)
-	return newClient(ctx, cfg, graphClient, cache), nil
+	return newClient(cfg, graphClient, cache), nil
 }
 
-func newClient(ctx context.Context, cfg *azure.Config, graphClient *msgraph.GraphServiceRequestBuilder, cache gocache.Cache) client {
+func newClient(cfg *azure.Config, graphClient *msgraph.GraphServiceRequestBuilder, cache gocache.Cache) client {
 	return client{
-		ctx:               ctx,
 		config:            cfg,
 		graphClient:       graphClient,
 		applicationsCache: cache,
