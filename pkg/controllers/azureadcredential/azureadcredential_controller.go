@@ -5,12 +5,11 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	naisiov1alpha1 "github.com/nais/azureator/pkg/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	naisiov1alpha1 "github.com/nais/azureator/pkg/apis/v1alpha1"
 )
 
 // AzureAdCredentialReconciler reconciles a AzureAdCredential object
@@ -91,15 +90,30 @@ func (r *Reconciler) process(ctx context.Context, credential *naisiov1alpha1.Azu
 }
 
 func (r *Reconciler) createOrUpdate(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) (azure.Application, error) {
+	var application azure.Application
+	var err error
+
 	exists, err := r.AzureClient.Exists(ctx, *credential)
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
+
 	if exists {
-		return r.update(ctx, credential)
+		application, err = r.update(ctx, credential)
 	} else {
-		return r.create(ctx, credential)
+		application, err = r.create(ctx, credential)
 	}
+	if err != nil {
+		return azure.Application{}, fmt.Errorf("failed to create or update azure application: %w", err)
+	}
+
+	if err := r.createOrUpdateSecret(ctx, credential, application); err != nil {
+		return azure.Application{}, fmt.Errorf("failed to create or update secret: %w", err)
+	}
+	if err := r.createOrUpdateConfigMap(ctx, credential, application); err != nil {
+		return azure.Application{}, fmt.Errorf("failed to create or update configMap: %w", err)
+	}
+	return application, nil
 }
 
 // Update AzureAdCredential.Status
@@ -116,6 +130,6 @@ func (r *Reconciler) updateStatus(ctx context.Context, credential *naisiov1alpha
 	if err := r.updateStatusSubresource(ctx, credential); err != nil {
 		return err
 	}
-	log.Info("Status subresource successfully updated", "AzureAdCredentialStatus", credential.Status)
+	log.Info("status subresource successfully updated", "AzureAdCredentialStatus", credential.Status)
 	return nil
 }
