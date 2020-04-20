@@ -80,7 +80,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *Reconciler) process(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
 	application, err := r.createOrUpdate(ctx, credential)
 	if err != nil {
-		credential.StatusRetrying()
+		credential.SetStatusRetrying()
 		if err := r.updateStatusSubresource(ctx, credential); err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, credential *naisiov1alpha
 	credential.SetPasswordKeyId(application.PasswordKeyId)
 	credential.SetClientId(application.ClientId)
 	credential.SetObjectId(application.ObjectId)
-	credential.StatusProvisioned()
+	credential.SetStatusProvisioned()
 
 	if err := credential.CalculateAndSetHash(); err != nil {
 		return err

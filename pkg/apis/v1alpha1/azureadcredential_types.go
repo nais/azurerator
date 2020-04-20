@@ -43,7 +43,7 @@ type AzureAdCredentialStatus struct {
 	// UpToDate denotes whether the provisioning of the AzureAdCredential has been successfully completed or not
 	UpToDate bool `json:"upToDate"`
 	// ProvisionState is a one-word CamelCase machine-readable representation of the current state of the object
-	// +kubebuilder:validation:Enum=NewProvisioning;RotateProvisioning;Retrying;Provisioned
+	// +kubebuilder:validation:Enum=New;Rotate;Retrying;Provisioned
 	ProvisionState ProvisionState `json:"provisionState"`
 	// ProvisionStateTime is the last time the state transitioned from one state to another
 	ProvisionStateTime metav1.Time `json:"provisionStateTime,omitempty"`
@@ -62,10 +62,10 @@ type AzureAdCredentialStatus struct {
 type ProvisionState string
 
 const (
-	StateNewProvisioning    ProvisionState = "NewProvisioning"
-	StateRotateProvisioning ProvisionState = "RotateProvisioning"
-	StateRetrying           ProvisionState = "Retrying"
-	StateProvisioned        ProvisionState = "Provisioned"
+	New         ProvisionState = "New"
+	Rotate      ProvisionState = "Rotate"
+	Retrying    ProvisionState = "Retrying"
+	Provisioned ProvisionState = "Provisioned"
 )
 
 // AzureAdReplyUrl defines the valid reply URLs for callbacks after OIDC flows for this application
@@ -83,27 +83,27 @@ func init() {
 	SchemeBuilder.Register(&AzureAdCredential{}, &AzureAdCredentialList{})
 }
 
-func (in *AzureAdCredential) StatusNewProvisioning() {
+func (in *AzureAdCredential) SetStatusNew() {
 	in.Status.UpToDate = false
-	in.Status.ProvisionState = StateNewProvisioning
+	in.Status.ProvisionState = New
 	in.Status.ProvisionStateTime = metav1.Now()
 }
 
-func (in *AzureAdCredential) StatusRotateProvisioning() {
+func (in *AzureAdCredential) SetStatusRotate() {
 	in.Status.UpToDate = false
-	in.Status.ProvisionState = StateRotateProvisioning
+	in.Status.ProvisionState = Rotate
 	in.Status.ProvisionStateTime = metav1.Now()
 }
 
-func (in *AzureAdCredential) StatusRetrying() {
+func (in *AzureAdCredential) SetStatusRetrying() {
 	in.Status.UpToDate = false
-	in.Status.ProvisionState = StateRetrying
+	in.Status.ProvisionState = Retrying
 	in.Status.ProvisionStateTime = metav1.Now()
 }
 
-func (in *AzureAdCredential) StatusProvisioned() {
+func (in *AzureAdCredential) SetStatusProvisioned() {
 	in.Status.UpToDate = true
-	in.Status.ProvisionState = StateProvisioned
+	in.Status.ProvisionState = Provisioned
 	in.Status.ProvisionStateTime = metav1.Now()
 }
 

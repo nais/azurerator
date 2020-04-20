@@ -13,7 +13,7 @@ func (r *Reconciler) update(ctx context.Context, credential *naisiov1alpha1.Azur
 
 func (r *Reconciler) updateAzureApplication(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) (azure.Application, error) {
 	log.Info("Azure application already exists, updating...")
-	credential.StatusRotateProvisioning()
+	credential.SetStatusRotate()
 	if err := r.updateStatusSubresource(ctx, credential); err != nil {
 		return azure.Application{}, err
 	}

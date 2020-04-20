@@ -13,7 +13,7 @@ func (r *Reconciler) create(ctx context.Context, credential *naisiov1alpha1.Azur
 
 func (r *Reconciler) createAzureApplication(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) (azure.Application, error) {
 	log.Info("Azure application not found, registering...")
-	credential.StatusNewProvisioning()
+	credential.SetStatusNew()
 	if err := r.updateStatusSubresource(ctx, credential); err != nil {
 		return azure.Application{}, err
 	}
