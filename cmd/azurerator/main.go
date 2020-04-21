@@ -67,7 +67,7 @@ func run() error {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
-	azureClient, err := client.NewClient(ctx, &cfg.AzureAd)
+	azureClient, err := client.New(ctx, &cfg.AzureAd)
 	if err != nil {
 		return fmt.Errorf("unable to create Azure client: %w", err)
 	}

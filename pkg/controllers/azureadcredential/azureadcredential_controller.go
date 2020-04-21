@@ -107,10 +107,10 @@ func (r *Reconciler) createOrUpdate(ctx context.Context, credential *naisiov1alp
 		return azure.Application{}, fmt.Errorf("failed to create or update azure application: %w", err)
 	}
 
-	if err := r.createOrUpdateSecret(ctx, credential, application); err != nil {
+	if err := r.createOrUpdateSecret(ctx, *credential, application); err != nil {
 		return azure.Application{}, fmt.Errorf("failed to create or update secret: %w", err)
 	}
-	if err := r.createOrUpdateConfigMap(ctx, credential, application); err != nil {
+	if err := r.createOrUpdateConfigMap(ctx, *credential, application); err != nil {
 		return azure.Application{}, fmt.Errorf("failed to create or update configMap: %w", err)
 	}
 	return application, nil

@@ -30,7 +30,7 @@ const (
 	SecurityGroup string = "SecurityGroup"
 )
 
-func NewClient(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
+func New(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
 	m := msauth.NewManager()
 	scopes := []string{msauth.DefaultMSGraphScope}
 	ts, err := m.ClientCredentialsGrant(ctx, cfg.Tenant, cfg.Auth.ClientId, cfg.Auth.ClientSecret, scopes)
@@ -42,10 +42,10 @@ func NewClient(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
 	graphClient := msgraph.NewClient(httpClient)
 
 	cache := *gocache.New(gocache.NoExpiration, gocache.NoExpiration)
-	return newClient(cfg, graphClient, cache), nil
+	return new(cfg, graphClient, cache), nil
 }
 
-func newClient(cfg *azure.Config, graphClient *msgraph.GraphServiceRequestBuilder, cache gocache.Cache) client {
+func new(cfg *azure.Config, graphClient *msgraph.GraphServiceRequestBuilder, cache gocache.Cache) client {
 	return client{
 		config:            cfg,
 		graphClient:       graphClient,
