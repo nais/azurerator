@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	"gopkg.in/square/go-jose.v2"
 )
 
 type Client interface {
@@ -27,16 +28,12 @@ type Credentials struct {
 }
 
 type Public struct {
-	ClientId string `json:"clientId"`
-	Key      Key    `json:"key"`
+	ClientId string          `json:"clientId"`
+	Jwk      jose.JSONWebKey `json:"jwk"`
 }
 
 type Private struct {
-	ClientId     string `json:"clientId"`
-	ClientSecret string `json:"clientSecret"`
-	Key          Key    `json:"key"`
-}
-
-type Key struct {
-	Base64 string `json:"base64"`
+	ClientId     string          `json:"clientId"`
+	ClientSecret string          `json:"clientSecret"`
+	Jwk          jose.JSONWebKey `json:"jwk"`
 }

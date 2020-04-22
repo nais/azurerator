@@ -9,6 +9,7 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	"gopkg.in/square/go-jose.v2"
 )
 
 // Update updates an existing AAD application
@@ -22,16 +23,12 @@ func (c client) updateApplication(ctx context.Context, credential v1alpha1.Azure
 		Credentials: azure.Credentials{
 			Public: azure.Public{
 				ClientId: credential.Status.ClientId,
-				Key: azure.Key{
-					Base64: "",
-				},
+				Jwk:      jose.JSONWebKey{},
 			},
 			Private: azure.Private{
 				ClientId:     credential.Status.ClientId,
 				ClientSecret: "",
-				Key: azure.Key{
-					Base64: "",
-				},
+				Jwk:          jose.JSONWebKey{},
 			},
 		},
 		ClientId:         credential.Status.ClientId,
@@ -41,10 +38,10 @@ func (c client) updateApplication(ctx context.Context, credential v1alpha1.Azure
 	}, nil
 }
 
-// TODO
-func (c client) addClientSecret(ctx context.Context, objectId string) (*msgraph.PasswordCredential, error) {
+// TODO - validity
+func (c client) addPasswordCredential(ctx context.Context, objectId string) (*msgraph.PasswordCredential, error) {
 	startDateTime := time.Now()
-	endDateTime := time.Now().AddDate(0, 0, 1)
+	endDateTime := time.Now().AddDate(1, 0, 0)
 	keyId := msgraph.UUID(uuid.New().String())
 	password := &msgraph.ApplicationAddPasswordRequestParameter{
 		PasswordCredential: &msgraph.PasswordCredential{

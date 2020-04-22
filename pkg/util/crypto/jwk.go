@@ -20,7 +20,7 @@ type JwkPair struct {
 	Public  jose.JSONWebKey `json:"public"`
 }
 
-func GenerateJwks(application v1alpha1.AzureAdCredential) (JwkPair, error) {
+func GenerateJwkPair(application v1alpha1.AzureAdCredential) (JwkPair, error) {
 	keyPair, err := GenerateKeyPair()
 	if err != nil {
 		return JwkPair{}, fmt.Errorf("failed to generate jwks: %w", err)

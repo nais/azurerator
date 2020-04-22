@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"time"
@@ -29,18 +30,18 @@ func Template(application v1alpha1.AzureAdCredential) *x509.Certificate {
 	return &x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
-			Organization: []string{"NAIS"},
-			OrganizationalUnit: []string{
-				application.ClusterName,
-				application.Namespace,
-				"Azurerator",
-			},
-			CommonName: application.Name,
+			Organization:       []string{"NAIS"},
+			OrganizationalUnit: []string{"Azurerator"},
+			CommonName:         fmt.Sprintf("%s:%s", application.Name, application.Namespace),
 		},
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(2, 0, 0),
+		NotAfter:              time.Now().AddDate(1, 0, 0),
 		KeyUsage:              x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,
 	}
+}
+
+func ConvertToPem(cert *x509.Certificate) []byte {
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 }
