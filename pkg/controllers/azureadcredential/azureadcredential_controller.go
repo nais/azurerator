@@ -85,6 +85,7 @@ func (r *Reconciler) process(ctx context.Context, credential *naisiov1alpha1.Azu
 		}
 		return fmt.Errorf("failed to register/update Azure application: %w", err)
 	}
+	// TODO: remove secrets from logs
 	log.Info("Azure application successfully registered/updated", "AzureApplication", application)
 	return r.updateStatus(ctx, credential, application)
 }

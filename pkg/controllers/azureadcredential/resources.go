@@ -45,6 +45,7 @@ func (r *Reconciler) createOrUpdateSecret(ctx context.Context, credential v1alph
 	return nil
 }
 
+// TODO - should this be available in all namespaces for other apps?
 func (r *Reconciler) createOrUpdateConfigMap(ctx context.Context, credential v1alpha1.AzureAdCredential, application azure.Application) error {
 	configMapCreator := configmap.New(credential, application)
 	res, err := r.createOrUpdateResource(ctx, credential, configMapCreator)
