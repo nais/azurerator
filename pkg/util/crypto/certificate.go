@@ -1,8 +1,8 @@
 package crypto
 
 import (
-	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -13,7 +13,7 @@ import (
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 )
 
-func GenerateCertificate(template *x509.Certificate, key ed25519.PrivateKey) (*x509.Certificate, error) {
+func GenerateCertificate(template *x509.Certificate, key *rsa.PrivateKey) (*x509.Certificate, error) {
 	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, key.Public(), key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate the certificate for key: %w", err)
