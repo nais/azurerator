@@ -20,10 +20,10 @@ func (c client) Exists(ctx context.Context, credential v1alpha1.AzureAdCredentia
 }
 
 func (c client) applicationExists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error) {
-	if _, found := c.applicationsCache.Get(credential.Name); found {
+	if _, found := c.applicationsCache.Get(credential.GetUniqueName()); found {
 		return found, nil
 	}
-	applications, err := c.allApplications(ctx, util.FilterByName(credential.GetName()))
+	applications, err := c.allApplications(ctx, util.FilterByName(credential.GetUniqueName()))
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
@@ -31,10 +31,10 @@ func (c client) applicationExists(ctx context.Context, credential v1alpha1.Azure
 }
 
 func (c client) getApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	if application, found := c.applicationsCache.Get(credential.Name); found {
+	if application, found := c.applicationsCache.Get(credential.GetUniqueName()); found {
 		return application.(msgraph.Application), nil
 	}
-	applications, err := c.allApplications(ctx, util.FilterByName(credential.GetName()))
+	applications, err := c.allApplications(ctx, util.FilterByName(credential.GetUniqueName()))
 	if err != nil {
 		return msgraph.Application{}, err
 	}

@@ -77,6 +77,7 @@ func run() error {
 		Log:         ctrl.Log.WithName("controllers").WithName("AzureAdCredential"),
 		Scheme:      mgr.GetScheme(),
 		AzureClient: azureClient,
+		ClusterName: cfg.ClusterName,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller: %w", err)
 	}

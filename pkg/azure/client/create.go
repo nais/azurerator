@@ -57,7 +57,7 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 // TODO - fill in 'nil's or remove
 func createApplication(credential v1alpha1.AzureAdCredential, keyCredential msgraph.KeyCredential) *msgraph.Application {
 	return &msgraph.Application{
-		DisplayName:           ptr.String(credential.Name),
+		DisplayName:           ptr.String(credential.GetUniqueName()),
 		IdentifierUris:        nil,
 		AppRoles:              nil,
 		GroupMembershipClaims: ptr.String(SecurityGroup),

@@ -170,3 +170,7 @@ func (in AzureAdCredential) Hash() (string, error) {
 	h, err := hash.Hash(marshalled, nil)
 	return fmt.Sprintf("%x", h), err
 }
+
+func (in AzureAdCredential) GetUniqueName() string {
+	return fmt.Sprintf("%s:%s:%s", in.ClusterName, in.Namespace, in.Name)
+}

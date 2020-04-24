@@ -15,11 +15,13 @@ type Config struct {
 	AzureAd              azure.Config `json:"azure"`
 	MetricsAddr          string       `json:"metrics-address"`
 	EnableLeaderElection bool         `json:"enable-leader-election"`
+	ClusterName          string       `json:"cluster-name"`
 }
 
 const (
 	MetricsAddress       = "metrics-address"
 	EnableLeaderElection = "enable-leader-election"
+	ClusterName          = "cluster-name"
 )
 
 func init() {
@@ -39,6 +41,7 @@ func init() {
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
 	flag.Bool(EnableLeaderElection, false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	flag.String(ClusterName, "cluster-name-not-set", "The cluster in which this application should run")
 }
 
 // Print out all configuration options except secret stuff.

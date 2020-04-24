@@ -16,7 +16,7 @@ func (c client) Delete(ctx context.Context, credential v1alpha1.AzureAdCredentia
 	if exists {
 		return c.deleteApplication(ctx, credential)
 	}
-	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", credential.Name, credential.Status.ClientId, credential.Status.ObjectId)
+	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", credential.GetUniqueName(), credential.Status.ClientId, credential.Status.ObjectId)
 }
 
 func (c client) deleteApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
@@ -34,6 +34,6 @@ func (c client) deleteApplication(ctx context.Context, credential v1alpha1.Azure
 	if err := c.graphClient.Applications().ID(objectId).Request().Delete(ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
-	c.applicationsCache.Delete(credential.Name)
+	c.applicationsCache.Delete(credential.GetUniqueName())
 	return nil
 }

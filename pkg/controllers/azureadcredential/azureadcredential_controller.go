@@ -18,6 +18,7 @@ type Reconciler struct {
 	Log         logr.Logger
 	Scheme      *runtime.Scheme
 	AzureClient azure.Client
+	ClusterName string
 }
 
 var log logr.Logger
@@ -38,6 +39,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// on deleted requests.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	azureAdCredential.SetClusterName(r.ClusterName)
 	log.Info("processing AzureAdCredential...", "azureAdCredential", azureAdCredential)
 
 	// examine DeletionTimestamp to determine if object is under deletion
