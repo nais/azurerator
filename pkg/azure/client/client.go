@@ -23,13 +23,6 @@ const (
 	IaCAppTag        string = "azurerator_appreg"
 )
 
-// GroupMembershipClaimTypes enumerates the values for group membership claim types.
-const (
-	All           string = "All"
-	None          string = "None"
-	SecurityGroup string = "SecurityGroup"
-)
-
 func New(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
 	m := msauth.NewManager()
 	scopes := []string{msauth.DefaultMSGraphScope}
@@ -42,13 +35,9 @@ func New(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
 	graphClient := msgraph.NewClient(httpClient)
 
 	cache := *gocache.New(gocache.NoExpiration, gocache.NoExpiration)
-	return new(cfg, graphClient, cache), nil
-}
-
-func new(cfg *azure.Config, graphClient *msgraph.GraphServiceRequestBuilder, cache gocache.Cache) client {
 	return client{
 		config:            cfg,
 		graphClient:       graphClient,
 		applicationsCache: cache,
-	}
+	}, nil
 }

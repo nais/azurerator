@@ -60,10 +60,11 @@ func createApplication(credential v1alpha1.AzureAdCredential, keyCredential msgr
 		DisplayName:           ptr.String(credential.GetUniqueName()),
 		IdentifierUris:        nil,
 		AppRoles:              nil,
-		GroupMembershipClaims: ptr.String(SecurityGroup),
+		GroupMembershipClaims: ptr.String("SecurityGroup"),
 		KeyCredentials:        []msgraph.KeyCredential{keyCredential},
 		OptionalClaims:        nil,
 		Web: &msgraph.WebApplication{
+			LogoutURL:    ptr.String(credential.Spec.LogoutUrl),
 			RedirectUris: getReplyUrlsStringSlice(credential),
 			ImplicitGrantSettings: &msgraph.ImplicitGrantSettings{
 				EnableIDTokenIssuance:     ptr.Bool(false),

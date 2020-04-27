@@ -36,6 +36,9 @@ type AzureAdCredentialList struct {
 type AzureAdCredentialSpec struct {
 	ReplyUrls                 []AzureAdReplyUrl                 `json:"replyUrls,omitempty"`
 	PreAuthorizedApplications []AzureAdPreAuthorizedApplication `json:"preAuthorizedApplications,omitempty"`
+	// LogoutUrl is the URL where Azure AD sends a request to have the application clear the user's session data.
+	// This is required if single sign-out should work correctly. Must start with 'https'
+	LogoutUrl string `json:"logoutUrl,omitempty"`
 	// SecretName is the name of the resulting Secret resource to be created
 	SecretName string `json:"secretName"`
 	// ConfigMapName is the name of the resulting ConfigMap resource to be created
