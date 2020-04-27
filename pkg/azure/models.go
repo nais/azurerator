@@ -4,11 +4,13 @@ import (
 	"context"
 
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 	"gopkg.in/square/go-jose.v2"
 )
 
 type Client interface {
 	Exists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error)
+	Get(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error)
 	Create(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
 	Update(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
 	Delete(ctx context.Context, credential v1alpha1.AzureAdCredential) error

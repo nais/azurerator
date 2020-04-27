@@ -40,22 +40,14 @@ func mapToJwkPair(privateKey *rsa.PrivateKey, application v1alpha1.AzureAdCreden
 	x5tSHA1 := sha1.Sum(certificates[0].Raw)
 	x5tSHA256 := sha256.Sum256(certificates[0].Raw)
 	keyId := base64.RawURLEncoding.EncodeToString(x5tSHA1[:])
-	return JwkPair{
-		Private: jose.JSONWebKey{
-			Key:                         privateKey,
-			KeyID:                       keyId,
-			Use:                         KeyUseSignature,
-			Certificates:                certificates,
-			CertificateThumbprintSHA1:   x5tSHA1[:],
-			CertificateThumbprintSHA256: x5tSHA256[:],
-		},
-		Public: jose.JSONWebKey{
-			Key:                         privateKey.Public(),
-			KeyID:                       keyId,
-			Use:                         KeyUseSignature,
-			Certificates:                certificates,
-			CertificateThumbprintSHA1:   x5tSHA1[:],
-			CertificateThumbprintSHA256: x5tSHA256[:],
-		},
-	}, nil
+
+	jwk := jose.JSONWebKey{
+		Key:                         privateKey,
+		KeyID:                       keyId,
+		Use:                         KeyUseSignature,
+		Certificates:                certificates,
+		CertificateThumbprintSHA1:   x5tSHA1[:],
+		CertificateThumbprintSHA256: x5tSHA256[:],
+	}
+	return JwkPair{Private: jwk, Public: jwk.Public()}, nil
 }

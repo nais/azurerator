@@ -17,12 +17,13 @@ func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredentia
 	return c.registerApplication(ctx, credential)
 }
 
+// TODO - add grants, owners, preauthorizedapps/approles
 func (c client) registerApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
 	jwkPair, err := crypto.GenerateJwkPair(credential)
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to generate JWK pair for application: %w", err)
 	}
-	keyCredential := util.CreateKeyCredential(jwkPair.Public)
+	keyCredential := util.CreateKeyCredential(jwkPair)
 
 	application, err := c.graphClient.Applications().Request().Add(ctx, createApplication(credential, keyCredential))
 	if err != nil {

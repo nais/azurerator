@@ -3,12 +3,17 @@ package client
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
-	"github.com/nais/azureator/pkg/azure/util"
 	gocache "github.com/patrickmn/go-cache"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
+
+// Get returns a Graph API Application entity, which represents in Application in AAD
+func (c client) Get(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
+	return c.getApplication(ctx, credential)
+}
 
 // Exists returns an indication of whether the application exists in AAD or not
 func (c client) Exists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error) {
@@ -23,7 +28,7 @@ func (c client) applicationExists(ctx context.Context, credential v1alpha1.Azure
 	if _, found := c.applicationsCache.Get(credential.GetUniqueName()); found {
 		return found, nil
 	}
-	applications, err := c.allApplications(ctx, util.FilterByName(credential.GetUniqueName()))
+	applications, err := c.allApplications(ctx, filterByName(credential.GetUniqueName()))
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
@@ -34,7 +39,7 @@ func (c client) getApplication(ctx context.Context, credential v1alpha1.AzureAdC
 	if application, found := c.applicationsCache.Get(credential.GetUniqueName()); found {
 		return application.(msgraph.Application), nil
 	}
-	applications, err := c.allApplications(ctx, util.FilterByName(credential.GetUniqueName()))
+	applications, err := c.allApplications(ctx, filterByName(credential.GetUniqueName()))
 	if err != nil {
 		return msgraph.Application{}, err
 	}
@@ -51,7 +56,7 @@ func (c client) allApplications(ctx context.Context, filters ...string) ([]msgra
 	var applications []msgraph.Application
 
 	r := c.graphClient.Applications().Request()
-	r.Filter(util.MapFiltersToFilter(filters))
+	r.Filter(mapFiltersToFilter(filters))
 	applications, err := r.GetN(ctx, 1000)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get list applications: %w", err)
@@ -64,4 +69,16 @@ func (c client) addToCache(applications []msgraph.Application) {
 	for _, app := range applications {
 		c.applicationsCache.Set(*app.DisplayName, app, gocache.NoExpiration)
 	}
+}
+
+func mapFiltersToFilter(filters []string) string {
+	if len(filters) > 0 {
+		return strings.Join(filters[:], " ")
+	} else {
+		return ""
+	}
+}
+
+func filterByName(name string) string {
+	return fmt.Sprintf("displayName eq '%s'", name)
 }
