@@ -1,8 +1,6 @@
 package resourcecreator
 
 import (
-	"fmt"
-
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,13 +9,13 @@ import (
 )
 
 const (
-	ResourcePrefix string = "azuread"
-	LabelType      string = "azurerator.nais.io"
+	LabelType string = "azurerator.nais.io"
 )
 
 type Creator interface {
 	Spec() (runtime.Object, error)
 	MutateFn(object runtime.Object) (controllerutil.MutateFn, error)
+	Name() string
 }
 
 type DefaultCreator struct {
@@ -25,23 +23,15 @@ type DefaultCreator struct {
 	Application azure.Application
 }
 
-func (c DefaultCreator) GetResourcePrefix() string {
-	return ResourcePrefix
-}
-
-func (c DefaultCreator) CreateObjectMeta() metav1.ObjectMeta {
+func (c DefaultCreator) ObjectMeta(name string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
-		Name:      c.CreateName(),
+		Name:      name,
 		Namespace: c.Credential.Namespace,
-		Labels:    c.CreateLabels(),
+		Labels:    c.Labels(),
 	}
 }
 
-func (c DefaultCreator) CreateName() string {
-	return fmt.Sprintf("%s-%s", c.GetResourcePrefix(), c.Credential.Name)
-}
-
-func (c DefaultCreator) CreateLabels() map[string]string {
+func (c DefaultCreator) Labels() map[string]string {
 	return map[string]string{
 		"app":  c.Credential.Name,
 		"type": LabelType,

@@ -26,7 +26,7 @@ func New(credential v1alpha1.AzureAdCredential, application azure.Application) r
 
 func (c Creator) Spec() (runtime.Object, error) {
 	return &corev1.Secret{
-		ObjectMeta: c.CreateObjectMeta(),
+		ObjectMeta: c.ObjectMeta(c.Name()),
 	}, nil
 }
 
@@ -41,6 +41,10 @@ func (c Creator) MutateFn(object runtime.Object) (controllerutil.MutateFn, error
 		secret.Type = corev1.SecretTypeOpaque
 		return nil
 	}, nil
+}
+
+func (c Creator) Name() string {
+	return c.Credential.Spec.SecretName
 }
 
 func (c Creator) toSecretData() (map[string]string, error) {

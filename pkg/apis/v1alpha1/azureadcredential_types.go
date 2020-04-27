@@ -36,6 +36,10 @@ type AzureAdCredentialList struct {
 type AzureAdCredentialSpec struct {
 	ReplyUrls                 []AzureAdReplyUrl                 `json:"replyUrls,omitempty"`
 	PreAuthorizedApplications []AzureAdPreAuthorizedApplication `json:"preAuthorizedApplications,omitempty"`
+	// SecretName is the name of the resulting Secret resource to be created
+	SecretName string `json:"secretName"`
+	// ConfigMapName is the name of the resulting ConfigMap resource to be created
+	ConfigMapName string `json:"configMapName"`
 }
 
 // AzureAdCredentialStatus defines the observed state of AzureAdCredential

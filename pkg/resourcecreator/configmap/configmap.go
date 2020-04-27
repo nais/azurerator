@@ -26,7 +26,7 @@ func New(credential v1alpha1.AzureAdCredential, application azure.Application) r
 
 func (c Creator) Spec() (runtime.Object, error) {
 	return &corev1.ConfigMap{
-		ObjectMeta: c.CreateObjectMeta(),
+		ObjectMeta: c.ObjectMeta(c.Name()),
 	}, nil
 }
 
@@ -40,6 +40,10 @@ func (c Creator) MutateFn(object runtime.Object) (controllerutil.MutateFn, error
 		configMap.Data = data
 		return nil
 	}, nil
+}
+
+func (c Creator) Name() string {
+	return c.Credential.Spec.ConfigMapName
 }
 
 func (c Creator) toConfigMapData() (map[string]string, error) {
