@@ -54,15 +54,11 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 	}, nil
 }
 
-// TODO - fill in 'nil's or remove
 func createApplication(credential v1alpha1.AzureAdCredential, keyCredential msgraph.KeyCredential) *msgraph.Application {
 	return &msgraph.Application{
 		DisplayName:           ptr.String(credential.GetUniqueName()),
-		IdentifierUris:        nil,
-		AppRoles:              nil,
 		GroupMembershipClaims: ptr.String("SecurityGroup"),
 		KeyCredentials:        []msgraph.KeyCredential{keyCredential},
-		OptionalClaims:        nil,
 		Web: &msgraph.WebApplication{
 			LogoutURL:    ptr.String(credential.Spec.LogoutUrl),
 			RedirectUris: getReplyUrlsStringSlice(credential),
@@ -75,6 +71,22 @@ func createApplication(credential v1alpha1.AzureAdCredential, keyCredential msgr
 		Tags: []string{
 			IaCAppTag,
 			IntegratedAppTag,
+		},
+		RequiredResourceAccess: []msgraph.RequiredResourceAccess{
+			microsoftGraphApiPermissions(),
+		},
+	}
+}
+
+func microsoftGraphApiPermissions() msgraph.RequiredResourceAccess {
+	userReadScopeId := msgraph.UUID("e1fe6dd8-ba31-4d61-89e7-88639da4683d") // User.Read
+	return msgraph.RequiredResourceAccess{
+		ResourceAppID: ptr.String("00000003-0000-0000-c000-000000000000"),
+		ResourceAccess: []msgraph.ResourceAccess{
+			{
+				ID:   &userReadScopeId,
+				Type: ptr.String("Scope"),
+			},
 		},
 	}
 }
