@@ -30,9 +30,12 @@ func Template(application v1alpha1.AzureAdCredential) *x509.Certificate {
 	return &x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
-			Organization:       []string{"NAIS"},
-			OrganizationalUnit: []string{"Azurerator"},
-			CommonName:         fmt.Sprintf("%s:%s", application.Name, application.Namespace),
+			Country:            []string{"NO"},
+			Province:           []string{"Oslo"},
+			Locality:           []string{"Oslo"},
+			Organization:       []string{"NAV (Arbeids- og velferdsdirektoratet"},
+			OrganizationalUnit: []string{"NAV IT"},
+			CommonName:         fmt.Sprintf("%s.%s.%s.azurerator.nais.io", application.Name, application.Namespace, application.ClusterName),
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(1, 0, 0),
