@@ -94,7 +94,6 @@ func (r *Reconciler) process(ctx context.Context, credential *naisiov1alpha1.Azu
 
 func (r *Reconciler) createOrUpdate(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) (azure.Application, error) {
 	var application azure.Application
-	var err error
 
 	exists, err := r.AzureClient.Exists(ctx, *credential)
 	if err != nil {
@@ -103,11 +102,14 @@ func (r *Reconciler) createOrUpdate(ctx context.Context, credential *naisiov1alp
 
 	if exists {
 		application, err = r.update(ctx, credential)
+		if err != nil {
+			return azure.Application{}, fmt.Errorf("failed to update azure application: %w", err)
+		}
 	} else {
 		application, err = r.create(ctx, credential)
-	}
-	if err != nil {
-		return azure.Application{}, fmt.Errorf("failed to create or update azure application: %w", err)
+		if err != nil {
+			return azure.Application{}, fmt.Errorf("failed to create azure application: %w", err)
+		}
 	}
 
 	if err := r.createOrUpdateSecret(ctx, *credential, application); err != nil {
