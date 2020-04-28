@@ -18,8 +18,9 @@ const (
 )
 
 type JwkPair struct {
-	Private jose.JSONWebKey `json:"private"`
-	Public  jose.JSONWebKey `json:"public"`
+	Private   jose.JSONWebKey `json:"private"`
+	Public    jose.JSONWebKey `json:"public"`
+	PublicPem []byte          `json:"publicPem"`
 }
 
 func GenerateJwkPair(application v1alpha1.AzureAdCredential) (JwkPair, error) {
@@ -31,7 +32,7 @@ func GenerateJwkPair(application v1alpha1.AzureAdCredential) (JwkPair, error) {
 }
 
 func mapToJwkPair(privateKey *rsa.PrivateKey, application v1alpha1.AzureAdCredential) (JwkPair, error) {
-	template := Template(application)
+	template := CertificateTemplate(application)
 	cert, err := GenerateCertificate(template, privateKey)
 	if err != nil {
 		return JwkPair{}, err
@@ -49,5 +50,10 @@ func mapToJwkPair(privateKey *rsa.PrivateKey, application v1alpha1.AzureAdCreden
 		CertificateThumbprintSHA1:   x5tSHA1[:],
 		CertificateThumbprintSHA256: x5tSHA256[:],
 	}
-	return JwkPair{Private: jwk, Public: jwk.Public()}, nil
+	jwkPublic := jwk.Public()
+	return JwkPair{
+		Private:   jwk,
+		Public:    jwkPublic,
+		PublicPem: ConvertToPem(jwkPublic.Certificates[0]),
+	}, nil
 }

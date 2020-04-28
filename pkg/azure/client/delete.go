@@ -22,7 +22,7 @@ func (c client) Delete(ctx context.Context, credential v1alpha1.AzureAdCredentia
 func (c client) deleteApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
 	var objectId string
 	if len(credential.Status.ObjectId) == 0 {
-		application, err := c.getApplication(ctx, credential)
+		application, err := c.Get(ctx, credential)
 		if err != nil {
 			return err
 		}

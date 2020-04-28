@@ -11,7 +11,7 @@ import (
 // TODO - unique displayname?
 func CreateKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCredential {
 	keyId := msgraph.UUID(uuid.New().String())
-	keyBase64 := msgraph.Binary(crypto.ConvertToPem(jwkPair.Public.Certificates[0]))
+	keyBase64 := msgraph.Binary(jwkPair.PublicPem)
 	return msgraph.KeyCredential{
 		KeyID:       &keyId,
 		DisplayName: ptr.String("azurerator"),

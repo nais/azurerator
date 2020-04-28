@@ -26,7 +26,7 @@ func GenerateCertificate(template *x509.Certificate, key *rsa.PrivateKey) (*x509
 	return cert, nil
 }
 
-func Template(application v1alpha1.AzureAdCredential) *x509.Certificate {
+func CertificateTemplate(application v1alpha1.AzureAdCredential) *x509.Certificate {
 	return &x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{

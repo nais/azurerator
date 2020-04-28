@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/nais/azureator/pkg/azure"
 	gocache "github.com/patrickmn/go-cache"
@@ -34,7 +35,10 @@ func New(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
 	httpClient := oauth2.NewClient(ctx, ts)
 	graphClient := msgraph.NewClient(httpClient)
 
-	cache := *gocache.New(gocache.NoExpiration, gocache.NoExpiration)
+	defaultExpiration := 1 * time.Hour
+	cleanupInterval := 30 * time.Minute
+
+	cache := *gocache.New(defaultExpiration, cleanupInterval)
 	return client{
 		config:            cfg,
 		graphClient:       graphClient,

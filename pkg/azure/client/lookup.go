@@ -12,7 +12,13 @@ import (
 
 // Get returns a Graph API Application entity, which represents in Application in AAD
 func (c client) Get(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	return c.getApplication(ctx, credential)
+	if application, found := c.applicationsCache.Get(credential.GetUniqueName()); found {
+		return application.(msgraph.Application), nil
+	}
+	if len(credential.Status.ObjectId) == 0 {
+		return c.getApplicationByName(ctx, credential)
+	}
+	return c.getApplicationById(ctx, credential)
 }
 
 // Exists returns an indication of whether the application exists in AAD or not
@@ -35,19 +41,26 @@ func (c client) applicationExists(ctx context.Context, credential v1alpha1.Azure
 	return len(applications) > 0, nil
 }
 
-func (c client) getApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	if application, found := c.applicationsCache.Get(credential.GetUniqueName()); found {
-		return application.(msgraph.Application), nil
+func (c client) getApplicationById(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
+	objectId := credential.Status.ObjectId
+	application, err := c.graphClient.Applications().ID(objectId).Request().Get(ctx)
+	if err != nil {
+		return msgraph.Application{}, fmt.Errorf("failed to lookup azure application with ID '%s'", objectId)
 	}
-	applications, err := c.allApplications(ctx, filterByName(credential.GetUniqueName()))
+	return *application, nil
+}
+
+func (c client) getApplicationByName(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
+	name := credential.GetUniqueName()
+	applications, err := c.allApplications(ctx, filterByName(name))
 	if err != nil {
 		return msgraph.Application{}, err
 	}
 	if len(applications) == 0 {
-		return msgraph.Application{}, fmt.Errorf("could not find azure application with name '%s'", credential.GetName())
+		return msgraph.Application{}, fmt.Errorf("could not find azure application with name '%s'", name)
 	}
 	if len(applications) > 1 {
-		return msgraph.Application{}, fmt.Errorf("found more than one azure application with name '%s'", credential.GetName())
+		return msgraph.Application{}, fmt.Errorf("found more than one azure application with name '%s'", name)
 	}
 	return applications[0], nil
 }
@@ -67,7 +80,7 @@ func (c client) allApplications(ctx context.Context, filters ...string) ([]msgra
 
 func (c client) addToCache(applications []msgraph.Application) {
 	for _, app := range applications {
-		c.applicationsCache.Set(*app.DisplayName, app, gocache.NoExpiration)
+		c.applicationsCache.Set(*app.DisplayName, app, gocache.DefaultExpiration)
 	}
 }
 
