@@ -10,10 +10,7 @@ import (
 // Clean up / delete all associated resources, both internal and external
 
 func (r *Reconciler) delete(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
-	if err := r.deleteAzureApplication(ctx, credential); err != nil {
-		return err
-	}
-	return nil
+	return r.deleteAzureApplication(ctx, credential)
 }
 
 func (r *Reconciler) deleteAzureApplication(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
@@ -25,6 +22,9 @@ func (r *Reconciler) deleteAzureApplication(ctx context.Context, credential *nai
 	if !exists {
 		log.Info("Azure application does not exist - skipping deletion")
 		return nil
+	}
+	if err := r.ensureStatusIsValid(ctx, credential); err != nil {
+		return err
 	}
 	if err := r.AzureClient.Delete(ctx, *credential); err != nil {
 		return fmt.Errorf("failed to delete Azure application: %w", err)

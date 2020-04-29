@@ -11,6 +11,7 @@ import (
 type Client interface {
 	Exists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error)
 	Get(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error)
+	GetByName(ctx context.Context, name string) (msgraph.Application, error)
 	Create(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
 	Update(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
 	Delete(ctx context.Context, credential v1alpha1.AzureAdCredential) error

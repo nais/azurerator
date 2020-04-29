@@ -17,6 +17,11 @@ func (c client) Get(ctx context.Context, credential v1alpha1.AzureAdCredential) 
 	return c.getApplicationById(ctx, credential)
 }
 
+// GetByName returns a Graph API Application entity given the displayName, which represents in Application in AAD
+func (c client) GetByName(ctx context.Context, name string) (msgraph.Application, error) {
+	return c.getApplicationByStringName(ctx, name)
+}
+
 // Exists returns an indication of whether the application exists in AAD or not
 func (c client) Exists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error) {
 	exists, err := c.applicationExists(ctx, credential)
@@ -44,7 +49,10 @@ func (c client) getApplicationById(ctx context.Context, credential v1alpha1.Azur
 }
 
 func (c client) getApplicationByName(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	name := credential.GetUniqueName()
+	return c.getApplicationByStringName(ctx, credential.GetUniqueName())
+}
+
+func (c client) getApplicationByStringName(ctx context.Context, name string) (msgraph.Application, error) {
 	applications, err := c.allApplications(ctx, filterByName(name))
 	if err != nil {
 		return msgraph.Application{}, err

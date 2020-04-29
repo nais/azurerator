@@ -17,8 +17,8 @@ import (
 
 // Application tags
 const (
-	IntegratedAppTag         string = "WindowsAzureActiveDirectoryIntegratedApp"
-	IaCAppTag                string = "azurerator_appreg"
+	IntegratedAppTag string = "WindowsAzureActiveDirectoryIntegratedApp"
+	IaCAppTag        string = "azurerator_appreg"
 )
 
 const (
@@ -39,7 +39,11 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 	}
 	keyCredential := util.ToKeyCredential(jwkPair)
 
-	application, err := c.graphClient.Applications().Request().Add(ctx, toApplication(credential, keyCredential))
+	oAuth2DefaultAccessScopeId := uuid.New().String()
+	preAuthorizedApplications := c.mapToPreAuthorizedApplications(ctx, credential, oAuth2DefaultAccessScopeId)
+	apiApplication := toApiApplication(oAuth2DefaultAccessScopeId, preAuthorizedApplications)
+
+	application, err := c.graphClient.Applications().Request().Add(ctx, toApplication(credential, keyCredential, apiApplication))
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to register application: %w", err)
 	}
@@ -86,10 +90,38 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 	}, nil
 }
 
-func toApplication(credential v1alpha1.AzureAdCredential, keyCredential msgraph.KeyCredential) *msgraph.Application {
-	oAuth2DefaultAccessScopeId := uuid.New().String()
-	preAuthorizedApplications := mapToPreAuthorizedApplications(credential, oAuth2DefaultAccessScopeId)
+func (c client) mapToPreAuthorizedApplications(ctx context.Context, credential v1alpha1.AzureAdCredential, defaultAccessPermissionId string) []msgraph.PreAuthorizedApplication {
+	var preAuthorizedApplications []msgraph.PreAuthorizedApplication
+	for _, app := range credential.Spec.PreAuthorizedApplications {
+		clientId, err := c.getClientId(ctx, app)
+		if err != nil {
+			// TODO - currently best effort. should separate between technical and functional (e.g. app doesnt exist in AAD) errors
+			fmt.Printf("%v\n", err)
+			continue
+		}
+		preAuthorizedApplication := msgraph.PreAuthorizedApplication{
+			AppID: &clientId,
+			DelegatedPermissionIDs: []string{
+				defaultAccessPermissionId,
+			},
+		}
+		preAuthorizedApplications = append(preAuthorizedApplications, preAuthorizedApplication)
+	}
+	return preAuthorizedApplications
+}
 
+func (c client) getClientId(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (string, error) {
+	if len(app.ClientId) > 0 {
+		return app.ClientId, nil
+	}
+	azureApp, err := c.GetByName(ctx, app.Name)
+	if err != nil {
+		return "", err
+	}
+	return *azureApp.AppID, nil
+}
+
+func toApplication(credential v1alpha1.AzureAdCredential, keyCredential msgraph.KeyCredential, apiApplication *msgraph.APIApplication) *msgraph.Application {
 	return &msgraph.Application{
 		DisplayName:           ptr.String(credential.GetUniqueName()),
 		GroupMembershipClaims: ptr.String("SecurityGroup"),
@@ -110,29 +142,17 @@ func toApplication(credential v1alpha1.AzureAdCredential, keyCredential msgraph.
 		RequiredResourceAccess: []msgraph.RequiredResourceAccess{
 			microsoftGraphApiPermissions(),
 		},
-		API: &msgraph.APIApplication{
-			AcceptMappedClaims:          ptr.Bool(true),
-			RequestedAccessTokenVersion: ptr.Int(2),
-			Oauth2PermissionScopes:      toOAuth2PermissionScopes(oAuth2DefaultAccessScopeId),
-			PreAuthorizedApplications:   preAuthorizedApplications,
-		},
+		API: apiApplication,
 	}
 }
 
-func mapToPreAuthorizedApplications(credential v1alpha1.AzureAdCredential, defaultAccessPermissionId string) []msgraph.PreAuthorizedApplication {
-	var preAuthorizedApplications []msgraph.PreAuthorizedApplication
-	for _, app := range credential.Spec.PreAuthorizedApplications {
-		// TODO - lookup if ClientId is not present
-		if len(app.ClientId) > 0 {
-			preAuthorizedApplications = append(preAuthorizedApplications, msgraph.PreAuthorizedApplication{
-				AppID: &app.ClientId,
-				DelegatedPermissionIDs: []string{
-					defaultAccessPermissionId,
-				},
-			})
-		}
+func toApiApplication(oAuth2DefaultAccessScopeId string, preAuthorizedApplications []msgraph.PreAuthorizedApplication) *msgraph.APIApplication {
+	return &msgraph.APIApplication{
+		AcceptMappedClaims:          ptr.Bool(true),
+		RequestedAccessTokenVersion: ptr.Int(2),
+		Oauth2PermissionScopes:      toOAuth2PermissionScopes(oAuth2DefaultAccessScopeId),
+		PreAuthorizedApplications:   preAuthorizedApplications,
 	}
-	return preAuthorizedApplications
 }
 
 func microsoftGraphApiPermissions() msgraph.RequiredResourceAccess {

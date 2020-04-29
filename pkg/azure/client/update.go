@@ -24,7 +24,7 @@ func (c client) Update(ctx context.Context, credential v1alpha1.AzureAdCredentia
 	return c.updateApplication(ctx, credential)
 }
 
-// TODO - revoke old keys, update other application metadata
+// TODO - revoke old keys, update other application metadata, preauthorizedapps
 func (c client) updateApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
 	clientId := credential.Status.ClientId
 	objectId := credential.Status.ObjectId
