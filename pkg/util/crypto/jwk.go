@@ -1,13 +1,10 @@
 package crypto
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"fmt"
 
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 	"gopkg.in/square/go-jose.v2"
@@ -24,16 +21,25 @@ type JwkPair struct {
 }
 
 func GenerateJwkPair(application v1alpha1.AzureAdCredential) (JwkPair, error) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	keyPair, err := NewRSAKeyPair()
 	if err != nil {
-		return JwkPair{}, fmt.Errorf("failed to generate RSA keypair: %w", err)
+		return JwkPair{}, err
 	}
-	return mapToJwkPair(privateKey, application)
+	return mapToJwkPair(keyPair, application)
 }
 
-func mapToJwkPair(privateKey *rsa.PrivateKey, application v1alpha1.AzureAdCredential) (JwkPair, error) {
+func JwkToJwkPair(jwk jose.JSONWebKey) JwkPair {
+	jwkPublic := jwk.Public()
+	return JwkPair{
+		Private:   jwk,
+		Public:    jwkPublic,
+		PublicPem: ConvertToPem(jwkPublic.Certificates[0]),
+	}
+}
+
+func mapToJwkPair(keyPair KeyPair, application v1alpha1.AzureAdCredential) (JwkPair, error) {
 	template := CertificateTemplate(application)
-	cert, err := GenerateCertificate(template, privateKey)
+	cert, err := GenerateCertificate(template, keyPair)
 	if err != nil {
 		return JwkPair{}, err
 	}
@@ -43,17 +49,12 @@ func mapToJwkPair(privateKey *rsa.PrivateKey, application v1alpha1.AzureAdCreden
 	keyId := base64.RawURLEncoding.EncodeToString(x5tSHA1[:])
 
 	jwk := jose.JSONWebKey{
-		Key:                         privateKey,
+		Key:                         keyPair.Private,
 		KeyID:                       keyId,
 		Use:                         KeyUseSignature,
 		Certificates:                certificates,
 		CertificateThumbprintSHA1:   x5tSHA1[:],
 		CertificateThumbprintSHA256: x5tSHA256[:],
 	}
-	jwkPublic := jwk.Public()
-	return JwkPair{
-		Private:   jwk,
-		Public:    jwkPublic,
-		PublicPem: ConvertToPem(jwkPublic.Certificates[0]),
-	}, nil
+	return JwkToJwkPair(jwk), nil
 }

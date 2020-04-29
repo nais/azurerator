@@ -55,6 +55,6 @@ func (c Creator) toSecretData() (map[string]string, error) {
 	return map[string]string{
 		"clientId":     c.Application.Credentials.Private.ClientId,
 		"clientSecret": c.Application.Credentials.Private.ClientSecret,
-		"jwk":          string(jwkJson), // TODO - fetch existing jwk for updating
+		"jwk":          string(jwkJson),
 	}, nil
 }

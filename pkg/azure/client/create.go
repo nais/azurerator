@@ -33,7 +33,7 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to generate JWK pair for application: %w", err)
 	}
-	keyCredential := toKeyCredential(jwkPair)
+	keyCredential := util.ToKeyCredential(jwkPair)
 
 	application, err := c.graphClient.Applications().Request().Add(ctx, toApplication(credential, keyCredential))
 	if err != nil {
@@ -124,19 +124,6 @@ func mapToPreAuthorizedApplications(credential v1alpha1.AzureAdCredential, defau
 		}
 	}
 	return preAuthorizedApplications
-}
-
-// TODO - unique displayname?
-func toKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCredential {
-	keyId := msgraph.UUID(uuid.New().String())
-	keyBase64 := msgraph.Binary(jwkPair.PublicPem)
-	return msgraph.KeyCredential{
-		KeyID:       &keyId,
-		DisplayName: ptr.String("azurerator"),
-		Type:        ptr.String("AsymmetricX509Cert"),
-		Usage:       ptr.String("Verify"),
-		Key:         &keyBase64,
-	}
 }
 
 func microsoftGraphApiPermissions() msgraph.RequiredResourceAccess {

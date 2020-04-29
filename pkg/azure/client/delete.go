@@ -34,6 +34,5 @@ func (c client) deleteApplication(ctx context.Context, credential v1alpha1.Azure
 	if err := c.graphClient.Applications().ID(objectId).Request().Delete(ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
-	c.applicationsCache.Delete(credential.GetUniqueName())
 	return nil
 }

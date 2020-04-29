@@ -53,6 +53,6 @@ func (c Creator) toConfigMapData() (map[string]string, error) {
 	}
 	return map[string]string{
 		"clientId": c.Application.Credentials.Public.ClientId,
-		"jwk":      string(jwkJson), // TODO - fetch existing jwk for updating
+		"jwk":      string(jwkJson),
 	}, nil
 }

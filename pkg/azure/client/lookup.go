@@ -6,15 +6,11 @@ import (
 	"strings"
 
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
-	gocache "github.com/patrickmn/go-cache"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
 // Get returns a Graph API Application entity, which represents in Application in AAD
 func (c client) Get(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	if application, found := c.applicationsCache.Get(credential.GetUniqueName()); found {
-		return application.(msgraph.Application), nil
-	}
 	if len(credential.Status.ObjectId) == 0 {
 		return c.getApplicationByName(ctx, credential)
 	}
@@ -31,9 +27,6 @@ func (c client) Exists(ctx context.Context, credential v1alpha1.AzureAdCredentia
 }
 
 func (c client) applicationExists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error) {
-	if _, found := c.applicationsCache.Get(credential.GetUniqueName()); found {
-		return found, nil
-	}
 	applications, err := c.allApplications(ctx, filterByName(credential.GetUniqueName()))
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
@@ -65,6 +58,19 @@ func (c client) getApplicationByName(ctx context.Context, credential v1alpha1.Az
 	return applications[0], nil
 }
 
+func (c client) getExistingKeyCredential(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.KeyCredential, error) {
+	application, err := c.Get(ctx, credential)
+	if err != nil {
+		return msgraph.KeyCredential{}, err
+	}
+	for _, keyCredential := range application.KeyCredentials {
+		if string(*keyCredential.KeyID) == credential.Status.CertificateKeyId {
+			return keyCredential, nil
+		}
+	}
+	return msgraph.KeyCredential{}, fmt.Errorf("failed to find previous key ID in Status field")
+}
+
 func (c client) allApplications(ctx context.Context, filters ...string) ([]msgraph.Application, error) {
 	var applications []msgraph.Application
 
@@ -74,14 +80,7 @@ func (c client) allApplications(ctx context.Context, filters ...string) ([]msgra
 	if err != nil {
 		return nil, fmt.Errorf("failed to get list applications: %w", err)
 	}
-	c.addToCache(applications)
 	return applications, nil
-}
-
-func (c client) addToCache(applications []msgraph.Application) {
-	for _, app := range applications {
-		c.applicationsCache.Set(*app.DisplayName, app, gocache.DefaultExpiration)
-	}
 }
 
 func mapFiltersToFilter(filters []string) string {
