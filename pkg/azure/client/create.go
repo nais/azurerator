@@ -15,11 +15,15 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
+// Application tags
 const (
-	OAuth2DefaultAccessScope string = "defaultaccess"
 	IntegratedAppTag         string = "WindowsAzureActiveDirectoryIntegratedApp"
-	SignInAudience           string = "AzureADMyOrg"
 	IaCAppTag                string = "azurerator_appreg"
+)
+
+const (
+	// OAuth2 permission scope that the web API application exposes to client applications
+	OAuth2DefaultAccessScope string = "defaultaccess"
 )
 
 // Create registers a new AAD application
@@ -27,7 +31,7 @@ func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredentia
 	return c.registerApplication(ctx, credential)
 }
 
-// TODO - owners, preauthorizedapps/approles
+// TODO - improve error handling
 func (c client) registerApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
 	jwkPair, err := crypto.GenerateJwkPair(credential)
 	if err != nil {
@@ -46,6 +50,9 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 		return azure.Application{}, fmt.Errorf("failed to create service principal: %w", err)
 	}
 
+	// OAuth2 permission grants allows us to pre-approve this application for the defined scopes/permissions set.
+	// This results in the enduser not having to manually consent whenever interacting with the application, e.g. during
+	// an OIDC login flow.
 	_, err = c.graphBetaClient.Oauth2PermissionGrants().Request().Add(ctx, toOAuth2PermissionGrants(servicePrincipal, c.config.PermissionGrantResourceId))
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to add oauth2 permission grants: %w", err)
@@ -95,7 +102,7 @@ func toApplication(credential v1alpha1.AzureAdCredential, keyCredential msgraph.
 				EnableAccessTokenIssuance: ptr.Bool(false),
 			},
 		},
-		SignInAudience: ptr.String(SignInAudience),
+		SignInAudience: ptr.String("AzureADMyOrg"),
 		Tags: []string{
 			IaCAppTag,
 			IntegratedAppTag,
