@@ -56,7 +56,9 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 		return azure.Application{}, fmt.Errorf("failed to update password credentials for application: %w", err)
 	}
 
-	// TODO - add identifierUri to application
+	if err := c.addApplicationIdentifierUri(ctx, *application); err != nil {
+		return azure.Application{}, fmt.Errorf("failed to add application identifier URI: %w", err)
+	}
 
 	return azure.Application{
 		Credentials: azure.Credentials{

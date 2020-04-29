@@ -103,3 +103,15 @@ func (c client) addKeyCredential(ctx context.Context, credential v1alpha1.AzureA
 		JwkPair:       jwkPair,
 	}, nil
 }
+
+func (c client) addApplicationIdentifierUri(ctx context.Context, application msgraph.Application) error {
+	identifierUri := fmt.Sprintf("api://%s", *application.AppID)
+	if err := c.graphClient.Applications().ID(*application.ID).Request().Update(ctx, &msgraph.Application{
+		IdentifierUris: []string{
+			identifierUri,
+		},
+	}); err != nil {
+		return err
+	}
+	return nil
+}
