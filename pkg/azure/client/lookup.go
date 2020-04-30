@@ -76,7 +76,18 @@ func (c client) getExistingKeyCredential(ctx context.Context, credential v1alpha
 			return keyCredential, nil
 		}
 	}
-	return msgraph.KeyCredential{}, fmt.Errorf("failed to find previous key ID in Status field")
+	return msgraph.KeyCredential{}, fmt.Errorf("failed to find application key matching the previous key ID in Status field")
+}
+
+func (c client) getClientId(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (string, error) {
+	if len(app.ClientId) > 0 {
+		return app.ClientId, nil
+	}
+	azureApp, err := c.GetByName(ctx, app.Name)
+	if err != nil {
+		return "", err
+	}
+	return *azureApp.AppID, nil
 }
 
 func (c client) allApplications(ctx context.Context, filters ...string) ([]msgraph.Application, error) {

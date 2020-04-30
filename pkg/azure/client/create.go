@@ -26,71 +26,93 @@ const (
 	OAuth2DefaultAccessScope string = "defaultaccess"
 )
 
-// Create registers a new AAD application
-func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	return c.registerApplication(ctx, credential)
+type applicationResponse struct {
+	Application   msgraph.Application
+	KeyCredential msgraph.KeyCredential
+	JwkPair       crypto.JwkPair
 }
 
+// Create registers a new AAD application with all the required accompanying resources
 // TODO - improve error handling
-func (c client) registerApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	jwkPair, err := crypto.GenerateJwkPair(credential)
+func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
+	applicationResponse, err := c.registerApplication(ctx, credential)
 	if err != nil {
-		return azure.Application{}, fmt.Errorf("failed to generate JWK pair for application: %w", err)
+		return azure.Application{}, err
 	}
-	keyCredential := util.ToKeyCredential(jwkPair)
-
-	oAuth2DefaultAccessScopeId := uuid.New().String()
-	preAuthorizedApplications := c.mapToPreAuthorizedApplications(ctx, credential, oAuth2DefaultAccessScopeId)
-	apiApplication := toApiApplication(oAuth2DefaultAccessScopeId, preAuthorizedApplications)
-
-	application, err := c.graphClient.Applications().Request().Add(ctx, toApplication(credential, keyCredential, apiApplication))
+	passwordCredential, err := c.addPasswordCredential(ctx, *applicationResponse.Application.ID)
 	if err != nil {
-		return azure.Application{}, fmt.Errorf("failed to register application: %w", err)
+		return azure.Application{}, err
 	}
-
-	// TODO - store serviceprincipal object ID
-	servicePrincipal, err := c.graphBetaClient.ServicePrincipals().Request().Add(ctx, toServicePrincipal(application))
-	if err != nil {
-		return azure.Application{}, fmt.Errorf("failed to create service principal: %w", err)
+	servicePrincipal, err := c.registerServicePrincipal(ctx, applicationResponse.Application)
+	if err := c.setApplicationIdentifierUri(ctx, applicationResponse.Application); err != nil {
+		return azure.Application{}, err
 	}
-
-	// OAuth2 permission grants allows us to pre-approve this application for the defined scopes/permissions set.
-	// This results in the enduser not having to manually consent whenever interacting with the application, e.g. during
-	// an OIDC login flow.
-	_, err = c.graphBetaClient.Oauth2PermissionGrants().Request().Add(ctx, toOAuth2PermissionGrants(servicePrincipal, c.config.PermissionGrantResourceId))
-	if err != nil {
-		return azure.Application{}, fmt.Errorf("failed to add oauth2 permission grants: %w", err)
+	if err := c.registerOAuth2PermissionGrants(ctx, servicePrincipal); err != nil {
+		return azure.Application{}, err
 	}
-
-	passwordCredential, err := c.addPasswordCredential(ctx, *application.ID)
-	if err != nil {
-		return azure.Application{}, fmt.Errorf("failed to update password credentials for application: %w", err)
-	}
-
-	if err := c.addApplicationIdentifierUri(ctx, *application); err != nil {
-		return azure.Application{}, fmt.Errorf("failed to add application identifier URI: %w", err)
-	}
-
 	return azure.Application{
 		Credentials: azure.Credentials{
 			Public: azure.Public{
-				ClientId: *application.AppID,
-				Jwk:      jwkPair.Public,
+				ClientId: *applicationResponse.Application.AppID,
+				Jwk:      applicationResponse.JwkPair.Public,
 			},
 			Private: azure.Private{
-				ClientId:     *application.AppID,
+				ClientId:     *applicationResponse.Application.AppID,
 				ClientSecret: *passwordCredential.SecretText,
-				Jwk:          jwkPair.Private,
+				Jwk:          applicationResponse.JwkPair.Private,
 			},
 		},
-		ClientId:         *application.AppID,
-		ObjectId:         *application.ID,
+		ClientId:         *applicationResponse.Application.AppID,
+		ObjectId:         *applicationResponse.Application.ID,
 		PasswordKeyId:    string(*passwordCredential.KeyID),
-		CertificateKeyId: string(*keyCredential.KeyID),
+		CertificateKeyId: string(*applicationResponse.KeyCredential.KeyID),
 	}, nil
 }
 
-func (c client) mapToPreAuthorizedApplications(ctx context.Context, credential v1alpha1.AzureAdCredential, defaultAccessPermissionId string) []msgraph.PreAuthorizedApplication {
+func (c client) registerApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (applicationResponse, error) {
+	key, jwkPair, err := util.GenerateNewKeyCredentialFor(credential)
+	if err != nil {
+		return applicationResponse{}, err
+	}
+	api := c.toApiApplication(ctx, credential)
+	applicationRequest := util.Application(defaultApplicationTemplate(credential)).Key(key).Api(api).Build()
+	application, err := c.graphClient.Applications().Request().Add(ctx, applicationRequest)
+	if err != nil {
+		return applicationResponse{}, fmt.Errorf("failed to register application: %w", err)
+	}
+	return applicationResponse{
+		Application:   *application,
+		KeyCredential: key,
+		JwkPair:       jwkPair,
+	}, nil
+}
+
+// TODO - store returned service principal object ID in status for lookups
+// TODO - should attempt to register on update as well
+func (c client) registerServicePrincipal(ctx context.Context, application msgraph.Application) (msgraphbeta.ServicePrincipal, error) {
+	servicePrincipal, err := c.graphBetaClient.ServicePrincipals().Request().Add(ctx, toServicePrincipal(application))
+	if err != nil {
+		return msgraphbeta.ServicePrincipal{}, fmt.Errorf("failed to register service principal: %w", err)
+	}
+	return *servicePrincipal, nil
+}
+
+// TODO - should attempt to register on update as well
+func (c client) registerOAuth2PermissionGrants(ctx context.Context, principal msgraphbeta.ServicePrincipal) error {
+	_, err := c.graphBetaClient.Oauth2PermissionGrants().Request().Add(ctx, toOAuth2PermissionGrants(&principal, c.config.PermissionGrantResourceId))
+	if err != nil {
+		return fmt.Errorf("failed to register oauth2 permission grants: %w", err)
+	}
+	return nil
+}
+
+func (c client) toApiApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) *msgraph.APIApplication {
+	oAuth2DefaultAccessScopeId := uuid.New()
+	preAuthorizedApplications := c.mapToPreAuthorizedApplications(ctx, credential, oAuth2DefaultAccessScopeId)
+	return toApiApplication(oAuth2DefaultAccessScopeId, preAuthorizedApplications)
+}
+
+func (c client) mapToPreAuthorizedApplications(ctx context.Context, credential v1alpha1.AzureAdCredential, defaultAccessPermissionId uuid.UUID) []msgraph.PreAuthorizedApplication {
 	var preAuthorizedApplications []msgraph.PreAuthorizedApplication
 	for _, app := range credential.Spec.PreAuthorizedApplications {
 		clientId, err := c.getClientId(ctx, app)
@@ -102,7 +124,7 @@ func (c client) mapToPreAuthorizedApplications(ctx context.Context, credential v
 		preAuthorizedApplication := msgraph.PreAuthorizedApplication{
 			AppID: &clientId,
 			DelegatedPermissionIDs: []string{
-				defaultAccessPermissionId,
+				defaultAccessPermissionId.String(),
 			},
 		}
 		preAuthorizedApplications = append(preAuthorizedApplications, preAuthorizedApplication)
@@ -110,22 +132,10 @@ func (c client) mapToPreAuthorizedApplications(ctx context.Context, credential v
 	return preAuthorizedApplications
 }
 
-func (c client) getClientId(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (string, error) {
-	if len(app.ClientId) > 0 {
-		return app.ClientId, nil
-	}
-	azureApp, err := c.GetByName(ctx, app.Name)
-	if err != nil {
-		return "", err
-	}
-	return *azureApp.AppID, nil
-}
-
-func toApplication(credential v1alpha1.AzureAdCredential, keyCredential msgraph.KeyCredential, apiApplication *msgraph.APIApplication) *msgraph.Application {
+func defaultApplicationTemplate(credential v1alpha1.AzureAdCredential) *msgraph.Application {
 	return &msgraph.Application{
 		DisplayName:           ptr.String(credential.GetUniqueName()),
 		GroupMembershipClaims: ptr.String("SecurityGroup"),
-		KeyCredentials:        []msgraph.KeyCredential{keyCredential},
 		Web: &msgraph.WebApplication{
 			LogoutURL:    ptr.String(credential.Spec.LogoutUrl),
 			RedirectUris: util.GetReplyUrlsStringSlice(credential),
@@ -142,15 +152,14 @@ func toApplication(credential v1alpha1.AzureAdCredential, keyCredential msgraph.
 		RequiredResourceAccess: []msgraph.RequiredResourceAccess{
 			microsoftGraphApiPermissions(),
 		},
-		API: apiApplication,
 	}
 }
 
-func toApiApplication(oAuth2DefaultAccessScopeId string, preAuthorizedApplications []msgraph.PreAuthorizedApplication) *msgraph.APIApplication {
+func toApiApplication(permissionScopeId uuid.UUID, preAuthorizedApplications []msgraph.PreAuthorizedApplication) *msgraph.APIApplication {
 	return &msgraph.APIApplication{
 		AcceptMappedClaims:          ptr.Bool(true),
 		RequestedAccessTokenVersion: ptr.Int(2),
-		Oauth2PermissionScopes:      toOAuth2PermissionScopes(oAuth2DefaultAccessScopeId),
+		Oauth2PermissionScopes:      toPermissionScopes(permissionScopeId),
 		PreAuthorizedApplications:   preAuthorizedApplications,
 	}
 }
@@ -173,8 +182,8 @@ func microsoftGraphApiPermissions() msgraph.RequiredResourceAccess {
 	}
 }
 
-func toOAuth2PermissionScopes(id string) []msgraph.PermissionScope {
-	defaultAccessScopeId := msgraph.UUID(id)
+func toPermissionScopes(id uuid.UUID) []msgraph.PermissionScope {
+	defaultAccessScopeId := msgraph.UUID(id.String())
 	return []msgraph.PermissionScope{
 		{
 			AdminConsentDescription: ptr.String(fmt.Sprintf("Gives adminconsent for scope %s", OAuth2DefaultAccessScope)),
@@ -187,14 +196,18 @@ func toOAuth2PermissionScopes(id string) []msgraph.PermissionScope {
 	}
 }
 
-func toServicePrincipal(application *msgraph.Application) *msgraphbeta.ServicePrincipal {
+func toServicePrincipal(application msgraph.Application) *msgraphbeta.ServicePrincipal {
 	return &msgraphbeta.ServicePrincipal{
 		AppID: application.AppID,
 	}
 }
 
+// OAuth2 permission grants allows us to pre-approve this application for the defined scopes/permissions set.
+// This results in the enduser not having to manually consent whenever interacting with the application, e.g. during
+// an OIDC login flow.
 func toOAuth2PermissionGrants(servicePrincipal *msgraphbeta.ServicePrincipal, permissionGrantResourceId string) *msgraphbeta.OAuth2PermissionGrant {
-	// This field is required by Graph API, but isn't actually used...
+	// This field is required by Graph API, but isn't actually used as per 2020-04-29.
+	// https://docs.microsoft.com/en-us/graph/api/resources/oauth2permissiongrant?view=graph-rest-beta
 	expiryTime := time.Date(0001, time.January, 1, 0, 0, 0, 0, time.UTC)
 	return &msgraphbeta.OAuth2PermissionGrant{
 		ClientID:    ptr.String(*servicePrincipal.ID),

@@ -1,6 +1,8 @@
 package util
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/util/crypto"
@@ -8,16 +10,17 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-func GetReplyUrlsStringSlice(credential v1alpha1.AzureAdCredential) []string {
-	var replyUrls []string
-	for _, v := range credential.Spec.ReplyUrls {
-		replyUrls = append(replyUrls, v.Url)
+func GenerateNewKeyCredentialFor(credential v1alpha1.AzureAdCredential) (msgraph.KeyCredential, crypto.JwkPair, error) {
+	jwkPair, err := crypto.GenerateJwkPair(credential)
+	if err != nil {
+		return msgraph.KeyCredential{}, crypto.JwkPair{}, fmt.Errorf("failed to generate JWK pair for application: %w", err)
 	}
-	return replyUrls
+	newKeyCredential := toKeyCredential(jwkPair)
+	return newKeyCredential, jwkPair, nil
 }
 
 // TODO - unique displayname?
-func ToKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCredential {
+func toKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCredential {
 	keyId := msgraph.UUID(uuid.New().String())
 	keyBase64 := msgraph.Binary(jwkPair.PublicPem)
 	return msgraph.KeyCredential{
