@@ -87,8 +87,7 @@ func (r *Reconciler) process(ctx context.Context, credential *naisiov1alpha1.Azu
 		}
 		return err
 	}
-	// TODO: remove secrets from logs
-	log.Info("Azure application successfully registered/updated", "AzureApplication", application)
+	log.Info("successfully synchronized AzureAdCredential with Azure")
 	return r.updateStatus(ctx, credential, application)
 }
 

@@ -150,24 +150,18 @@ func (in *AzureAdCredential) HashUnchanged() (bool, error) {
 func (in AzureAdCredential) Hash() (string, error) {
 	// struct including the relevant fields for
 	// creating a hash of an AzureAdCredential object
-	var changeCause string
-	if in.Annotations != nil {
-		changeCause = in.Annotations["kubernetes.io/change-cause"]
-	}
 	relevantValues := struct {
 		AzureAdCredentialSpec AzureAdCredentialSpec
 		CertificateKeyId      string
 		SecretKeyid           string
 		ClientId              string
 		ObjectId              string
-		ChangeCause           string
 	}{
 		in.Spec,
 		in.Status.CertificateKeyId,
 		in.Status.PasswordKeyId,
 		in.Status.ClientId,
 		in.Status.ObjectId,
-		changeCause,
 	}
 
 	marshalled, err := json.Marshal(relevantValues)
