@@ -23,8 +23,6 @@ type Reconciler struct {
 
 var log logr.Logger
 
-const finalizer string = "finalizer.azurerator.nais.io"
-
 // +kubebuilder:rbac:groups=nais.io,resources=azureadcredentials,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=nais.io,resources=azureadcredentials/status,verbs=get;update;patch
 

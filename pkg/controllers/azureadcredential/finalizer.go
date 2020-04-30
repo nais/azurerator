@@ -8,6 +8,8 @@ import (
 	"github.com/nais/azureator/pkg/util"
 )
 
+const finalizer string = "finalizer.azurerator.nais.io"
+
 // Finalizers allow the controller to implement an asynchronous pre-delete hook
 
 func (r *Reconciler) registerFinalizer(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
