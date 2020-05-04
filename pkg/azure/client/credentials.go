@@ -17,7 +17,7 @@ import (
 // Rotate rotates credentials for an existing AAD application
 func (c client) Rotate(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
 	clientId := credential.Status.ClientId
-	objectId := credential.Status.ObjectId
+	objectId := credential.Status.ApplicationObjectId
 
 	passwordCredential, err := c.addPasswordCredential(ctx, objectId)
 	if err != nil {
@@ -83,7 +83,7 @@ func (c client) rotateKeyCredential(ctx context.Context, credential v1alpha1.Azu
 	}
 	keys := []msgraph.KeyCredential{keyCredential, existingKeyCredential}
 	app := util.EmptyApplication().Keys(keys).Build()
-	if err := c.updateApplication(ctx, credential.Status.ObjectId, app); err != nil {
+	if err := c.updateApplication(ctx, credential.Status.ApplicationObjectId, app); err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, fmt.Errorf("failed to update application with keycredential: %w", err)
 	}
 	return keyCredential, jwkPair, nil

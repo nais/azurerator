@@ -19,11 +19,12 @@ type Client interface {
 }
 
 type Application struct {
-	Credentials      Credentials `json:"credentials"`
-	ClientId         string      `json:"clientId"`
-	ObjectId         string      `json:"objectId"`
-	CertificateKeyId string      `json:"certificateKeyId"`
-	PasswordKeyId    string      `json:"passwordKeyId"`
+	Credentials        Credentials `json:"credentials"`
+	ClientId           string      `json:"clientId"`
+	ObjectId           string      `json:"objectId"`
+	CertificateKeyId   string      `json:"certificateKeyId"`
+	PasswordKeyId      string      `json:"passwordKeyId"`
+	ServicePrincipalId string      `json:"servicePrincipalId"`
 }
 
 type Credentials struct {

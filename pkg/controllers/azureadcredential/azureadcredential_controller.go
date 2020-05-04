@@ -59,6 +59,8 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
+	// TODO - should also check ProvisionState
 	if hashUnchanged {
 		log.Info("object state already reconciled, nothing to do")
 		return ctrl.Result{}, nil
@@ -123,7 +125,8 @@ func (r *Reconciler) updateStatus(ctx context.Context, credential *naisiov1alpha
 	credential.SetCertificateKeyId(application.CertificateKeyId)
 	credential.SetPasswordKeyId(application.PasswordKeyId)
 	credential.SetClientId(application.ClientId)
-	credential.SetObjectId(application.ObjectId)
+	credential.SetApplicationObjectId(application.ObjectId)
+	credential.SetServicePrincipalObjectId(application.ServicePrincipalId)
 	credential.SetStatusProvisioned()
 
 	if err := credential.CalculateAndSetHash(); err != nil {

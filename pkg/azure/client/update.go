@@ -11,7 +11,7 @@ import (
 
 // Update updates an existing AAD application. Should be an idempotent operation
 func (c client) Update(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
-	objectId := credential.Status.ObjectId
+	objectId := credential.Status.ApplicationObjectId
 	app := updateApplicationTemplate(credential)
 	if err := c.updateApplication(ctx, objectId, app); err != nil {
 		return err

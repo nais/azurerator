@@ -15,13 +15,13 @@ func (r *Reconciler) updateStatusSubresource(ctx context.Context, credential *na
 }
 
 func (r *Reconciler) ensureStatusIsValid(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
-	if len(credential.Status.ClientId) == 0 || len(credential.Status.ObjectId) == 0 {
+	if len(credential.Status.ClientId) == 0 || len(credential.Status.ApplicationObjectId) == 0 {
 		application, err := r.AzureClient.Get(ctx, *credential)
 		if err != nil {
 			return fmt.Errorf("failed to find object or client ID: %w", err)
 		}
 		credential.Status.ClientId = *application.AppID
-		credential.Status.ObjectId = *application.ID
+		credential.Status.ApplicationObjectId = *application.ID
 	}
 	return nil
 }

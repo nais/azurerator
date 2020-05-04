@@ -9,9 +9,9 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-// Get returns a Graph API Application entity, which represents in Application in AAD
+// Get returns a Graph API Application entity, which represents an Application in AAD
 func (c client) Get(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	if len(credential.Status.ObjectId) == 0 {
+	if len(credential.Status.ApplicationObjectId) == 0 {
 		return c.getApplicationByName(ctx, credential)
 	}
 	return c.getApplicationById(ctx, credential)
@@ -40,7 +40,7 @@ func (c client) applicationExists(ctx context.Context, credential v1alpha1.Azure
 }
 
 func (c client) getApplicationById(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	objectId := credential.Status.ObjectId
+	objectId := credential.Status.ApplicationObjectId
 	application, err := c.graphClient.Applications().ID(objectId).Request().Get(ctx)
 	if err != nil {
 		return msgraph.Application{}, fmt.Errorf("failed to lookup azure application with ID '%s'", objectId)

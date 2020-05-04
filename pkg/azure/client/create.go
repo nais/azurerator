@@ -44,6 +44,9 @@ func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredentia
 		return azure.Application{}, err
 	}
 	servicePrincipal, err := c.registerServicePrincipal(ctx, applicationResponse.Application)
+	if err != nil {
+		return azure.Application{}, err
+	}
 	if err := c.setApplicationIdentifierUri(ctx, applicationResponse.Application); err != nil {
 		return azure.Application{}, err
 	}
@@ -62,10 +65,11 @@ func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredentia
 				Jwk:          applicationResponse.JwkPair.Private,
 			},
 		},
-		ClientId:         *applicationResponse.Application.AppID,
-		ObjectId:         *applicationResponse.Application.ID,
-		PasswordKeyId:    string(*passwordCredential.KeyID),
-		CertificateKeyId: string(*applicationResponse.KeyCredential.KeyID),
+		ClientId:           *applicationResponse.Application.AppID,
+		ObjectId:           *applicationResponse.Application.ID,
+		PasswordKeyId:      string(*passwordCredential.KeyID),
+		CertificateKeyId:   string(*applicationResponse.KeyCredential.KeyID),
+		ServicePrincipalId: *servicePrincipal.ID,
 	}, nil
 }
 
@@ -87,7 +91,6 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 	}, nil
 }
 
-// TODO - store returned service principal object ID in status for lookups
 // TODO - should attempt to register on update as well
 func (c client) registerServicePrincipal(ctx context.Context, application msgraph.Application) (msgraphbeta.ServicePrincipal, error) {
 	servicePrincipal, err := c.graphBetaClient.ServicePrincipals().Request().Add(ctx, toServicePrincipal(application))
