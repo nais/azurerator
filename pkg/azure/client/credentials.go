@@ -7,44 +7,23 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
-	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-// Rotate rotates credentials for an existing AAD application
-func (c client) Rotate(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	clientId := credential.Status.ClientId
-	objectId := credential.Status.ApplicationObjectId
-
-	passwordCredential, err := c.addPasswordCredential(ctx, objectId)
+func (c client) getExistingKeyCredential(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.KeyCredential, error) {
+	application, err := c.Get(ctx, credential)
 	if err != nil {
-		return azure.Application{}, err
+		return msgraph.KeyCredential{}, err
 	}
-	keyCredential, jwkPair, err := c.rotateKeyCredential(ctx, credential)
-	if err != nil {
-		return azure.Application{}, err
+	for _, keyCredential := range application.KeyCredentials {
+		if string(*keyCredential.KeyID) == credential.Status.CertificateKeyId {
+			return keyCredential, nil
+		}
 	}
-
-	return azure.Application{
-		Credentials: azure.Credentials{
-			Public: azure.Public{
-				ClientId: clientId,
-				Jwk:      jwkPair.Public,
-			},
-			Private: azure.Private{
-				ClientId:     clientId,
-				ClientSecret: *passwordCredential.SecretText,
-				Jwk:          jwkPair.Private,
-			},
-		},
-		ClientId:         clientId,
-		ObjectId:         objectId,
-		CertificateKeyId: string(*keyCredential.KeyID),
-		PasswordKeyId:    string(*passwordCredential.KeyID),
-	}, nil
+	return msgraph.KeyCredential{}, fmt.Errorf("failed to find application key matching the previous key ID in Status field")
 }
 
 // TODO - revoke expired keys not in use

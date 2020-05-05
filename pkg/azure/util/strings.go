@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 )
@@ -16,4 +17,24 @@ func GetReplyUrlsStringSlice(credential v1alpha1.AzureAdCredential) []string {
 
 func IdentifierUri(id string) string {
 	return fmt.Sprintf("api://%s", id)
+}
+
+func MapFiltersToFilter(filters []string) string {
+	if len(filters) > 0 {
+		return strings.Join(filters[:], " ")
+	} else {
+		return ""
+	}
+}
+
+func FilterByName(name string) string {
+	return fmt.Sprintf("displayName eq '%s'", name)
+}
+
+func FilterByAppId(clientId string) string {
+	return fmt.Sprintf("appId eq '%s'", clientId)
+}
+
+func FilterByClientId(clientId string) string {
+	return fmt.Sprintf("clientId eq '%s'", clientId)
 }

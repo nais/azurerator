@@ -1,6 +1,7 @@
 package util
 
 import (
+	"github.com/nais/azureator/pkg/apis/v1alpha1"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
@@ -38,4 +39,10 @@ func (a ApplicationBuilder) IdentifierUri(uri string) ApplicationBuilder {
 
 func (a ApplicationBuilder) Build() *msgraph.Application {
 	return a.Application
+}
+
+// TODO - update other application metadata, preauthorizedapps
+func UpdateApplicationTemplate(credential v1alpha1.AzureAdCredential) *msgraph.Application {
+	uri := IdentifierUri(credential.Status.ClientId)
+	return EmptyApplication().IdentifierUri(uri).Build()
 }
