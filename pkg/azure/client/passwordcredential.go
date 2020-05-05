@@ -20,7 +20,6 @@ func (c client) rotatePasswordCredential(ctx context.Context, credential v1alpha
 	if err != nil {
 		return msgraph.PasswordCredential{}, err
 	}
-	// revoke any credential not in use (i.e. not matching latest keyId and the previous keyId still defined in Status)
 	for _, cred := range app.PasswordCredentials {
 		keyId := string(*cred.KeyID)
 		isNewCredKeyId := keyId == string(*newCred.KeyID)
