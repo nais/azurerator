@@ -24,7 +24,6 @@ type Application struct {
 	ObjectId           string      `json:"objectId"`
 	CertificateKeyId   string      `json:"certificateKeyId"`
 	PasswordKeyId      string      `json:"passwordKeyId"`
-	ServicePrincipalId string      `json:"servicePrincipalId"`
 }
 
 type Credentials struct {

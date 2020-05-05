@@ -39,18 +39,18 @@ func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredentia
 	if err != nil {
 		return azure.Application{}, err
 	}
-	passwordCredential, err := c.addPasswordCredential(ctx, *applicationResponse.Application.ID)
-	if err != nil {
-		return azure.Application{}, err
-	}
 	servicePrincipal, err := c.registerServicePrincipal(ctx, applicationResponse.Application)
 	if err != nil {
 		return azure.Application{}, err
 	}
-	if err := c.setApplicationIdentifierUri(ctx, applicationResponse.Application); err != nil {
+	if err := c.registerOAuth2PermissionGrants(ctx, servicePrincipal); err != nil {
 		return azure.Application{}, err
 	}
-	if err := c.registerOAuth2PermissionGrants(ctx, servicePrincipal); err != nil {
+	passwordCredential, err := c.addPasswordCredential(ctx, *applicationResponse.Application.ID)
+	if err != nil {
+		return azure.Application{}, err
+	}
+	if err := c.setApplicationIdentifierUri(ctx, applicationResponse.Application); err != nil {
 		return azure.Application{}, err
 	}
 	return azure.Application{
@@ -69,7 +69,6 @@ func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredentia
 		ObjectId:           *applicationResponse.Application.ID,
 		PasswordKeyId:      string(*passwordCredential.KeyID),
 		CertificateKeyId:   string(*applicationResponse.KeyCredential.KeyID),
-		ServicePrincipalId: *servicePrincipal.ID,
 	}, nil
 }
 

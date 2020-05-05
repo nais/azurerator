@@ -88,7 +88,16 @@ func (r *Reconciler) process(ctx context.Context, credential *naisiov1alpha1.Azu
 		return err
 	}
 	log.Info("successfully synchronized AzureAdCredential with Azure")
-	return r.updateStatus(ctx, credential, application)
+	if err := r.updateStatus(ctx, credential, application); err != nil {
+		return err
+	}
+	if err := r.createOrUpdateSecret(ctx, *credential, application); err != nil {
+		return fmt.Errorf("failed to create or update secret: %w", err)
+	}
+	if err := r.createOrUpdateConfigMap(ctx, *credential, application); err != nil {
+		return fmt.Errorf("failed to create or update configMap: %w", err)
+	}
+	return nil
 }
 
 func (r *Reconciler) createOrUpdate(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) (azure.Application, error) {
@@ -110,13 +119,6 @@ func (r *Reconciler) createOrUpdate(ctx context.Context, credential *naisiov1alp
 			return azure.Application{}, fmt.Errorf("failed to create azure application: %w", err)
 		}
 	}
-
-	if err := r.createOrUpdateSecret(ctx, *credential, application); err != nil {
-		return azure.Application{}, fmt.Errorf("failed to create or update secret: %w", err)
-	}
-	if err := r.createOrUpdateConfigMap(ctx, *credential, application); err != nil {
-		return azure.Application{}, fmt.Errorf("failed to create or update configMap: %w", err)
-	}
 	return application, nil
 }
 
@@ -126,7 +128,6 @@ func (r *Reconciler) updateStatus(ctx context.Context, credential *naisiov1alpha
 	credential.SetPasswordKeyId(application.PasswordKeyId)
 	credential.SetClientId(application.ClientId)
 	credential.SetApplicationObjectId(application.ObjectId)
-	credential.SetServicePrincipalObjectId(application.ServicePrincipalId)
 	credential.SetStatusProvisioned()
 
 	if err := credential.CalculateAndSetHash(); err != nil {
