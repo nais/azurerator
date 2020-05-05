@@ -33,7 +33,6 @@ type applicationResponse struct {
 }
 
 // Create registers a new AAD application with all the required accompanying resources
-// TODO - improve error handling
 func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
 	applicationResponse, err := c.registerApplication(ctx, credential)
 	if err != nil {
@@ -65,10 +64,10 @@ func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredentia
 				Jwk:          applicationResponse.JwkPair.Private,
 			},
 		},
-		ClientId:           *applicationResponse.Application.AppID,
-		ObjectId:           *applicationResponse.Application.ID,
-		PasswordKeyId:      string(*passwordCredential.KeyID),
-		CertificateKeyId:   string(*applicationResponse.KeyCredential.KeyID),
+		ClientId:         *applicationResponse.Application.AppID,
+		ObjectId:         *applicationResponse.Application.ID,
+		PasswordKeyId:    string(*passwordCredential.KeyID),
+		CertificateKeyId: string(*applicationResponse.KeyCredential.KeyID),
 	}, nil
 }
 
@@ -90,7 +89,6 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 	}, nil
 }
 
-// TODO - should attempt to register on update as well
 func (c client) registerServicePrincipal(ctx context.Context, application msgraph.Application) (msgraphbeta.ServicePrincipal, error) {
 	servicePrincipal, err := c.graphBetaClient.ServicePrincipals().Request().Add(ctx, toServicePrincipal(application))
 	if err != nil {
@@ -99,7 +97,6 @@ func (c client) registerServicePrincipal(ctx context.Context, application msgrap
 	return *servicePrincipal, nil
 }
 
-// TODO - should attempt to register on update as well
 func (c client) registerOAuth2PermissionGrants(ctx context.Context, principal msgraphbeta.ServicePrincipal) error {
 	_, err := c.graphBetaClient.Oauth2PermissionGrants().Request().Add(ctx, toOAuth2PermissionGrants(&principal, c.config.PermissionGrantResourceId))
 	if err != nil {

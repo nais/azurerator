@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
@@ -37,6 +38,31 @@ func (c client) applicationExists(ctx context.Context, credential v1alpha1.Azure
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
 	return len(applications) > 0, nil
+}
+
+func (c client) servicePrincipalExists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, msgraphbeta.ServicePrincipal, error) {
+	clientId := credential.Status.ClientId
+	r := c.graphBetaClient.ServicePrincipals().Request()
+	r.Filter(filterByAppId(clientId))
+	sps, err := r.GetN(ctx, 1000)
+	if err != nil {
+		return false, msgraphbeta.ServicePrincipal{}, fmt.Errorf("failed to lookup service principal: %w", err)
+	}
+	if len(sps) == 0 {
+		return false, msgraphbeta.ServicePrincipal{}, nil
+	}
+	return true, sps[0], nil
+}
+
+func (c client) oAuth2PermissionGrantsExist(ctx context.Context, sp msgraphbeta.ServicePrincipal) (bool, error) {
+	clientId := *sp.ID
+	r := c.graphBetaClient.Oauth2PermissionGrants().Request()
+	r.Filter(filterByClientId(clientId))
+	grants, err := r.GetN(ctx, 1000)
+	if err != nil {
+		return false, fmt.Errorf("failed to lookup oauth2 permission grants: %w", err)
+	}
+	return len(grants) > 0, nil
 }
 
 func (c client) getApplicationById(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
@@ -112,4 +138,12 @@ func mapFiltersToFilter(filters []string) string {
 
 func filterByName(name string) string {
 	return fmt.Sprintf("displayName eq '%s'", name)
+}
+
+func filterByAppId(clientId string) string {
+	return fmt.Sprintf("appId eq '%s'", clientId)
+}
+
+func filterByClientId(clientId string) string {
+	return fmt.Sprintf("clientId eq '%s'", clientId)
 }
