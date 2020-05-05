@@ -62,7 +62,7 @@ func (c client) rotateKeyCredential(ctx context.Context, credential v1alpha1.Azu
 	}
 	keys := []msgraph.KeyCredential{keyCredential, existingKeyCredential}
 	app := util.EmptyApplication().Keys(keys).Build()
-	if err := c.updateApplication(ctx, credential.Status.ApplicationObjectId, app); err != nil {
+	if err := c.updateApplication(ctx, credential.Status.ObjectId, app); err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, fmt.Errorf("failed to update application with keycredential: %w", err)
 	}
 	return keyCredential, jwkPair, nil

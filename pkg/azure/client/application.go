@@ -43,7 +43,7 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 }
 
 func (c client) deleteApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
-	if err := c.graphClient.Applications().ID(credential.Status.ApplicationObjectId).Request().Delete(ctx); err != nil {
+	if err := c.graphClient.Applications().ID(credential.Status.ObjectId).Request().Delete(ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	return nil
@@ -85,7 +85,7 @@ func (c client) applicationExists(ctx context.Context, credential v1alpha1.Azure
 }
 
 func (c client) getApplicationById(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	objectId := credential.Status.ApplicationObjectId
+	objectId := credential.Status.ObjectId
 	application, err := c.graphClient.Applications().ID(objectId).Request().Get(ctx)
 	if err != nil {
 		return msgraph.Application{}, fmt.Errorf("failed to lookup azure application with ID '%s'", objectId)

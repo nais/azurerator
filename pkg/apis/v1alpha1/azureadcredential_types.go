@@ -62,8 +62,8 @@ type AzureAdCredentialStatus struct {
 	CertificateKeyId string `json:"certificateKeyId"`
 	// ClientId is the Azure application client ID
 	ClientId string `json:"clientId"`
-	// ApplicationObjectId is the Azure AD Application object ID
-	ApplicationObjectId string `json:"applicationObjectId"`
+	// ObjectId is the Azure AD Application object ID
+	ObjectId string `json:"objectId"`
 }
 
 type ProvisionState string
@@ -126,8 +126,8 @@ func (in *AzureAdCredential) SetClientId(id string) {
 	in.Status.ClientId = id
 }
 
-func (in *AzureAdCredential) SetApplicationObjectId(id string) {
-	in.Status.ApplicationObjectId = id
+func (in *AzureAdCredential) SetObjectId(id string) {
+	in.Status.ObjectId = id
 }
 
 func (in *AzureAdCredential) CalculateAndSetHash() error {
@@ -161,7 +161,7 @@ func (in AzureAdCredential) Hash() (string, error) {
 		in.Status.CertificateKeyId,
 		in.Status.PasswordKeyId,
 		in.Status.ClientId,
-		in.Status.ApplicationObjectId,
+		in.Status.ObjectId,
 	}
 
 	marshalled, err := json.Marshal(relevantValues)

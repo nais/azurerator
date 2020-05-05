@@ -86,7 +86,7 @@ func (c client) Delete(ctx context.Context, credential v1alpha1.AzureAdCredentia
 	if exists {
 		return c.deleteApplication(ctx, credential)
 	}
-	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", credential.GetUniqueName(), credential.Status.ClientId, credential.Status.ApplicationObjectId)
+	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", credential.GetUniqueName(), credential.Status.ClientId, credential.Status.ObjectId)
 }
 
 // Exists returns an indication of whether the application exists in AAD or not
@@ -100,7 +100,7 @@ func (c client) Exists(ctx context.Context, credential v1alpha1.AzureAdCredentia
 
 // Get returns a Graph API Application entity, which represents an Application in AAD
 func (c client) Get(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	if len(credential.Status.ApplicationObjectId) == 0 {
+	if len(credential.Status.ObjectId) == 0 {
 		return c.getApplicationByName(ctx, credential)
 	}
 	return c.getApplicationById(ctx, credential)
@@ -114,7 +114,7 @@ func (c client) GetByName(ctx context.Context, name string) (msgraph.Application
 // Rotate rotates credentials for an existing AAD application
 func (c client) Rotate(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
 	clientId := credential.Status.ClientId
-	objectId := credential.Status.ApplicationObjectId
+	objectId := credential.Status.ObjectId
 
 	passwordCredential, err := c.addPasswordCredential(ctx, objectId)
 	if err != nil {
@@ -146,7 +146,7 @@ func (c client) Rotate(ctx context.Context, credential v1alpha1.AzureAdCredentia
 
 // Update updates an existing AAD application. Should be an idempotent operation
 func (c client) Update(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
-	objectId := credential.Status.ApplicationObjectId
+	objectId := credential.Status.ObjectId
 	app := util.UpdateApplicationTemplate(credential)
 	if err := c.updateApplication(ctx, objectId, app); err != nil {
 		return err

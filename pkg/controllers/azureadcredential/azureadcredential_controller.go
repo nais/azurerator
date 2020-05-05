@@ -127,7 +127,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, credential *naisiov1alpha
 	credential.SetCertificateKeyId(application.CertificateKeyId)
 	credential.SetPasswordKeyId(application.PasswordKeyId)
 	credential.SetClientId(application.ClientId)
-	credential.SetApplicationObjectId(application.ObjectId)
+	credential.SetObjectId(application.ObjectId)
 	credential.SetStatusProvisioned()
 
 	if err := credential.CalculateAndSetHash(); err != nil {
