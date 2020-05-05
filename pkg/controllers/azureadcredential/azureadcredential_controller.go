@@ -79,7 +79,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) process(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
-	application, err := r.createOrUpdate(ctx, credential)
+	application, err := r.createOrUpdateAzureApp(ctx, credential)
 	if err != nil {
 		credential.SetStatusRetrying()
 		if err := r.updateStatusSubresource(ctx, credential); err != nil {
@@ -88,19 +88,19 @@ func (r *Reconciler) process(ctx context.Context, credential *naisiov1alpha1.Azu
 		return err
 	}
 	log.Info("successfully synchronized AzureAdCredential with Azure")
-	if err := r.updateStatus(ctx, credential, application); err != nil {
-		return err
-	}
 	if err := r.createOrUpdateSecret(ctx, *credential, application); err != nil {
 		return fmt.Errorf("failed to create or update secret: %w", err)
 	}
 	if err := r.createOrUpdateConfigMap(ctx, *credential, application); err != nil {
 		return fmt.Errorf("failed to create or update configMap: %w", err)
 	}
+	if err := r.updateStatus(ctx, credential, application); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (r *Reconciler) createOrUpdate(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) (azure.Application, error) {
+func (r *Reconciler) createOrUpdateAzureApp(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) (azure.Application, error) {
 	var application azure.Application
 
 	exists, err := r.AzureClient.Exists(ctx, *credential)
