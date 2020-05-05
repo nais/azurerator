@@ -116,7 +116,7 @@ func (c client) Rotate(ctx context.Context, credential v1alpha1.AzureAdCredentia
 	clientId := credential.Status.ClientId
 	objectId := credential.Status.ObjectId
 
-	passwordCredential, err := c.addPasswordCredential(ctx, objectId)
+	passwordCredential, err := c.rotatePasswordCredential(ctx, credential)
 	if err != nil {
 		return azure.Application{}, err
 	}

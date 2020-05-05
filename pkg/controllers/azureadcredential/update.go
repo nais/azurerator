@@ -27,6 +27,6 @@ func (r *Reconciler) updateAzureApplication(ctx context.Context, credential *nai
 }
 
 func (r *Reconciler) rotateAzureCredentials(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) (azure.Application, error) {
-	log.Info("Rotating credentials for Azure application...")
+	log.Info("rotating credentials for Azure application...")
 	return r.AzureClient.Rotate(ctx, *credential)
 }
