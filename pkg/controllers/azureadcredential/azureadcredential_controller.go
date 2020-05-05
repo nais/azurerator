@@ -60,8 +60,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	// TODO - should also check ProvisionState
-	if hashUnchanged {
+	if hashUnchanged && azureAdCredential.Status.UpToDate {
 		log.Info("object state already reconciled, nothing to do")
 		return ctrl.Result{}, nil
 	}
