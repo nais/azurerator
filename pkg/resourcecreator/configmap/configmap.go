@@ -3,7 +3,7 @@ package configmap
 import (
 	"fmt"
 
-	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	"github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/resourcecreator"
 	corev1 "k8s.io/api/core/v1"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	"github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"

@@ -20,7 +20,7 @@ test: generate fmt vet manifests
 
 # Build manager binary
 manager: generate fmt vet
-	cd cmd/azurerator && go build
+	go build -o bin/azurerator cmd/azurerator/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests

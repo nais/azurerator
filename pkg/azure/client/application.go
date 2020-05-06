@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	"github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
 	"github.com/yaegashi/msgraph.go/ptr"

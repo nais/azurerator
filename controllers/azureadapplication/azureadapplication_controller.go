@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	naisiov1alpha1 "github.com/nais/azureator/pkg/apis/v1alpha1"
+	naisiov1alpha1 "github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -19,10 +19,6 @@ type Reconciler struct {
 	Scheme      *runtime.Scheme
 	AzureClient azure.Client
 	ClusterName string
-}
-
-type Transaction struct {
-
 }
 
 var log logr.Logger

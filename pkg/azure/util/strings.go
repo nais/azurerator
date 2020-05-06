@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	"github.com/nais/azureator/apis/v1alpha1"
 )
 
 func GetReplyUrlsStringSlice(resource v1alpha1.AzureAdApplication) []string {

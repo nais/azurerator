@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nais/azureator/controllers/azureadapplication"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client"
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/controllers/azureadapplication"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	naisiov1alpha1 "github.com/nais/azureator/pkg/apis/v1alpha1"
+	naisiov1alpha1 "github.com/nais/azureator/apis/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 

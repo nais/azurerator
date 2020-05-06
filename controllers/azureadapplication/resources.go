@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	"github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/resourcecreator"
 	"github.com/nais/azureator/pkg/resourcecreator/configmap"

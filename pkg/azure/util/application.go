@@ -1,7 +1,7 @@
 package util
 
 import (
-	"github.com/nais/azureator/pkg/apis/v1alpha1"
+	"github.com/nais/azureator/apis/v1alpha1"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 

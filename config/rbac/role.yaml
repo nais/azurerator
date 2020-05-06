@@ -9,7 +9,7 @@ rules:
 - apiGroups:
   - nais.io
   resources:
-  - azureadapplications
+  - AzureAdApplications
   verbs:
   - create
   - delete
@@ -21,7 +21,7 @@ rules:
 - apiGroups:
   - nais.io
   resources:
-  - azureadapplications/status
+  - AzureAdApplications/status
   verbs:
   - get
   - patch

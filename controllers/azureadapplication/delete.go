@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	naisiov1alpha1 "github.com/nais/azureator/pkg/apis/v1alpha1"
+	naisiov1alpha1 "github.com/nais/azureator/apis/v1alpha1"
 )
 
 // Clean up / delete all associated resources, both internal and external
