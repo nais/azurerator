@@ -2,10 +2,10 @@
 
 Kubernetes cluster operator for automated registration of Azure Active Directory applications and accompanying service principals.
 
-Creates or updates a resource in Azure AD when the `AzureAdCredential` (shortname `azuread`) resource is created, 
+Creates or updates a resource in Azure AD when the `AzureAdApplication` (shortname `azuread`) resource is created, 
 and in turn creates cluster resources (i.e. a `Secret` and a `ConfigMap`) with the necessary information for
 applications to make use of Azure AD. Also handles garbage cleaning, i.e. the Azure AD application is deleted should
-the equivalent `AzureAdCredential` resource be deleted by implementing a finalizer/pre-delete hook.
+the equivalent `AzureAdApplication` resource be deleted by implementing a finalizer/pre-delete hook.
 
 ## Installation
 ```shell script
@@ -20,5 +20,5 @@ Then, assuming that you have a Kubernetes cluster running locally (e.g. using [m
 
 ```shell script
 make run
-kubectl apply -f ./config/samples/azureadcredential.yaml
+kubectl apply -f ./config/samples/AzureAdApplication.yaml
 ```

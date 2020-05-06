@@ -10,8 +10,8 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-func GenerateNewKeyCredentialFor(credential v1alpha1.AzureAdCredential) (msgraph.KeyCredential, crypto.JwkPair, error) {
-	jwkPair, err := crypto.GenerateJwkPair(credential)
+func GenerateNewKeyCredentialFor(resource v1alpha1.AzureAdApplication) (msgraph.KeyCredential, crypto.JwkPair, error) {
+	jwkPair, err := crypto.GenerateJwkPair(resource)
 	if err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, fmt.Errorf("failed to generate JWK pair for application: %w", err)
 	}

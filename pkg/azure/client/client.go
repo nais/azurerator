@@ -39,8 +39,8 @@ func New(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
 }
 
 // Create registers a new AAD application with all the required accompanying resources
-func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	applicationResponse, err := c.registerApplication(ctx, credential)
+func (c client) Create(ctx context.Context, resource v1alpha1.AzureAdApplication) (azure.Application, error) {
+	applicationResponse, err := c.registerApplication(ctx, resource)
 	if err != nil {
 		return azure.Application{}, err
 	}
@@ -78,20 +78,20 @@ func (c client) Create(ctx context.Context, credential v1alpha1.AzureAdCredentia
 }
 
 // Delete deletes the specified AAD application.
-func (c client) Delete(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
-	exists, err := c.Exists(ctx, credential)
+func (c client) Delete(ctx context.Context, resource v1alpha1.AzureAdApplication) error {
+	exists, err := c.Exists(ctx, resource)
 	if err != nil {
 		return err
 	}
 	if exists {
-		return c.deleteApplication(ctx, credential)
+		return c.deleteApplication(ctx, resource)
 	}
-	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", credential.GetUniqueName(), credential.Status.ClientId, credential.Status.ObjectId)
+	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", resource.GetUniqueName(), resource.Status.ClientId, resource.Status.ObjectId)
 }
 
 // Exists returns an indication of whether the application exists in AAD or not
-func (c client) Exists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error) {
-	exists, err := c.applicationExists(ctx, credential)
+func (c client) Exists(ctx context.Context, resource v1alpha1.AzureAdApplication) (bool, error) {
+	exists, err := c.applicationExists(ctx, resource)
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
@@ -99,11 +99,11 @@ func (c client) Exists(ctx context.Context, credential v1alpha1.AzureAdCredentia
 }
 
 // Get returns a Graph API Application entity, which represents an Application in AAD
-func (c client) Get(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	if len(credential.Status.ObjectId) == 0 {
-		return c.getApplicationByName(ctx, credential)
+func (c client) Get(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.Application, error) {
+	if len(resource.Status.ObjectId) == 0 {
+		return c.getApplicationByName(ctx, resource)
 	}
-	return c.getApplicationById(ctx, credential)
+	return c.getApplicationById(ctx, resource)
 }
 
 // GetByName returns a Graph API Application entity given the displayName, which represents in Application in AAD
@@ -112,15 +112,15 @@ func (c client) GetByName(ctx context.Context, name string) (msgraph.Application
 }
 
 // Rotate rotates credentials for an existing AAD application
-func (c client) Rotate(ctx context.Context, credential v1alpha1.AzureAdCredential) (azure.Application, error) {
-	clientId := credential.Status.ClientId
-	objectId := credential.Status.ObjectId
+func (c client) Rotate(ctx context.Context, resource v1alpha1.AzureAdApplication) (azure.Application, error) {
+	clientId := resource.Status.ClientId
+	objectId := resource.Status.ObjectId
 
-	passwordCredential, err := c.rotatePasswordCredential(ctx, credential)
+	passwordCredential, err := c.rotatePasswordCredential(ctx, resource)
 	if err != nil {
 		return azure.Application{}, err
 	}
-	keyCredential, jwkPair, err := c.rotateKeyCredential(ctx, credential)
+	keyCredential, jwkPair, err := c.rotateKeyCredential(ctx, resource)
 	if err != nil {
 		return azure.Application{}, err
 	}
@@ -145,13 +145,13 @@ func (c client) Rotate(ctx context.Context, credential v1alpha1.AzureAdCredentia
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation
-func (c client) Update(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
-	objectId := credential.Status.ObjectId
-	app := util.UpdateApplicationTemplate(credential)
+func (c client) Update(ctx context.Context, resource v1alpha1.AzureAdApplication) error {
+	objectId := resource.Status.ObjectId
+	app := util.UpdateApplicationTemplate(resource)
 	if err := c.updateApplication(ctx, objectId, app); err != nil {
 		return err
 	}
-	sp, err := c.upsertServicePrincipal(ctx, credential)
+	sp, err := c.upsertServicePrincipal(ctx, resource)
 	if err != nil {
 		return err
 	}

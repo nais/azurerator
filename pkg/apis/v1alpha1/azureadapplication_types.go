@@ -14,26 +14,26 @@ import (
 // +kubebuilder:resource:shortName=azuread
 // +kubebuilder:subresource:status
 
-// AzureAdCredential is the Schema for the azureadcredentials API
-type AzureAdCredential struct {
+// AzureAdApplication is the Schema for the AzureAdApplications API
+type AzureAdApplication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AzureAdCredentialSpec   `json:"spec,omitempty"`
-	Status AzureAdCredentialStatus `json:"status,omitempty"`
+	Spec   AzureAdApplicationSpec   `json:"spec,omitempty"`
+	Status AzureAdApplicationStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// AzureAdCredentialList contains a list of AzureAdCredential
-type AzureAdCredentialList struct {
+// AzureAdApplicationList contains a list of AzureAdApplication
+type AzureAdApplicationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []AzureAdCredential `json:"items"`
+	Items           []AzureAdApplication `json:"items"`
 }
 
-// AzureAdCredentialSpec defines the desired state of AzureAdCredential
-type AzureAdCredentialSpec struct {
+// AzureAdApplicationSpec defines the desired state of AzureAdApplication
+type AzureAdApplicationSpec struct {
 	ReplyUrls                 []AzureAdReplyUrl                 `json:"replyUrls,omitempty"`
 	PreAuthorizedApplications []AzureAdPreAuthorizedApplication `json:"preAuthorizedApplications,omitempty"`
 	// LogoutUrl is the URL where Azure AD sends a request to have the application clear the user's session data.
@@ -45,16 +45,16 @@ type AzureAdCredentialSpec struct {
 	ConfigMapName string `json:"configMapName"`
 }
 
-// AzureAdCredentialStatus defines the observed state of AzureAdCredential
-type AzureAdCredentialStatus struct {
-	// UpToDate denotes whether the provisioning of the AzureAdCredential has been successfully completed or not
+// AzureAdApplicationStatus defines the observed state of AzureAdApplication
+type AzureAdApplicationStatus struct {
+	// UpToDate denotes whether the provisioning of the AzureAdApplication has been successfully completed or not
 	UpToDate bool `json:"upToDate"`
 	// ProvisionState is a one-word CamelCase machine-readable representation of the current state of the object
 	// +kubebuilder:validation:Enum=New;Rotate;Retrying;Provisioned
 	ProvisionState ProvisionState `json:"provisionState"`
 	// ProvisionStateTime is the last time the state transitioned from one state to another
 	ProvisionStateTime metav1.Time `json:"provisionStateTime,omitempty"`
-	// ProvisionHash is the hash of the AzureAdCredential object
+	// ProvisionHash is the hash of the AzureAdApplication object
 	ProvisionHash string `json:"provisionHash,omitempty"`
 	// PasswordKeyId is the key ID for the latest valid password credential
 	PasswordKeyId string `json:"passwordKeyId"`
@@ -87,50 +87,50 @@ type AzureAdPreAuthorizedApplication struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&AzureAdCredential{}, &AzureAdCredentialList{})
+	SchemeBuilder.Register(&AzureAdApplication{}, &AzureAdApplicationList{})
 }
 
-func (in *AzureAdCredential) SetStatusNew() {
+func (in *AzureAdApplication) SetStatusNew() {
 	in.Status.UpToDate = false
 	in.Status.ProvisionState = New
 	in.Status.ProvisionStateTime = metav1.Now()
 }
 
-func (in *AzureAdCredential) SetStatusRotate() {
+func (in *AzureAdApplication) SetStatusRotate() {
 	in.Status.UpToDate = false
 	in.Status.ProvisionState = Rotate
 	in.Status.ProvisionStateTime = metav1.Now()
 }
 
-func (in *AzureAdCredential) SetStatusRetrying() {
+func (in *AzureAdApplication) SetStatusRetrying() {
 	in.Status.UpToDate = false
 	in.Status.ProvisionState = Retrying
 	in.Status.ProvisionStateTime = metav1.Now()
 }
 
-func (in *AzureAdCredential) SetStatusProvisioned() {
+func (in *AzureAdApplication) SetStatusProvisioned() {
 	in.Status.UpToDate = true
 	in.Status.ProvisionState = Provisioned
 	in.Status.ProvisionStateTime = metav1.Now()
 }
 
-func (in *AzureAdCredential) SetCertificateKeyId(keyId string) {
+func (in *AzureAdApplication) SetCertificateKeyId(keyId string) {
 	in.Status.CertificateKeyId = keyId
 }
 
-func (in *AzureAdCredential) SetPasswordKeyId(keyId string) {
+func (in *AzureAdApplication) SetPasswordKeyId(keyId string) {
 	in.Status.PasswordKeyId = keyId
 }
 
-func (in *AzureAdCredential) SetClientId(id string) {
+func (in *AzureAdApplication) SetClientId(id string) {
 	in.Status.ClientId = id
 }
 
-func (in *AzureAdCredential) SetObjectId(id string) {
+func (in *AzureAdApplication) SetObjectId(id string) {
 	in.Status.ObjectId = id
 }
 
-func (in *AzureAdCredential) CalculateAndSetHash() error {
+func (in *AzureAdApplication) CalculateAndSetHash() error {
 	newHash, err := in.Hash()
 	if err != nil {
 		return fmt.Errorf("failed to calculate application hash: %w", err)
@@ -139,7 +139,7 @@ func (in *AzureAdCredential) CalculateAndSetHash() error {
 	return nil
 }
 
-func (in *AzureAdCredential) HashUnchanged() (bool, error) {
+func (in *AzureAdApplication) HashUnchanged() (bool, error) {
 	newHash, err := in.Hash()
 	if err != nil {
 		return false, fmt.Errorf("failed to calculate application hash: %w", err)
@@ -147,15 +147,15 @@ func (in *AzureAdCredential) HashUnchanged() (bool, error) {
 	return in.Status.ProvisionHash == newHash, nil
 }
 
-func (in AzureAdCredential) Hash() (string, error) {
+func (in AzureAdApplication) Hash() (string, error) {
 	// struct including the relevant fields for
-	// creating a hash of an AzureAdCredential object
+	// creating a hash of an AzureAdApplication object
 	relevantValues := struct {
-		AzureAdCredentialSpec AzureAdCredentialSpec
-		CertificateKeyId      string
-		SecretKeyid           string
-		ClientId              string
-		ObjectId              string
+		AzureAdApplicationSpec AzureAdApplicationSpec
+		CertificateKeyId       string
+		SecretKeyid            string
+		ClientId               string
+		ObjectId               string
 	}{
 		in.Spec,
 		in.Status.CertificateKeyId,
@@ -172,6 +172,6 @@ func (in AzureAdCredential) Hash() (string, error) {
 	return fmt.Sprintf("%x", h), err
 }
 
-func (in AzureAdCredential) GetUniqueName() string {
+func (in AzureAdApplication) GetUniqueName() string {
 	return fmt.Sprintf("%s:%s:%s", in.ClusterName, in.Namespace, in.Name)
 }

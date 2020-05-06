@@ -42,7 +42,7 @@ func (a ApplicationBuilder) Build() *msgraph.Application {
 }
 
 // TODO - update other application metadata, preauthorizedapps
-func UpdateApplicationTemplate(credential v1alpha1.AzureAdCredential) *msgraph.Application {
-	uri := IdentifierUri(credential.Status.ClientId)
+func UpdateApplicationTemplate(resource v1alpha1.AzureAdApplication) *msgraph.Application {
+	uri := IdentifierUri(resource.Status.ClientId)
 	return EmptyApplication().IdentifierUri(uri).Build()
 }

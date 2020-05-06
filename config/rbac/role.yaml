@@ -9,7 +9,7 @@ rules:
 - apiGroups:
   - nais.io
   resources:
-  - azureadcredentials
+  - azureadapplications
   verbs:
   - create
   - delete
@@ -21,7 +21,7 @@ rules:
 - apiGroups:
   - nais.io
   resources:
-  - azureadcredentials/status
+  - azureadapplications/status
   verbs:
   - get
   - patch

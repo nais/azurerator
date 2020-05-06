@@ -15,10 +15,10 @@ type Creator struct {
 	resourcecreator.DefaultCreator
 }
 
-func New(credential v1alpha1.AzureAdCredential, application azure.Application) resourcecreator.Creator {
+func New(resource v1alpha1.AzureAdApplication, application azure.Application) resourcecreator.Creator {
 	return Creator{
 		resourcecreator.DefaultCreator{
-			Credential:  credential,
+			Resource:    resource,
 			Application: application,
 		},
 	}
@@ -44,7 +44,7 @@ func (c Creator) MutateFn(object runtime.Object) (controllerutil.MutateFn, error
 }
 
 func (c Creator) Name() string {
-	return c.Credential.Spec.SecretName
+	return c.Resource.Spec.SecretName
 }
 
 func (c Creator) toSecretData() (map[string]string, error) {

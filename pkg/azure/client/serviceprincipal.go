@@ -18,8 +18,8 @@ func (c client) registerServicePrincipal(ctx context.Context, application msgrap
 	return *servicePrincipal, nil
 }
 
-func (c client) servicePrincipalExists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, msgraphbeta.ServicePrincipal, error) {
-	clientId := credential.Status.ClientId
+func (c client) servicePrincipalExists(ctx context.Context, resource v1alpha1.AzureAdApplication) (bool, msgraphbeta.ServicePrincipal, error) {
+	clientId := resource.Status.ClientId
 	r := c.graphBetaClient.ServicePrincipals().Request()
 	r.Filter(util.FilterByAppId(clientId))
 	sps, err := r.GetN(ctx, 1000)
@@ -32,15 +32,15 @@ func (c client) servicePrincipalExists(ctx context.Context, credential v1alpha1.
 	return true, sps[0], nil
 }
 
-func (c client) upsertServicePrincipal(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraphbeta.ServicePrincipal, error) {
-	exists, sp, err := c.servicePrincipalExists(ctx, credential)
+func (c client) upsertServicePrincipal(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraphbeta.ServicePrincipal, error) {
+	exists, sp, err := c.servicePrincipalExists(ctx, resource)
 	if err != nil {
 		return msgraphbeta.ServicePrincipal{}, err
 	}
 	if exists {
 		return sp, nil
 	}
-	application := msgraph.Application{AppID: &credential.Status.ClientId}
+	application := msgraph.Application{AppID: &resource.Status.ClientId}
 	sp, err = c.registerServicePrincipal(ctx, application)
 	if err != nil {
 		return msgraphbeta.ServicePrincipal{}, err

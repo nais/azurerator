@@ -1,4 +1,4 @@
-package azureadcredential
+package azureadapplication
 
 import (
 	"context"
@@ -9,13 +9,13 @@ import (
 
 // Clean up / delete all associated resources, both internal and external
 
-func (r *Reconciler) delete(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
-	return r.deleteAzureApplication(ctx, credential)
+func (r *Reconciler) delete(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication) error {
+	return r.deleteAzureApplication(ctx, resource)
 }
 
-func (r *Reconciler) deleteAzureApplication(ctx context.Context, credential *naisiov1alpha1.AzureAdCredential) error {
+func (r *Reconciler) deleteAzureApplication(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication) error {
 	log.Info("deleting Azure application...")
-	exists, err := r.AzureClient.Exists(ctx, *credential)
+	exists, err := r.AzureClient.Exists(ctx, *resource)
 	if err != nil {
 		return err
 	}
@@ -23,10 +23,10 @@ func (r *Reconciler) deleteAzureApplication(ctx context.Context, credential *nai
 		log.Info("Azure application does not exist - skipping deletion")
 		return nil
 	}
-	if err := r.ensureStatusIsValid(ctx, credential); err != nil {
+	if err := r.ensureStatusIsValid(ctx, resource); err != nil {
 		return err
 	}
-	if err := r.AzureClient.Delete(ctx, *credential); err != nil {
+	if err := r.AzureClient.Delete(ctx, *resource); err != nil {
 		return fmt.Errorf("failed to delete Azure application: %w", err)
 	}
 	log.Info("Azure application successfully deleted")

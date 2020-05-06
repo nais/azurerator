@@ -20,7 +20,7 @@ type JwkPair struct {
 	PublicPem []byte          `json:"publicPem"`
 }
 
-func GenerateJwkPair(application v1alpha1.AzureAdCredential) (JwkPair, error) {
+func GenerateJwkPair(application v1alpha1.AzureAdApplication) (JwkPair, error) {
 	keyPair, err := NewRSAKeyPair()
 	if err != nil {
 		return JwkPair{}, err
@@ -37,7 +37,7 @@ func JwkToJwkPair(jwk jose.JSONWebKey) JwkPair {
 	}
 }
 
-func mapToJwkPair(keyPair KeyPair, application v1alpha1.AzureAdCredential) (JwkPair, error) {
+func mapToJwkPair(keyPair KeyPair, application v1alpha1.AzureAdApplication) (JwkPair, error) {
 	template := CertificateTemplate(application)
 	cert, err := GenerateCertificate(template, keyPair)
 	if err != nil {

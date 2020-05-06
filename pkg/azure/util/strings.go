@@ -7,9 +7,9 @@ import (
 	"github.com/nais/azureator/pkg/apis/v1alpha1"
 )
 
-func GetReplyUrlsStringSlice(credential v1alpha1.AzureAdCredential) []string {
+func GetReplyUrlsStringSlice(resource v1alpha1.AzureAdApplication) []string {
 	var replyUrls []string
-	for _, v := range credential.Spec.ReplyUrls {
+	for _, v := range resource.Spec.ReplyUrls {
 		replyUrls = append(replyUrls, v.Url)
 	}
 	return replyUrls

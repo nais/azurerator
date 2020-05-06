@@ -20,9 +20,9 @@ func (c client) getClientId(ctx context.Context, app v1alpha1.AzureAdPreAuthoriz
 	return *azureApp.AppID, nil
 }
 
-func (c client) mapToPreAuthorizedApplications(ctx context.Context, credential v1alpha1.AzureAdCredential, defaultAccessPermissionId uuid.UUID) []msgraph.PreAuthorizedApplication {
+func (c client) mapToPreAuthorizedApplications(ctx context.Context, resource v1alpha1.AzureAdApplication, defaultAccessPermissionId uuid.UUID) []msgraph.PreAuthorizedApplication {
 	var preAuthorizedApplications []msgraph.PreAuthorizedApplication
-	for _, app := range credential.Spec.PreAuthorizedApplications {
+	for _, app := range resource.Spec.PreAuthorizedApplications {
 		clientId, err := c.getClientId(ctx, app)
 		if err != nil {
 			// TODO - currently best effort. should separate between technical and functional (e.g. app doesnt exist in AAD) errors

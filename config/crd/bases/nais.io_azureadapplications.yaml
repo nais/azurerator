@@ -6,22 +6,22 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
   creationTimestamp: null
-  name: azureadcredentials.nais.io
+  name: azureadapplications.nais.io
 spec:
   group: nais.io
   names:
-    kind: AzureAdCredential
-    listKind: AzureAdCredentialList
-    plural: azureadcredentials
+    kind: AzureAdApplication
+    listKind: AzureAdApplicationList
+    plural: azureadapplications
     shortNames:
     - azuread
-    singular: azureadcredential
+    singular: azureadapplication
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: AzureAdCredential is the Schema for the azureadcredentials API
+      description: AzureAdApplication is the Schema for the AzureAdApplications API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -36,7 +36,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: AzureAdCredentialSpec defines the desired state of AzureAdCredential
+          description: AzureAdApplicationSpec defines the desired state of AzureAdApplication
           properties:
             configMapName:
               description: ConfigMapName is the name of the resulting ConfigMap resource
@@ -76,7 +76,7 @@ spec:
           - secretName
           type: object
         status:
-          description: AzureAdCredentialStatus defines the observed state of AzureAdCredential
+          description: AzureAdApplicationStatus defines the observed state of AzureAdApplication
           properties:
             certificateKeyId:
               description: CertificateKeyId is the certificate ID for the latest valid
@@ -93,7 +93,7 @@ spec:
                 credential
               type: string
             provisionHash:
-              description: ProvisionHash is the hash of the AzureAdCredential object
+              description: ProvisionHash is the hash of the AzureAdApplication object
               type: string
             provisionState:
               description: ProvisionState is a one-word CamelCase machine-readable
@@ -110,7 +110,7 @@ spec:
               format: date-time
               type: string
             upToDate:
-              description: UpToDate denotes whether the provisioning of the AzureAdCredential
+              description: UpToDate denotes whether the provisioning of the AzureAdApplication
                 has been successfully completed or not
               type: boolean
           required:

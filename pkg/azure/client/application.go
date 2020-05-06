@@ -24,13 +24,13 @@ type applicationResponse struct {
 	JwkPair       crypto.JwkPair
 }
 
-func (c client) registerApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) (applicationResponse, error) {
-	key, jwkPair, err := util.GenerateNewKeyCredentialFor(credential)
+func (c client) registerApplication(ctx context.Context, resource v1alpha1.AzureAdApplication) (applicationResponse, error) {
+	key, jwkPair, err := util.GenerateNewKeyCredentialFor(resource)
 	if err != nil {
 		return applicationResponse{}, err
 	}
-	api := c.toApiApplication(ctx, credential)
-	applicationRequest := util.Application(defaultApplicationTemplate(credential)).Key(key).Api(api).Build()
+	api := c.toApiApplication(ctx, resource)
+	applicationRequest := util.Application(defaultApplicationTemplate(resource)).Key(key).Api(api).Build()
 	application, err := c.graphClient.Applications().Request().Add(ctx, applicationRequest)
 	if err != nil {
 		return applicationResponse{}, fmt.Errorf("failed to register application: %w", err)
@@ -42,8 +42,8 @@ func (c client) registerApplication(ctx context.Context, credential v1alpha1.Azu
 	}, nil
 }
 
-func (c client) deleteApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) error {
-	if err := c.graphClient.Applications().ID(credential.Status.ObjectId).Request().Delete(ctx); err != nil {
+func (c client) deleteApplication(ctx context.Context, resource v1alpha1.AzureAdApplication) error {
+	if err := c.graphClient.Applications().ID(resource.Status.ObjectId).Request().Delete(ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	return nil
@@ -58,9 +58,9 @@ func (c client) setApplicationIdentifierUri(ctx context.Context, application msg
 	return nil
 }
 
-func (c client) toApiApplication(ctx context.Context, credential v1alpha1.AzureAdCredential) *msgraph.APIApplication {
+func (c client) toApiApplication(ctx context.Context, resource v1alpha1.AzureAdApplication) *msgraph.APIApplication {
 	oAuth2DefaultAccessScopeId := uuid.New()
-	preAuthorizedApplications := c.mapToPreAuthorizedApplications(ctx, credential, oAuth2DefaultAccessScopeId)
+	preAuthorizedApplications := c.mapToPreAuthorizedApplications(ctx, resource, oAuth2DefaultAccessScopeId)
 	return &msgraph.APIApplication{
 		AcceptMappedClaims:          ptr.Bool(true),
 		RequestedAccessTokenVersion: ptr.Int(2),
@@ -76,16 +76,16 @@ func (c client) updateApplication(ctx context.Context, id string, application *m
 	return nil
 }
 
-func (c client) applicationExists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error) {
-	applications, err := c.getAllApplications(ctx, util.FilterByName(credential.GetUniqueName()))
+func (c client) applicationExists(ctx context.Context, resource v1alpha1.AzureAdApplication) (bool, error) {
+	applications, err := c.getAllApplications(ctx, util.FilterByName(resource.GetUniqueName()))
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
 	return len(applications) > 0, nil
 }
 
-func (c client) getApplicationById(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	objectId := credential.Status.ObjectId
+func (c client) getApplicationById(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.Application, error) {
+	objectId := resource.Status.ObjectId
 	application, err := c.graphClient.Applications().ID(objectId).Request().Get(ctx)
 	if err != nil {
 		return msgraph.Application{}, fmt.Errorf("failed to lookup azure application with ID '%s'", objectId)
@@ -93,8 +93,8 @@ func (c client) getApplicationById(ctx context.Context, credential v1alpha1.Azur
 	return *application, nil
 }
 
-func (c client) getApplicationByName(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error) {
-	return c.getApplicationByStringName(ctx, credential.GetUniqueName())
+func (c client) getApplicationByName(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.Application, error) {
+	return c.getApplicationByStringName(ctx, resource.GetUniqueName())
 }
 
 func (c client) getApplicationByStringName(ctx context.Context, name string) (msgraph.Application, error) {
@@ -123,13 +123,13 @@ func (c client) getAllApplications(ctx context.Context, filters ...string) ([]ms
 	return applications, nil
 }
 
-func defaultApplicationTemplate(credential v1alpha1.AzureAdCredential) *msgraph.Application {
+func defaultApplicationTemplate(resource v1alpha1.AzureAdApplication) *msgraph.Application {
 	return &msgraph.Application{
-		DisplayName:           ptr.String(credential.GetUniqueName()),
+		DisplayName:           ptr.String(resource.GetUniqueName()),
 		GroupMembershipClaims: ptr.String("SecurityGroup"),
 		Web: &msgraph.WebApplication{
-			LogoutURL:    ptr.String(credential.Spec.LogoutUrl),
-			RedirectUris: util.GetReplyUrlsStringSlice(credential),
+			LogoutURL:    ptr.String(resource.Spec.LogoutUrl),
+			RedirectUris: util.GetReplyUrlsStringSlice(resource),
 			ImplicitGrantSettings: &msgraph.ImplicitGrantSettings{
 				EnableIDTokenIssuance:     ptr.Bool(false),
 				EnableAccessTokenIssuance: ptr.Bool(false),

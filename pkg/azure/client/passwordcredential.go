@@ -11,8 +11,8 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-func (c client) rotatePasswordCredential(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.PasswordCredential, error) {
-	app, err := c.Get(ctx, credential)
+func (c client) rotatePasswordCredential(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.PasswordCredential, error) {
+	app, err := c.Get(ctx, resource)
 	if err != nil {
 		return msgraph.PasswordCredential{}, err
 	}
@@ -23,7 +23,7 @@ func (c client) rotatePasswordCredential(ctx context.Context, credential v1alpha
 	for _, cred := range app.PasswordCredentials {
 		keyId := string(*cred.KeyID)
 		isNewCredKeyId := keyId == string(*newCred.KeyID)
-		isPreviousKeyId := keyId == credential.Status.PasswordKeyId
+		isPreviousKeyId := keyId == resource.Status.PasswordKeyId
 		if isPreviousKeyId || isNewCredKeyId {
 			continue
 		}

@@ -9,13 +9,13 @@ import (
 )
 
 type Client interface {
-	Create(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
-	Delete(ctx context.Context, credential v1alpha1.AzureAdCredential) error
-	Exists(ctx context.Context, credential v1alpha1.AzureAdCredential) (bool, error)
-	Get(ctx context.Context, credential v1alpha1.AzureAdCredential) (msgraph.Application, error)
+	Create(ctx context.Context, resource v1alpha1.AzureAdApplication) (Application, error)
+	Delete(ctx context.Context, resource v1alpha1.AzureAdApplication) error
+	Exists(ctx context.Context, resource v1alpha1.AzureAdApplication) (bool, error)
+	Get(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.Application, error)
 	GetByName(ctx context.Context, name string) (msgraph.Application, error)
-	Rotate(ctx context.Context, credential v1alpha1.AzureAdCredential) (Application, error)
-	Update(ctx context.Context, credential v1alpha1.AzureAdCredential) error
+	Rotate(ctx context.Context, resource v1alpha1.AzureAdApplication) (Application, error)
+	Update(ctx context.Context, resource v1alpha1.AzureAdApplication) error
 }
 
 type Application struct {

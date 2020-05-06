@@ -19,21 +19,21 @@ type Creator interface {
 }
 
 type DefaultCreator struct {
-	Credential  v1alpha1.AzureAdCredential
+	Resource    v1alpha1.AzureAdApplication
 	Application azure.Application
 }
 
 func (c DefaultCreator) ObjectMeta(name string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:      name,
-		Namespace: c.Credential.Namespace,
+		Namespace: c.Resource.Namespace,
 		Labels:    c.Labels(),
 	}
 }
 
 func (c DefaultCreator) Labels() map[string]string {
 	return map[string]string{
-		"app":  c.Credential.Name,
+		"app":  c.Resource.Name,
 		"type": LabelType,
 	}
 }

@@ -84,7 +84,7 @@ else
 end
 
 ==Create or update cluster resources==
-azurerator -> cluster: update with newly generated KeyIds in AzureAdCredential status subresource
+azurerator -> cluster: update with newly generated KeyIds in AzureAdApplication status subresource
 
 alt resources do not exist
 	azurerator -> cluster: create secret

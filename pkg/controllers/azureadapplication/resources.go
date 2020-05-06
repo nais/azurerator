@@ -1,4 +1,4 @@
-package azureadcredential
+package azureadapplication
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (r *Reconciler) createOrUpdateResource(ctx context.Context, credential v1alpha1.AzureAdCredential, creator resourcecreator.Creator) (ctrlutil.OperationResult, error) {
+func (r *Reconciler) createOrUpdateResource(ctx context.Context, resource v1alpha1.AzureAdApplication, creator resourcecreator.Creator) (ctrlutil.OperationResult, error) {
 	spec, err := creator.Spec()
 	if err != nil {
 		return ctrlutil.OperationResultNone, fmt.Errorf("could not create spec for resource: %w", err)
@@ -24,7 +24,7 @@ func (r *Reconciler) createOrUpdateResource(ctx context.Context, credential v1al
 		return ctrlutil.OperationResultNone, fmt.Errorf("could not create mutate function for resource: %w", err)
 	}
 
-	if err := ctrl.SetControllerReference(&credential, spec.(metav1.Object), r.Scheme); err != nil {
+	if err := ctrl.SetControllerReference(&resource, spec.(metav1.Object), r.Scheme); err != nil {
 		return ctrlutil.OperationResultNone, fmt.Errorf("failed to set controller reference %w", err)
 	}
 
@@ -35,9 +35,9 @@ func (r *Reconciler) createOrUpdateResource(ctx context.Context, credential v1al
 	return res, nil
 }
 
-func (r *Reconciler) createOrUpdateSecret(ctx context.Context, credential v1alpha1.AzureAdCredential, application azure.Application) error {
-	secretCreator := secret.New(credential, application)
-	res, err := r.createOrUpdateResource(ctx, credential, secretCreator)
+func (r *Reconciler) createOrUpdateSecret(ctx context.Context, resource v1alpha1.AzureAdApplication, application azure.Application) error {
+	secretCreator := secret.New(resource, application)
+	res, err := r.createOrUpdateResource(ctx, resource, secretCreator)
 	log.Info(fmt.Sprintf("secret %s", res))
 	if err != nil {
 		return err
@@ -46,9 +46,9 @@ func (r *Reconciler) createOrUpdateSecret(ctx context.Context, credential v1alph
 }
 
 // TODO - should this be available in all namespaces for other apps?
-func (r *Reconciler) createOrUpdateConfigMap(ctx context.Context, credential v1alpha1.AzureAdCredential, application azure.Application) error {
-	configMapCreator := configmap.New(credential, application)
-	res, err := r.createOrUpdateResource(ctx, credential, configMapCreator)
+func (r *Reconciler) createOrUpdateConfigMap(ctx context.Context, resource v1alpha1.AzureAdApplication, application azure.Application) error {
+	configMapCreator := configmap.New(resource, application)
+	res, err := r.createOrUpdateResource(ctx, resource, configMapCreator)
 	log.Info(fmt.Sprintf("configMap %s", res))
 	if err != nil {
 		return err
