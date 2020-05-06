@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nais/azureator/apis/v1alpha1"
+	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
 	"github.com/yaegashi/msgraph.go/ptr"
@@ -24,14 +25,14 @@ type applicationResponse struct {
 	JwkPair       crypto.JwkPair
 }
 
-func (c client) registerApplication(ctx context.Context, resource v1alpha1.AzureAdApplication) (applicationResponse, error) {
-	key, jwkPair, err := util.GenerateNewKeyCredentialFor(resource)
+func (c client) registerApplication(tx azure.Transaction) (applicationResponse, error) {
+	key, jwkPair, err := util.GenerateNewKeyCredentialFor(tx.Resource)
 	if err != nil {
 		return applicationResponse{}, err
 	}
-	api := c.toApiApplication(ctx, resource)
-	applicationRequest := util.Application(defaultApplicationTemplate(resource)).Key(key).Api(api).Build()
-	application, err := c.graphClient.Applications().Request().Add(ctx, applicationRequest)
+	api := c.toApiApplication(tx)
+	applicationRequest := util.Application(defaultApplicationTemplate(tx.Resource)).Key(key).Api(api).Build()
+	application, err := c.graphClient.Applications().Request().Add(tx.Ctx, applicationRequest)
 	if err != nil {
 		return applicationResponse{}, fmt.Errorf("failed to register application: %w", err)
 	}
@@ -42,8 +43,8 @@ func (c client) registerApplication(ctx context.Context, resource v1alpha1.Azure
 	}, nil
 }
 
-func (c client) deleteApplication(ctx context.Context, resource v1alpha1.AzureAdApplication) error {
-	if err := c.graphClient.Applications().ID(resource.Status.ObjectId).Request().Delete(ctx); err != nil {
+func (c client) deleteApplication(tx azure.Transaction) error {
+	if err := c.graphClient.Applications().ID(tx.Resource.Status.ObjectId).Request().Delete(tx.Ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	return nil
@@ -58,9 +59,9 @@ func (c client) setApplicationIdentifierUri(ctx context.Context, application msg
 	return nil
 }
 
-func (c client) toApiApplication(ctx context.Context, resource v1alpha1.AzureAdApplication) *msgraph.APIApplication {
+func (c client) toApiApplication(tx azure.Transaction) *msgraph.APIApplication {
 	oAuth2DefaultAccessScopeId := uuid.New()
-	preAuthorizedApplications := c.mapToPreAuthorizedApplications(ctx, resource, oAuth2DefaultAccessScopeId)
+	preAuthorizedApplications := c.mapToPreAuthorizedApplications(tx, oAuth2DefaultAccessScopeId)
 	return &msgraph.APIApplication{
 		AcceptMappedClaims:          ptr.Bool(true),
 		RequestedAccessTokenVersion: ptr.Int(2),
@@ -76,25 +77,25 @@ func (c client) updateApplication(ctx context.Context, id string, application *m
 	return nil
 }
 
-func (c client) applicationExists(ctx context.Context, resource v1alpha1.AzureAdApplication) (bool, error) {
-	applications, err := c.getAllApplications(ctx, util.FilterByName(resource.GetUniqueName()))
+func (c client) applicationExists(tx azure.Transaction) (bool, error) {
+	applications, err := c.getAllApplications(tx.Ctx, util.FilterByName(tx.Resource.GetUniqueName()))
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
 	return len(applications) > 0, nil
 }
 
-func (c client) getApplicationById(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.Application, error) {
-	objectId := resource.Status.ObjectId
-	application, err := c.graphClient.Applications().ID(objectId).Request().Get(ctx)
+func (c client) getApplicationById(tx azure.Transaction) (msgraph.Application, error) {
+	objectId := tx.Resource.Status.ObjectId
+	application, err := c.graphClient.Applications().ID(objectId).Request().Get(tx.Ctx)
 	if err != nil {
 		return msgraph.Application{}, fmt.Errorf("failed to lookup azure application with ID '%s'", objectId)
 	}
 	return *application, nil
 }
 
-func (c client) getApplicationByName(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.Application, error) {
-	return c.getApplicationByStringName(ctx, resource.GetUniqueName())
+func (c client) getApplicationByName(tx azure.Transaction) (msgraph.Application, error) {
+	return c.getApplicationByStringName(tx.Ctx, tx.Resource.GetUniqueName())
 }
 
 func (c client) getApplicationByStringName(ctx context.Context, name string) (msgraph.Application, error) {

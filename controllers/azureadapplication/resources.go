@@ -1,10 +1,8 @@
 package azureadapplication
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/resourcecreator"
 	"github.com/nais/azureator/pkg/resourcecreator/configmap"
@@ -14,7 +12,7 @@ import (
 	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (r *Reconciler) createOrUpdateResource(ctx context.Context, resource v1alpha1.AzureAdApplication, creator resourcecreator.Creator) (ctrlutil.OperationResult, error) {
+func (r *Reconciler) createOrUpdateResource(tx transaction, creator resourcecreator.Creator) (ctrlutil.OperationResult, error) {
 	spec, err := creator.Spec()
 	if err != nil {
 		return ctrlutil.OperationResultNone, fmt.Errorf("could not create spec for resource: %w", err)
@@ -24,20 +22,20 @@ func (r *Reconciler) createOrUpdateResource(ctx context.Context, resource v1alph
 		return ctrlutil.OperationResultNone, fmt.Errorf("could not create mutate function for resource: %w", err)
 	}
 
-	if err := ctrl.SetControllerReference(&resource, spec.(metav1.Object), r.Scheme); err != nil {
+	if err := ctrl.SetControllerReference(tx.resource, spec.(metav1.Object), r.Scheme); err != nil {
 		return ctrlutil.OperationResultNone, fmt.Errorf("failed to set controller reference %w", err)
 	}
 
-	res, err := ctrl.CreateOrUpdate(ctx, r.Client, spec, mutateFn)
+	res, err := ctrl.CreateOrUpdate(tx.ctx, r.Client, spec, mutateFn)
 	if err != nil {
 		return ctrlutil.OperationResultNone, err
 	}
 	return res, nil
 }
 
-func (r *Reconciler) createOrUpdateSecret(ctx context.Context, resource v1alpha1.AzureAdApplication, application azure.Application) error {
-	secretCreator := secret.New(resource, application)
-	res, err := r.createOrUpdateResource(ctx, resource, secretCreator)
+func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Application) error {
+	secretCreator := secret.New(*tx.resource, application)
+	res, err := r.createOrUpdateResource(tx, secretCreator)
 	log.Info(fmt.Sprintf("secret %s", res))
 	if err != nil {
 		return err
@@ -46,9 +44,9 @@ func (r *Reconciler) createOrUpdateSecret(ctx context.Context, resource v1alpha1
 }
 
 // TODO - should this be available in all namespaces for other apps?
-func (r *Reconciler) createOrUpdateConfigMap(ctx context.Context, resource v1alpha1.AzureAdApplication, application azure.Application) error {
-	configMapCreator := configmap.New(resource, application)
-	res, err := r.createOrUpdateResource(ctx, resource, configMapCreator)
+func (r *Reconciler) createOrUpdateConfigMap(tx transaction, application azure.Application) error {
+	configMapCreator := configmap.New(*tx.resource, application)
+	res, err := r.createOrUpdateResource(tx, configMapCreator)
 	log.Info(fmt.Sprintf("configMap %s", res))
 	if err != nil {
 		return err

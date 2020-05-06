@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
@@ -39,23 +38,23 @@ func New(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
 }
 
 // Create registers a new AAD application with all the required accompanying resources
-func (c client) Create(ctx context.Context, resource v1alpha1.AzureAdApplication) (azure.Application, error) {
-	applicationResponse, err := c.registerApplication(ctx, resource)
+func (c client) Create(tx azure.Transaction) (azure.Application, error) {
+	applicationResponse, err := c.registerApplication(tx)
 	if err != nil {
 		return azure.Application{}, err
 	}
-	servicePrincipal, err := c.registerServicePrincipal(ctx, applicationResponse.Application)
+	servicePrincipal, err := c.registerServicePrincipal(tx.Ctx, applicationResponse.Application)
 	if err != nil {
 		return azure.Application{}, err
 	}
-	if err := c.registerOAuth2PermissionGrants(ctx, servicePrincipal); err != nil {
+	if err := c.registerOAuth2PermissionGrants(tx.Ctx, servicePrincipal); err != nil {
 		return azure.Application{}, err
 	}
-	passwordCredential, err := c.addPasswordCredential(ctx, *applicationResponse.Application.ID)
+	passwordCredential, err := c.addPasswordCredential(tx.Ctx, *applicationResponse.Application.ID)
 	if err != nil {
 		return azure.Application{}, err
 	}
-	if err := c.setApplicationIdentifierUri(ctx, applicationResponse.Application); err != nil {
+	if err := c.setApplicationIdentifierUri(tx.Ctx, applicationResponse.Application); err != nil {
 		return azure.Application{}, err
 	}
 	return azure.Application{
@@ -78,20 +77,20 @@ func (c client) Create(ctx context.Context, resource v1alpha1.AzureAdApplication
 }
 
 // Delete deletes the specified AAD application.
-func (c client) Delete(ctx context.Context, resource v1alpha1.AzureAdApplication) error {
-	exists, err := c.Exists(ctx, resource)
+func (c client) Delete(tx azure.Transaction) error {
+	exists, err := c.Exists(tx)
 	if err != nil {
 		return err
 	}
 	if exists {
-		return c.deleteApplication(ctx, resource)
+		return c.deleteApplication(tx)
 	}
-	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", resource.GetUniqueName(), resource.Status.ClientId, resource.Status.ObjectId)
+	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", tx.Resource.GetUniqueName(), tx.Resource.Status.ClientId, tx.Resource.Status.ObjectId)
 }
 
 // Exists returns an indication of whether the application exists in AAD or not
-func (c client) Exists(ctx context.Context, resource v1alpha1.AzureAdApplication) (bool, error) {
-	exists, err := c.applicationExists(ctx, resource)
+func (c client) Exists(tx azure.Transaction) (bool, error) {
+	exists, err := c.applicationExists(tx)
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
@@ -99,11 +98,11 @@ func (c client) Exists(ctx context.Context, resource v1alpha1.AzureAdApplication
 }
 
 // Get returns a Graph API Application entity, which represents an Application in AAD
-func (c client) Get(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.Application, error) {
-	if len(resource.Status.ObjectId) == 0 {
-		return c.getApplicationByName(ctx, resource)
+func (c client) Get(tx azure.Transaction) (msgraph.Application, error) {
+	if len(tx.Resource.Status.ObjectId) == 0 {
+		return c.getApplicationByName(tx)
 	}
-	return c.getApplicationById(ctx, resource)
+	return c.getApplicationById(tx)
 }
 
 // GetByName returns a Graph API Application entity given the displayName, which represents in Application in AAD
@@ -112,15 +111,15 @@ func (c client) GetByName(ctx context.Context, name string) (msgraph.Application
 }
 
 // Rotate rotates credentials for an existing AAD application
-func (c client) Rotate(ctx context.Context, resource v1alpha1.AzureAdApplication) (azure.Application, error) {
-	clientId := resource.Status.ClientId
-	objectId := resource.Status.ObjectId
+func (c client) Rotate(tx azure.Transaction) (azure.Application, error) {
+	clientId := tx.Resource.Status.ClientId
+	objectId := tx.Resource.Status.ObjectId
 
-	passwordCredential, err := c.rotatePasswordCredential(ctx, resource)
+	passwordCredential, err := c.rotatePasswordCredential(tx)
 	if err != nil {
 		return azure.Application{}, err
 	}
-	keyCredential, jwkPair, err := c.rotateKeyCredential(ctx, resource)
+	keyCredential, jwkPair, err := c.rotateKeyCredential(tx)
 	if err != nil {
 		return azure.Application{}, err
 	}
@@ -145,17 +144,17 @@ func (c client) Rotate(ctx context.Context, resource v1alpha1.AzureAdApplication
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation
-func (c client) Update(ctx context.Context, resource v1alpha1.AzureAdApplication) error {
-	objectId := resource.Status.ObjectId
-	app := util.UpdateApplicationTemplate(resource)
-	if err := c.updateApplication(ctx, objectId, app); err != nil {
+func (c client) Update(tx azure.Transaction) error {
+	objectId := tx.Resource.Status.ObjectId
+	app := util.UpdateApplicationTemplate(tx.Resource)
+	if err := c.updateApplication(tx.Ctx, objectId, app); err != nil {
 		return err
 	}
-	sp, err := c.upsertServicePrincipal(ctx, resource)
+	sp, err := c.upsertServicePrincipal(tx)
 	if err != nil {
 		return err
 	}
-	if err := c.upsertOAuth2PermissionGrants(ctx, sp); err != nil {
+	if err := c.upsertOAuth2PermissionGrants(tx.Ctx, sp); err != nil {
 		return err
 	}
 	return nil

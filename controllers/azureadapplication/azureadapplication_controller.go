@@ -21,6 +21,18 @@ type Reconciler struct {
 	ClusterName string
 }
 
+type transaction struct {
+	ctx      context.Context
+	resource *naisiov1alpha1.AzureAdApplication
+}
+
+func (t transaction) toAzureTx() azure.Transaction {
+	return azure.Transaction{
+		Ctx:      t.ctx,
+		Resource: *t.resource,
+	}
+}
+
 var log logr.Logger
 
 // +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications,verbs=get;list;watch;create;update;patch;delete
@@ -40,15 +52,20 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	AzureAdApplication.SetClusterName(r.ClusterName)
 	log.Info("processing AzureAdApplication...", "AzureAdApplication", AzureAdApplication)
 
+	tx := transaction{
+		ctx,
+		&AzureAdApplication,
+	}
+
 	// examine DeletionTimestamp to determine if object is under deletion
 	if AzureAdApplication.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, register finalizer if it doesn't exist
-		if err := r.registerFinalizer(ctx, &AzureAdApplication); err != nil {
+		if err := r.registerFinalizer(tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to register finalizer: %w", err)
 		}
 	} else {
 		// The object is being deleted
-		if err := r.processFinalizer(ctx, &AzureAdApplication); err != nil {
+		if err := r.processFinalizer(tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to process finalizer: %w", err)
 		}
 		// Stop reconciliation as the item is being deleted
@@ -65,7 +82,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.process(ctx, &AzureAdApplication); err != nil {
+	if err := r.process(tx); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to process Azure application: %w", err)
 	}
 	return ctrl.Result{}, nil
@@ -77,43 +94,43 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *Reconciler) process(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication) error {
-	application, err := r.createOrUpdateAzureApp(ctx, resource)
+func (r *Reconciler) process(tx transaction) error {
+	application, err := r.createOrUpdateAzureApp(tx)
 	if err != nil {
-		resource.SetStatusRetrying()
-		if err := r.updateStatusSubresource(ctx, resource); err != nil {
+		tx.resource.SetStatusRetrying()
+		if err := r.updateStatusSubresource(tx); err != nil {
 			return err
 		}
 		return err
 	}
 	log.Info("successfully synchronized AzureAdApplication with Azure")
-	if err := r.createOrUpdateSecret(ctx, *resource, application); err != nil {
+	if err := r.createOrUpdateSecret(tx, application); err != nil {
 		return fmt.Errorf("failed to create or update secret: %w", err)
 	}
-	if err := r.createOrUpdateConfigMap(ctx, *resource, application); err != nil {
+	if err := r.createOrUpdateConfigMap(tx, application); err != nil {
 		return fmt.Errorf("failed to create or update configMap: %w", err)
 	}
-	if err := r.updateStatus(ctx, resource, application); err != nil {
+	if err := r.updateStatus(tx, application); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *Reconciler) createOrUpdateAzureApp(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication) (azure.Application, error) {
+func (r *Reconciler) createOrUpdateAzureApp(tx transaction) (azure.Application, error) {
 	var application azure.Application
 
-	exists, err := r.AzureClient.Exists(ctx, *resource)
+	exists, err := r.AzureClient.Exists(tx.toAzureTx())
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
 
 	if exists {
-		application, err = r.update(ctx, resource)
+		application, err = r.update(tx)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to update azure application: %w", err)
 		}
 	} else {
-		application, err = r.create(ctx, resource)
+		application, err = r.create(tx)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to create azure application: %w", err)
 		}
@@ -122,19 +139,19 @@ func (r *Reconciler) createOrUpdateAzureApp(ctx context.Context, resource *naisi
 }
 
 // Update AzureAdApplication.Status
-func (r *Reconciler) updateStatus(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication, application azure.Application) error {
-	resource.SetCertificateKeyId(application.CertificateKeyId)
-	resource.SetPasswordKeyId(application.PasswordKeyId)
-	resource.SetClientId(application.ClientId)
-	resource.SetObjectId(application.ObjectId)
-	resource.SetStatusProvisioned()
+func (r *Reconciler) updateStatus(tx transaction, application azure.Application) error {
+	tx.resource.SetCertificateKeyId(application.CertificateKeyId)
+	tx.resource.SetPasswordKeyId(application.PasswordKeyId)
+	tx.resource.SetClientId(application.ClientId)
+	tx.resource.SetObjectId(application.ObjectId)
+	tx.resource.SetStatusProvisioned()
 
-	if err := resource.CalculateAndSetHash(); err != nil {
+	if err := tx.resource.CalculateAndSetHash(); err != nil {
 		return err
 	}
-	if err := r.updateStatusSubresource(ctx, resource); err != nil {
+	if err := r.updateStatusSubresource(tx); err != nil {
 		return err
 	}
-	log.Info("status subresource successfully updated", "AzureAdApplicationStatus", resource.Status)
+	log.Info("status subresource successfully updated", "AzureAdApplicationStatus", tx.resource.Status)
 	return nil
 }

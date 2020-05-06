@@ -1,32 +1,29 @@
 package azureadapplication
 
 import (
-	"context"
-
-	naisiov1alpha1 "github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 )
 
-func (r *Reconciler) update(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication) (azure.Application, error) {
-	if err := r.ensureStatusIsValid(ctx, resource); err != nil {
+func (r *Reconciler) update(tx transaction) (azure.Application, error) {
+	if err := r.ensureStatusIsValid(tx); err != nil {
 		return azure.Application{}, err
 	}
-	if err := r.updateAzureApplication(ctx, resource); err != nil {
+	if err := r.updateAzureApplication(tx); err != nil {
 		return azure.Application{}, err
 	}
-	resource.SetStatusRotate()
-	if err := r.updateStatusSubresource(ctx, resource); err != nil {
+	tx.resource.SetStatusRotate()
+	if err := r.updateStatusSubresource(tx); err != nil {
 		return azure.Application{}, err
 	}
-	return r.rotateAzureCredentials(ctx, resource)
+	return r.rotateAzureCredentials(tx)
 }
 
-func (r *Reconciler) updateAzureApplication(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication) error {
+func (r *Reconciler) updateAzureApplication(tx transaction) error {
 	log.Info("Azure application already exists, updating...")
-	return r.AzureClient.Update(ctx, *resource)
+	return r.AzureClient.Update(tx.toAzureTx())
 }
 
-func (r *Reconciler) rotateAzureCredentials(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication) (azure.Application, error) {
+func (r *Reconciler) rotateAzureCredentials(tx transaction) (azure.Application, error) {
 	log.Info("rotating credentials for Azure application...")
-	return r.AzureClient.Rotate(ctx, *resource)
+	return r.AzureClient.Rotate(tx.toAzureTx())
 }

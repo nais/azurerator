@@ -6,28 +6,28 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nais/azureator/apis/v1alpha1"
+	"github.com/nais/azureator/pkg/azure"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-func (c client) rotatePasswordCredential(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.PasswordCredential, error) {
-	app, err := c.Get(ctx, resource)
+func (c client) rotatePasswordCredential(tx azure.Transaction) (msgraph.PasswordCredential, error) {
+	app, err := c.Get(tx)
 	if err != nil {
 		return msgraph.PasswordCredential{}, err
 	}
-	newCred, err := c.addPasswordCredential(ctx, *app.ID)
+	newCred, err := c.addPasswordCredential(tx.Ctx, *app.ID)
 	if err != nil {
 		return msgraph.PasswordCredential{}, err
 	}
 	for _, cred := range app.PasswordCredentials {
 		keyId := string(*cred.KeyID)
 		isNewCredKeyId := keyId == string(*newCred.KeyID)
-		isPreviousKeyId := keyId == resource.Status.PasswordKeyId
+		isPreviousKeyId := keyId == tx.Resource.Status.PasswordKeyId
 		if isPreviousKeyId || isNewCredKeyId {
 			continue
 		}
-		if err := c.removePasswordCredential(ctx, *app.ID, cred.KeyID); err != nil {
+		if err := c.removePasswordCredential(tx.Ctx, *app.ID, cred.KeyID); err != nil {
 			return msgraph.PasswordCredential{}, err
 		}
 	}

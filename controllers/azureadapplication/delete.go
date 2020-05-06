@@ -1,21 +1,18 @@
 package azureadapplication
 
 import (
-	"context"
 	"fmt"
-
-	naisiov1alpha1 "github.com/nais/azureator/apis/v1alpha1"
 )
 
 // Clean up / delete all associated resources, both internal and external
 
-func (r *Reconciler) delete(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication) error {
-	return r.deleteAzureApplication(ctx, resource)
+func (r *Reconciler) delete(tx transaction) error {
+	return r.deleteAzureApplication(tx)
 }
 
-func (r *Reconciler) deleteAzureApplication(ctx context.Context, resource *naisiov1alpha1.AzureAdApplication) error {
+func (r *Reconciler) deleteAzureApplication(tx transaction) error {
 	log.Info("deleting Azure application...")
-	exists, err := r.AzureClient.Exists(ctx, *resource)
+	exists, err := r.AzureClient.Exists(tx.toAzureTx())
 	if err != nil {
 		return err
 	}
@@ -23,10 +20,10 @@ func (r *Reconciler) deleteAzureApplication(ctx context.Context, resource *naisi
 		log.Info("Azure application does not exist - skipping deletion")
 		return nil
 	}
-	if err := r.ensureStatusIsValid(ctx, resource); err != nil {
+	if err := r.ensureStatusIsValid(tx); err != nil {
 		return err
 	}
-	if err := r.AzureClient.Delete(ctx, *resource); err != nil {
+	if err := r.AzureClient.Delete(tx.toAzureTx()); err != nil {
 		return fmt.Errorf("failed to delete Azure application: %w", err)
 	}
 	log.Info("Azure application successfully deleted")

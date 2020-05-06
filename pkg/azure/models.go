@@ -9,13 +9,18 @@ import (
 )
 
 type Client interface {
-	Create(ctx context.Context, resource v1alpha1.AzureAdApplication) (Application, error)
-	Delete(ctx context.Context, resource v1alpha1.AzureAdApplication) error
-	Exists(ctx context.Context, resource v1alpha1.AzureAdApplication) (bool, error)
-	Get(ctx context.Context, resource v1alpha1.AzureAdApplication) (msgraph.Application, error)
+	Create(tx Transaction) (Application, error)
+	Delete(tx Transaction) error
+	Exists(tx Transaction) (bool, error)
+	Get(tx Transaction) (msgraph.Application, error)
 	GetByName(ctx context.Context, name string) (msgraph.Application, error)
-	Rotate(ctx context.Context, resource v1alpha1.AzureAdApplication) (Application, error)
-	Update(ctx context.Context, resource v1alpha1.AzureAdApplication) error
+	Rotate(tx Transaction) (Application, error)
+	Update(tx Transaction) error
+}
+
+type Transaction struct {
+	Ctx      context.Context
+	Resource v1alpha1.AzureAdApplication
 }
 
 type Application struct {
