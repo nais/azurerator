@@ -8,22 +8,23 @@ func (r *Reconciler) update(tx transaction) (azure.Application, error) {
 	if err := r.ensureStatusIsValid(tx); err != nil {
 		return azure.Application{}, err
 	}
-	if err := r.updateAzureApplication(tx); err != nil {
+	app, err := r.updateAzureApplication(tx)
+	if err != nil {
 		return azure.Application{}, err
 	}
 	tx.resource.SetStatusRotate()
 	if err := r.updateStatusSubresource(tx); err != nil {
 		return azure.Application{}, err
 	}
-	return r.rotateAzureCredentials(tx)
+	return r.rotateAzureCredentials(tx, app)
 }
 
-func (r *Reconciler) updateAzureApplication(tx transaction) error {
+func (r *Reconciler) updateAzureApplication(tx transaction) (azure.Application, error) {
 	log.Info("Azure application already exists, updating...")
 	return r.AzureClient.Update(tx.toAzureTx())
 }
 
-func (r *Reconciler) rotateAzureCredentials(tx transaction) (azure.Application, error) {
+func (r *Reconciler) rotateAzureCredentials(tx transaction, app azure.Application) (azure.Application, error) {
 	log.Info("rotating credentials for Azure application...")
-	return r.AzureClient.Rotate(tx.toAzureTx())
+	return r.AzureClient.Rotate(tx.toAzureTx(), app)
 }

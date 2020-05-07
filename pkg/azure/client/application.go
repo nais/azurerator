@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
@@ -60,12 +59,11 @@ func (c client) setApplicationIdentifierUri(ctx context.Context, application msg
 }
 
 func (c client) toApiApplication(tx azure.Transaction) *msgraph.APIApplication {
-	oAuth2DefaultAccessScopeId := uuid.New()
-	preAuthorizedApplications := c.mapToPreAuthorizedApplications(tx, oAuth2DefaultAccessScopeId)
+	preAuthorizedApplications := c.createPreAuthAppsMsGraph(tx)
 	return &msgraph.APIApplication{
 		AcceptMappedClaims:          ptr.Bool(true),
 		RequestedAccessTokenVersion: ptr.Int(2),
-		Oauth2PermissionScopes:      toPermissionScopes(oAuth2DefaultAccessScopeId),
+		Oauth2PermissionScopes:      toPermissionScopes(),
 		PreAuthorizedApplications:   preAuthorizedApplications,
 	}
 }
@@ -108,6 +106,20 @@ func (c client) getApplicationByStringName(ctx context.Context, name string) (ms
 	}
 	if len(applications) > 1 {
 		return msgraph.Application{}, fmt.Errorf("found more than one azure application with name '%s'", name)
+	}
+	return applications[0], nil
+}
+
+func (c client) getApplicationByClientId(ctx context.Context, clientId string) (msgraph.Application, error) {
+	applications, err := c.getAllApplications(ctx, util.FilterByAppId(clientId))
+	if err != nil {
+		return msgraph.Application{}, err
+	}
+	if len(applications) == 0 {
+		return msgraph.Application{}, fmt.Errorf("could not find azure application with clientId '%s'", clientId)
+	}
+	if len(applications) > 1 {
+		return msgraph.Application{}, fmt.Errorf("found more than one azure application with clientId '%s'", clientId)
 	}
 	return applications[0], nil
 }

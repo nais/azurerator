@@ -57,6 +57,10 @@ func (c client) Create(tx azure.Transaction) (azure.Application, error) {
 	if err := c.setApplicationIdentifierUri(tx.Ctx, applicationResponse.Application); err != nil {
 		return azure.Application{}, err
 	}
+	preAuthApps, err := c.mapPreAuthAppsWithNames(tx.Ctx, applicationResponse.Application)
+	if err != nil {
+		return azure.Application{}, err
+	}
 	return azure.Application{
 		Credentials: azure.Credentials{
 			Public: azure.Public{
@@ -69,10 +73,11 @@ func (c client) Create(tx azure.Transaction) (azure.Application, error) {
 				Jwk:          applicationResponse.JwkPair.Private,
 			},
 		},
-		ClientId:         *applicationResponse.Application.AppID,
-		ObjectId:         *applicationResponse.Application.ID,
-		PasswordKeyId:    string(*passwordCredential.KeyID),
-		CertificateKeyId: string(*applicationResponse.KeyCredential.KeyID),
+		ClientId:          *applicationResponse.Application.AppID,
+		ObjectId:          *applicationResponse.Application.ID,
+		PasswordKeyId:     string(*passwordCredential.KeyID),
+		CertificateKeyId:  string(*applicationResponse.KeyCredential.KeyID),
+		PreAuthorizedApps: preAuthApps,
 	}, nil
 }
 
@@ -111,9 +116,8 @@ func (c client) GetByName(ctx context.Context, name string) (msgraph.Application
 }
 
 // Rotate rotates credentials for an existing AAD application
-func (c client) Rotate(tx azure.Transaction) (azure.Application, error) {
+func (c client) Rotate(tx azure.Transaction, app azure.Application) (azure.Application, error) {
 	clientId := tx.Resource.Status.ClientId
-	objectId := tx.Resource.Status.ObjectId
 
 	passwordCredential, err := c.rotatePasswordCredential(tx)
 	if err != nil {
@@ -124,38 +128,48 @@ func (c client) Rotate(tx azure.Transaction) (azure.Application, error) {
 		return azure.Application{}, err
 	}
 
-	return azure.Application{
-		Credentials: azure.Credentials{
-			Public: azure.Public{
-				ClientId: clientId,
-				Jwk:      jwkPair.Public,
-			},
-			Private: azure.Private{
-				ClientId:     clientId,
-				ClientSecret: *passwordCredential.SecretText,
-				Jwk:          jwkPair.Private,
-			},
+	app.Credentials = azure.Credentials{
+		Public: azure.Public{
+			ClientId: clientId,
+			Jwk:      jwkPair.Public,
 		},
-		ClientId:         clientId,
-		ObjectId:         objectId,
-		CertificateKeyId: string(*keyCredential.KeyID),
-		PasswordKeyId:    string(*passwordCredential.KeyID),
-	}, nil
+		Private: azure.Private{
+			ClientId:     clientId,
+			ClientSecret: *passwordCredential.SecretText,
+			Jwk:          jwkPair.Private,
+		},
+	}
+	app.CertificateKeyId = string(*keyCredential.KeyID)
+	app.PasswordKeyId = string(*passwordCredential.KeyID)
+	return app, nil
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation
-func (c client) Update(tx azure.Transaction) error {
+// TODO - update and return preauthorizedapps
+func (c client) Update(tx azure.Transaction) (azure.Application, error) {
+	clientId := tx.Resource.Status.ClientId
 	objectId := tx.Resource.Status.ObjectId
-	app := util.UpdateApplicationTemplate(tx.Resource)
+
+	// TODO - update other metadata for application?
+	uri := util.IdentifierUri(tx.Resource.Status.ClientId)
+	app := util.EmptyApplication().IdentifierUri(uri).Build()
 	if err := c.updateApplication(tx.Ctx, objectId, app); err != nil {
-		return err
+		return azure.Application{}, err
 	}
 	sp, err := c.upsertServicePrincipal(tx)
 	if err != nil {
-		return err
+		return azure.Application{}, err
 	}
 	if err := c.upsertOAuth2PermissionGrants(tx.Ctx, sp); err != nil {
-		return err
+		return azure.Application{}, err
 	}
-	return nil
+	preAuthApps, err := c.updatePreAuthApps(tx)
+	if err != nil {
+		return azure.Application{}, err
+	}
+	return azure.Application{
+		ClientId:          clientId,
+		ObjectId:          objectId,
+		PreAuthorizedApps: preAuthApps,
+	}, nil
 }

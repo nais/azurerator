@@ -14,8 +14,8 @@ type Client interface {
 	Exists(tx Transaction) (bool, error)
 	Get(tx Transaction) (msgraph.Application, error)
 	GetByName(ctx context.Context, name string) (msgraph.Application, error)
-	Rotate(tx Transaction) (Application, error)
-	Update(tx Transaction) error
+	Rotate(tx Transaction, app Application) (Application, error)
+	Update(tx Transaction) (Application, error)
 }
 
 type Transaction struct {
@@ -24,11 +24,12 @@ type Transaction struct {
 }
 
 type Application struct {
-	Credentials      Credentials `json:"credentials"`
-	ClientId         string      `json:"clientId"`
-	ObjectId         string      `json:"objectId"`
-	CertificateKeyId string      `json:"certificateKeyId"`
-	PasswordKeyId    string      `json:"passwordKeyId"`
+	Credentials       Credentials        `json:"credentials"`
+	ClientId          string             `json:"clientId"`
+	ObjectId          string             `json:"objectId"`
+	CertificateKeyId  string             `json:"certificateKeyId"`
+	PasswordKeyId     string             `json:"passwordKeyId"`
+	PreAuthorizedApps []PreAuthorizedApp `json:"preAuthorizedApps"`
 }
 
 type Credentials struct {
@@ -45,4 +46,9 @@ type Private struct {
 	ClientId     string          `json:"clientId"`
 	ClientSecret string          `json:"clientSecret"`
 	Jwk          jose.JSONWebKey `json:"jwk"`
+}
+
+type PreAuthorizedApp struct {
+	Name     string `json:"name"`
+	ClientId string `json:"clientId"`
 }

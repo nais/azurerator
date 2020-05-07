@@ -1,6 +1,7 @@
 package configmap
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/nais/azureator/apis/v1alpha1"
@@ -49,10 +50,16 @@ func (c Creator) Name() string {
 func (c Creator) toConfigMapData() (map[string]string, error) {
 	jwkJson, err := c.Application.Credentials.Public.Jwk.MarshalJSON()
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal public JWK: %w", err)
+		return nil, fmt.Errorf("failed to marshal public JWK: %w", err)
+	}
+	// TODO - more user friendly format?
+	preAuthAppsJson, err := json.Marshal(c.Application.PreAuthorizedApps)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal preauthorized apps: %w", err)
 	}
 	return map[string]string{
-		"clientId": c.Application.Credentials.Public.ClientId,
-		"jwk":      string(jwkJson),
+		"clientId":          c.Application.Credentials.Public.ClientId,
+		"jwk":               string(jwkJson),
+		"preAuthorizedApps": string(preAuthAppsJson),
 	}, nil
 }
