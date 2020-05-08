@@ -24,12 +24,14 @@ type Reconciler struct {
 type transaction struct {
 	ctx      context.Context
 	resource *naisiov1alpha1.AzureAdApplication
+	log      logr.Logger
 }
 
 func (t transaction) toAzureTx() azure.Transaction {
 	return azure.Transaction{
 		Ctx:      t.ctx,
 		Resource: *t.resource,
+		Log:      t.log,
 	}
 }
 
@@ -55,6 +57,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	tx := transaction{
 		ctx,
 		&AzureAdApplication,
+		log,
 	}
 
 	// examine DeletionTimestamp to determine if object is under deletion

@@ -64,6 +64,7 @@ func (c client) createPreAuthAppsMsGraph(tx azure.Transaction) ([]msgraph.PreAut
 			return nil, fmt.Errorf("failed to lookup existence of pre-authorized app (clientId '%s', name '%s'): %w", app.ClientId, app.Name, err)
 		}
 		if !exists {
+			tx.Log.Info(fmt.Sprintf("pre-authorized app (clientId '%s', name '%s') does not exist, skipping assignment...", app.ClientId, app.Name))
 			continue
 		}
 		clientId, err := c.getClientId(tx.Ctx, app)
