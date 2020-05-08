@@ -21,14 +21,17 @@ type preAuthAppApi struct {
 
 func (c client) updatePreAuthApps(tx azure.Transaction) ([]azure.PreAuthorizedApp, error) {
 	objectId := tx.Resource.Status.ObjectId
-	preAuthApps := c.createPreAuthAppsMsGraph(tx)
+	preAuthApps, err := c.createPreAuthAppsMsGraph(tx)
+	if err != nil {
+		return nil, err
+	}
 	app := &struct {
 		msgraph.DirectoryObject
 		API preAuthAppApi `json:"api"`
 	}{API: preAuthAppApi{PreAuthorizedApplications: preAuthApps}}
 	appReq := c.graphClient.Applications().ID(objectId).Request()
 	if err := appReq.JSONRequest(tx.Ctx, "PATCH", "", app, nil); err != nil {
-		return nil, fmt.Errorf("failed to update preauthorized apps in azure: %w", err)
+		return nil, fmt.Errorf("failed to update pre-authorized apps in azure: %w", err)
 	}
 	api := &msgraph.APIApplication{PreAuthorizedApplications: preAuthApps}
 	return c.mapPreAuthAppsWithNames(tx.Ctx, *util.EmptyApplication().Api(api).Build())
@@ -40,19 +43,32 @@ func (c client) getClientId(ctx context.Context, app v1alpha1.AzureAdPreAuthoriz
 	}
 	azureApp, err := c.GetByName(ctx, app.Name)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to fetch pre-authorized application from Azure")
 	}
 	return *azureApp.AppID, nil
 }
 
-func (c client) createPreAuthAppsMsGraph(tx azure.Transaction) []msgraph.PreAuthorizedApplication {
+func (c client) preAuthAppExists(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (bool, error) {
+	if len(app.ClientId) == 0 {
+		return c.applicationExistsByFilter(ctx, util.FilterByName(app.Name))
+	} else {
+		return c.applicationExistsByFilter(ctx, util.FilterByAppId(app.ClientId))
+	}
+}
+
+func (c client) createPreAuthAppsMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
 	preAuthorizedApplications := make([]msgraph.PreAuthorizedApplication, 0)
 	for _, app := range tx.Resource.Spec.PreAuthorizedApplications {
+		exists, err := c.preAuthAppExists(tx.Ctx, app)
+		if err != nil {
+			return nil, fmt.Errorf("failed to lookup existence of pre-authorized app (clientId '%s', name '%s'): %w", app.ClientId, app.Name, err)
+		}
+		if !exists {
+			continue
+		}
 		clientId, err := c.getClientId(tx.Ctx, app)
 		if err != nil {
-			// TODO - currently best effort. should separate between technical and functional (e.g. app doesnt exist in AAD) errors
-			fmt.Printf("%v\n", err)
-			continue
+			return nil, err
 		}
 		preAuthorizedApplication := msgraph.PreAuthorizedApplication{
 			AppID:                  &clientId,
@@ -60,7 +76,7 @@ func (c client) createPreAuthAppsMsGraph(tx azure.Transaction) []msgraph.PreAuth
 		}
 		preAuthorizedApplications = append(preAuthorizedApplications, preAuthorizedApplication)
 	}
-	return preAuthorizedApplications
+	return preAuthorizedApplications, nil
 }
 
 func (c client) mapPreAuthAppsWithNames(ctx context.Context, app msgraph.Application) ([]azure.PreAuthorizedApp, error) {

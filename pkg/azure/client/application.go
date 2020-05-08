@@ -29,7 +29,10 @@ func (c client) registerApplication(tx azure.Transaction) (applicationResponse, 
 	if err != nil {
 		return applicationResponse{}, err
 	}
-	api := c.toApiApplication(tx)
+	api, err := c.toApiApplication(tx)
+	if err != nil {
+		return applicationResponse{}, err
+	}
 	applicationRequest := util.Application(defaultApplicationTemplate(tx.Resource)).Key(key).Api(api).Build()
 	application, err := c.graphClient.Applications().Request().Add(tx.Ctx, applicationRequest)
 	if err != nil {
@@ -58,14 +61,17 @@ func (c client) setApplicationIdentifierUri(ctx context.Context, application msg
 	return nil
 }
 
-func (c client) toApiApplication(tx azure.Transaction) *msgraph.APIApplication {
-	preAuthorizedApplications := c.createPreAuthAppsMsGraph(tx)
+func (c client) toApiApplication(tx azure.Transaction) (*msgraph.APIApplication, error) {
+	preAuthorizedApplications, err := c.createPreAuthAppsMsGraph(tx)
+	if err != nil {
+		return nil, err
+	}
 	return &msgraph.APIApplication{
 		AcceptMappedClaims:          ptr.Bool(true),
 		RequestedAccessTokenVersion: ptr.Int(2),
 		Oauth2PermissionScopes:      toPermissionScopes(),
 		PreAuthorizedApplications:   preAuthorizedApplications,
-	}
+	}, nil
 }
 
 func (c client) updateApplication(ctx context.Context, id string, application *msgraph.Application) error {
@@ -76,7 +82,12 @@ func (c client) updateApplication(ctx context.Context, id string, application *m
 }
 
 func (c client) applicationExists(tx azure.Transaction) (bool, error) {
-	applications, err := c.getAllApplications(tx.Ctx, util.FilterByName(tx.Resource.GetUniqueName()))
+	name := tx.Resource.GetUniqueName()
+	return c.applicationExistsByFilter(tx.Ctx, util.FilterByName(name))
+}
+
+func (c client) applicationExistsByFilter(ctx context.Context, filter string) (bool, error) {
+	applications, err := c.getAllApplications(ctx, filter)
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
