@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
@@ -52,7 +53,6 @@ func (c client) removePasswordCredential(ctx context.Context, appId string, keyI
 	return nil
 }
 
-// TODO - validity, unique displayname
 func addPasswordRequest() *msgraph.ApplicationAddPasswordRequestParameter {
 	startDateTime := time.Now()
 	endDateTime := time.Now().AddDate(1, 0, 0)
@@ -62,7 +62,7 @@ func addPasswordRequest() *msgraph.ApplicationAddPasswordRequestParameter {
 			StartDateTime: &startDateTime,
 			EndDateTime:   &endDateTime,
 			KeyID:         &keyId,
-			DisplayName:   ptr.String("azurerator"),
+			DisplayName:   ptr.String(util.DisplayName()),
 		},
 	}
 }

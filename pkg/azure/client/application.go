@@ -25,7 +25,7 @@ type applicationResponse struct {
 }
 
 func (c client) registerApplication(tx azure.Transaction) (applicationResponse, error) {
-	key, jwkPair, err := util.GenerateNewKeyCredentialFor(tx.Resource)
+	key, jwkPair, err := generateNewKeyCredentialFor(tx.Resource)
 	if err != nil {
 		return applicationResponse{}, err
 	}

@@ -3,9 +3,12 @@ package client
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
+	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
@@ -13,7 +16,7 @@ import (
 // There should always be two active keys available at any given time so that running applications are not interfered with.
 func (c client) rotateKeyCredential(tx azure.Transaction) (msgraph.KeyCredential, crypto.JwkPair, error) {
 	existingKeyCredential, err := c.getExistingKeyCredential(tx)
-	keyCredential, jwkPair, err := util.GenerateNewKeyCredentialFor(tx.Resource)
+	keyCredential, jwkPair, err := generateNewKeyCredentialFor(tx.Resource)
 	if err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, err
 	}
@@ -36,4 +39,25 @@ func (c client) getExistingKeyCredential(tx azure.Transaction) (msgraph.KeyCrede
 		}
 	}
 	return msgraph.KeyCredential{}, fmt.Errorf("failed to find application key matching the previous key ID in Status field")
+}
+
+func generateNewKeyCredentialFor(resource v1alpha1.AzureAdApplication) (msgraph.KeyCredential, crypto.JwkPair, error) {
+	jwkPair, err := crypto.GenerateJwkPair(resource)
+	if err != nil {
+		return msgraph.KeyCredential{}, crypto.JwkPair{}, fmt.Errorf("failed to generate JWK pair for application: %w", err)
+	}
+	newKeyCredential := toKeyCredential(jwkPair)
+	return newKeyCredential, jwkPair, nil
+}
+
+func toKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCredential {
+	keyId := msgraph.UUID(uuid.New().String())
+	keyBase64 := msgraph.Binary(jwkPair.PublicPem)
+	return msgraph.KeyCredential{
+		KeyID:       &keyId,
+		DisplayName: ptr.String(util.DisplayName()),
+		Type:        ptr.String("AsymmetricX509Cert"),
+		Usage:       ptr.String("Verify"),
+		Key:         &keyBase64,
+	}
 }

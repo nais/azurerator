@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/nais/azureator/apis/v1alpha1"
 )
@@ -37,4 +38,8 @@ func FilterByAppId(clientId string) string {
 
 func FilterByClientId(clientId string) string {
 	return fmt.Sprintf("clientId eq '%s'", clientId)
+}
+
+func DisplayName() string {
+	return fmt.Sprintf("azurerator-%s", time.Now().UTC().Format(time.RFC3339))
 }

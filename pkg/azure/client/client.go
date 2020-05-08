@@ -145,7 +145,6 @@ func (c client) Rotate(tx azure.Transaction, app azure.Application) (azure.Appli
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation
-// TODO - update and return preauthorizedapps
 func (c client) Update(tx azure.Transaction) (azure.Application, error) {
 	clientId := tx.Resource.Status.ClientId
 	objectId := tx.Resource.Status.ObjectId
