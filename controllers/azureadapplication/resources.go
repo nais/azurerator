@@ -43,7 +43,6 @@ func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Appl
 	return nil
 }
 
-// TODO - should this be available in all namespaces for other apps?
 func (r *Reconciler) createOrUpdateConfigMap(tx transaction, application azure.Application) error {
 	configMapCreator := configmap.New(*tx.resource, application)
 	res, err := r.createOrUpdateResource(tx, configMapCreator)

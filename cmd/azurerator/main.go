@@ -9,11 +9,13 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client"
 	"github.com/nais/azureator/pkg/config"
+	azureMetrics "github.com/nais/azureator/pkg/metrics"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	naisiov1alpha1 "github.com/nais/azureator/apis/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -25,6 +27,13 @@ var (
 )
 
 func init() {
+	metrics.Registry.MustRegister(
+		azureMetrics.AzureAppConfigMapsTotal,
+		azureMetrics.AzureAppSecretsTotal,
+		azureMetrics.AzureAppsTotal,
+		azureMetrics.AzureAppsProcessedCount,
+	)
+
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = naisiov1alpha1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
@@ -60,8 +69,6 @@ func run() error {
 		Scheme:             scheme,
 		MetricsBindAddress: cfg.MetricsAddr,
 		Port:               9443,
-		LeaderElection:     cfg.EnableLeaderElection,
-		LeaderElectionID:   "43d2b63b.nais.io",
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
@@ -82,6 +89,12 @@ func run() error {
 		return fmt.Errorf("unable to create controller: %w", err)
 	}
 	// +kubebuilder:scaffold:builder
+
+	metrics.Registry.MustRegister()
+
+	setupLog.Info("starting metrics refresh goroutine")
+	clusterMetrics := azureMetrics.New(mgr.GetClient(), log)
+	go clusterMetrics.Refresh(context.Background())
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

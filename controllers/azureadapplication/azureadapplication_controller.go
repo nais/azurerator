@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	naisiov1alpha1 "github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
+	azureMetrics "github.com/nais/azureator/pkg/metrics"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,6 +89,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if err := r.process(tx); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to process Azure application: %w", err)
 	}
+	azureMetrics.AzureAppsProcessedCount.Inc()
 	return ctrl.Result{}, nil
 }
 
@@ -143,6 +145,7 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction) (azure.Application, 
 
 // Update AzureAdApplication.Status
 func (r *Reconciler) updateStatus(tx transaction, application azure.Application) error {
+	log.Info("updating status for AzureAdApplication")
 	tx.resource.SetCertificateKeyId(application.CertificateKeyId)
 	tx.resource.SetPasswordKeyId(application.PasswordKeyId)
 	tx.resource.SetClientId(application.ClientId)
