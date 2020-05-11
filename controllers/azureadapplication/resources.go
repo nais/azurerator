@@ -35,6 +35,7 @@ func (r *Reconciler) createOrUpdateResource(tx transaction, creator resourcecrea
 
 func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Application) error {
 	secretCreator := secret.New(*tx.resource, application)
+	log.Info(fmt.Sprintf("processing secret with name '%s'...", secretCreator.Name()))
 	res, err := r.createOrUpdateResource(tx, secretCreator)
 	log.Info(fmt.Sprintf("secret %s", res))
 	if err != nil {
@@ -45,6 +46,7 @@ func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Appl
 
 func (r *Reconciler) createOrUpdateConfigMap(tx transaction, application azure.Application) error {
 	configMapCreator := configmap.New(*tx.resource, application)
+	log.Info(fmt.Sprintf("processing configMap with name '%s'...", configMapCreator.Name()))
 	res, err := r.createOrUpdateResource(tx, configMapCreator)
 	log.Info(fmt.Sprintf("configMap %s", res))
 	if err != nil {

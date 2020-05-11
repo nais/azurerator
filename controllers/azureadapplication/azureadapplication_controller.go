@@ -87,6 +87,10 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	if err := r.process(tx); err != nil {
+		tx.resource.SetStatusRetrying()
+		if err := r.updateStatusSubresource(tx); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to process and set status to retrying: %w", err)
+		}
 		return ctrl.Result{}, fmt.Errorf("failed to process Azure application: %w", err)
 	}
 	azureMetrics.AzureAppsProcessedCount.Inc()
@@ -102,13 +106,8 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *Reconciler) process(tx transaction) error {
 	application, err := r.createOrUpdateAzureApp(tx)
 	if err != nil {
-		tx.resource.SetStatusRetrying()
-		if err := r.updateStatusSubresource(tx); err != nil {
-			return err
-		}
 		return err
 	}
-	log.Info("successfully synchronized AzureAdApplication with Azure")
 	if err := r.createOrUpdateSecret(tx, application); err != nil {
 		return fmt.Errorf("failed to create or update secret: %w", err)
 	}
@@ -140,6 +139,7 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction) (azure.Application, 
 			return azure.Application{}, fmt.Errorf("failed to create azure application: %w", err)
 		}
 	}
+	log.Info("successfully synchronized AzureAdApplication with Azure")
 	return application, nil
 }
 
