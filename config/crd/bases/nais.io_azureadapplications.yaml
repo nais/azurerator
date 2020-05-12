@@ -109,6 +109,10 @@ spec:
                 from one state to another
               format: date-time
               type: string
+            servicePrincipalId:
+              description: ServicePrincipalId is the Azure applications service principal
+                object ID
+              type: string
             upToDate:
               description: UpToDate denotes whether the provisioning of the AzureAdApplication
                 has been successfully completed or not
@@ -119,6 +123,7 @@ spec:
           - objectId
           - passwordKeyId
           - provisionState
+          - servicePrincipalId
           - upToDate
           type: object
       type: object

@@ -64,6 +64,8 @@ type AzureAdApplicationStatus struct {
 	ClientId string `json:"clientId"`
 	// ObjectId is the Azure AD Application object ID
 	ObjectId string `json:"objectId"`
+	// ServicePrincipalId is the Azure applications service principal object ID
+	ServicePrincipalId string `json:"servicePrincipalId"`
 }
 
 type ProvisionState string
@@ -130,6 +132,10 @@ func (in *AzureAdApplication) SetObjectId(id string) {
 	in.Status.ObjectId = id
 }
 
+func (in *AzureAdApplication) SetServicePrincipalId(id string) {
+	in.Status.ServicePrincipalId = id
+}
+
 func (in *AzureAdApplication) CalculateAndSetHash() error {
 	newHash, err := in.Hash()
 	if err != nil {
@@ -156,12 +162,14 @@ func (in AzureAdApplication) Hash() (string, error) {
 		SecretKeyid            string
 		ClientId               string
 		ObjectId               string
+		ServicePrincipalId     string
 	}{
 		in.Spec,
 		in.Status.CertificateKeyId,
 		in.Status.PasswordKeyId,
 		in.Status.ClientId,
 		in.Status.ObjectId,
+		in.Status.ServicePrincipalId,
 	}
 
 	marshalled, err := json.Marshal(relevantValues)

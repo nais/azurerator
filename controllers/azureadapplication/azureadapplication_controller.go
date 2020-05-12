@@ -150,6 +150,7 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.Application)
 	tx.resource.SetPasswordKeyId(application.PasswordKeyId)
 	tx.resource.SetClientId(application.ClientId)
 	tx.resource.SetObjectId(application.ObjectId)
+	tx.resource.SetServicePrincipalId(application.ServicePrincipalId)
 	tx.resource.SetStatusProvisioned()
 
 	if err := tx.resource.CalculateAndSetHash(); err != nil {

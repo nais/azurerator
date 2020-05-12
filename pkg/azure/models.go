@@ -26,12 +26,13 @@ type Transaction struct {
 }
 
 type Application struct {
-	Credentials       Credentials        `json:"credentials"`
-	ClientId          string             `json:"clientId"`
-	ObjectId          string             `json:"objectId"`
-	CertificateKeyId  string             `json:"certificateKeyId"`
-	PasswordKeyId     string             `json:"passwordKeyId"`
-	PreAuthorizedApps []PreAuthorizedApp `json:"preAuthorizedApps"`
+	Credentials        Credentials        `json:"credentials"`
+	ClientId           string             `json:"clientId"`
+	ObjectId           string             `json:"objectId"`
+	ServicePrincipalId string             `json:"servicePrincipalId"`
+	CertificateKeyId   string             `json:"certificateKeyId"`
+	PasswordKeyId      string             `json:"passwordKeyId"`
+	PreAuthorizedApps  []PreAuthorizedApp `json:"preAuthorizedApps"`
 }
 
 type Credentials struct {

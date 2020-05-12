@@ -73,11 +73,12 @@ func (c client) Create(tx azure.Transaction) (azure.Application, error) {
 				Jwk:          applicationResponse.JwkPair.Private,
 			},
 		},
-		ClientId:          *applicationResponse.Application.AppID,
-		ObjectId:          *applicationResponse.Application.ID,
-		PasswordKeyId:     string(*passwordCredential.KeyID),
-		CertificateKeyId:  string(*applicationResponse.KeyCredential.KeyID),
-		PreAuthorizedApps: preAuthApps,
+		ClientId:           *applicationResponse.Application.AppID,
+		ObjectId:           *applicationResponse.Application.ID,
+		ServicePrincipalId: *servicePrincipal.ID,
+		PasswordKeyId:      string(*passwordCredential.KeyID),
+		CertificateKeyId:   string(*applicationResponse.KeyCredential.KeyID),
+		PreAuthorizedApps:  preAuthApps,
 	}, nil
 }
 
@@ -167,8 +168,9 @@ func (c client) Update(tx azure.Transaction) (azure.Application, error) {
 		return azure.Application{}, err
 	}
 	return azure.Application{
-		ClientId:          clientId,
-		ObjectId:          objectId,
-		PreAuthorizedApps: preAuthApps,
+		ClientId:           clientId,
+		ObjectId:           objectId,
+		ServicePrincipalId: *sp.ID,
+		PreAuthorizedApps:  preAuthApps,
 	}, nil
 }
