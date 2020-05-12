@@ -147,6 +147,17 @@ func (c client) getAllApplications(ctx context.Context, filters ...string) ([]ms
 	return applications, nil
 }
 
+func (c client) getClientId(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (string, error) {
+	if len(app.ClientId) > 0 {
+		return app.ClientId, nil
+	}
+	azureApp, err := c.GetByName(ctx, app.Name)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch pre-authorized application from Azure: %w", err)
+	}
+	return *azureApp.AppID, nil
+}
+
 func defaultApplicationTemplate(resource v1alpha1.AzureAdApplication) *msgraph.Application {
 	return &msgraph.Application{
 		DisplayName:           ptr.String(resource.GetUniqueName()),

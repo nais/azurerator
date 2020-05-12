@@ -37,17 +37,6 @@ func (c client) updatePreAuthApps(tx azure.Transaction) ([]azure.PreAuthorizedAp
 	return c.mapPreAuthAppsWithNames(tx.Ctx, *util.EmptyApplication().Api(api).Build())
 }
 
-func (c client) getClientId(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (string, error) {
-	if len(app.ClientId) > 0 {
-		return app.ClientId, nil
-	}
-	azureApp, err := c.GetByName(ctx, app.Name)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch pre-authorized application from Azure")
-	}
-	return *azureApp.AppID, nil
-}
-
 func (c client) preAuthAppExists(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (bool, error) {
 	if len(app.ClientId) == 0 {
 		return c.applicationExistsByFilter(ctx, util.FilterByName(app.Name))

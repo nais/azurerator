@@ -57,6 +57,9 @@ func (c client) Create(tx azure.Transaction) (azure.Application, error) {
 	if err := c.setApplicationIdentifierUri(tx.Ctx, applicationResponse.Application); err != nil {
 		return azure.Application{}, err
 	}
+	if err := c.addAppRoleAssignments(tx, servicePrincipal); err != nil {
+		return azure.Application{}, err
+	}
 	preAuthApps, err := c.mapPreAuthAppsWithNames(tx.Ctx, applicationResponse.Application)
 	if err != nil {
 		return azure.Application{}, err
@@ -158,6 +161,12 @@ func (c client) Update(tx azure.Transaction) (azure.Application, error) {
 	}
 	sp, err := c.upsertServicePrincipal(tx)
 	if err != nil {
+		return azure.Application{}, err
+	}
+	if err := c.addAppRoleAssignments(tx, sp); err != nil {
+		return azure.Application{}, err
+	}
+	if err := c.deleteRevokedAppRoleAssignments(tx, sp); err != nil {
 		return azure.Application{}, err
 	}
 	if err := c.upsertOAuth2PermissionGrants(tx.Ctx, sp); err != nil {

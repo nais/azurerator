@@ -7,6 +7,7 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
+	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
@@ -18,11 +19,10 @@ func (c client) registerServicePrincipal(ctx context.Context, application msgrap
 	return *servicePrincipal, nil
 }
 
-func (c client) servicePrincipalExists(tx azure.Transaction) (bool, msgraphbeta.ServicePrincipal, error) {
-	clientId := tx.Resource.Status.ClientId
+func (c client) servicePrincipalExists(ctx context.Context, clientId string) (bool, msgraphbeta.ServicePrincipal, error) {
 	r := c.graphBetaClient.ServicePrincipals().Request()
 	r.Filter(util.FilterByAppId(clientId))
-	sps, err := r.GetN(tx.Ctx, 1000)
+	sps, err := r.GetN(ctx, 1000)
 	if err != nil {
 		return false, msgraphbeta.ServicePrincipal{}, fmt.Errorf("failed to lookup service principal: %w", err)
 	}
@@ -33,7 +33,8 @@ func (c client) servicePrincipalExists(tx azure.Transaction) (bool, msgraphbeta.
 }
 
 func (c client) upsertServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePrincipal, error) {
-	exists, sp, err := c.servicePrincipalExists(tx)
+	clientId := tx.Resource.Status.ClientId
+	exists, sp, err := c.servicePrincipalExists(tx.Ctx, clientId)
 	if err != nil {
 		return msgraphbeta.ServicePrincipal{}, err
 	}
@@ -48,8 +49,20 @@ func (c client) upsertServicePrincipal(tx azure.Transaction) (msgraphbeta.Servic
 	return sp, err
 }
 
+func (c client) getServicePrincipalId(ctx context.Context, clientId string) (string, error) {
+	exists, sp, err := c.servicePrincipalExists(ctx, clientId)
+	if err != nil {
+		return "", err
+	}
+	if !exists {
+		return "", fmt.Errorf("service principal does not exist for app with id '%s': %w", clientId, err)
+	}
+	return *sp.ID, nil
+}
+
 func toServicePrincipal(application msgraph.Application) *msgraphbeta.ServicePrincipal {
 	return &msgraphbeta.ServicePrincipal{
-		AppID: application.AppID,
+		AppID:                     application.AppID,
+		AppRoleAssignmentRequired: ptr.Bool(true),
 	}
 }
