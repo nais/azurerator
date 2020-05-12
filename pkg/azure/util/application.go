@@ -36,6 +36,11 @@ func (a ApplicationBuilder) IdentifierUri(uri string) ApplicationBuilder {
 	return a
 }
 
+func (a ApplicationBuilder) AppRoles(appRoles []msgraph.AppRole) ApplicationBuilder {
+	a.Application.AppRoles = appRoles
+	return a
+}
+
 func (a ApplicationBuilder) Build() *msgraph.Application {
 	return a.Application
 }

@@ -167,5 +167,8 @@ func defaultApplicationTemplate(resource v1alpha1.AzureAdApplication) *msgraph.A
 		RequiredResourceAccess: []msgraph.RequiredResourceAccess{
 			microsoftGraphResourceAccess(),
 		},
+		AppRoles: []msgraph.AppRole{
+			toApprole(DefaultAppRole),
+		},
 	}
 }
