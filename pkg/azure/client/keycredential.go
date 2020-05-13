@@ -15,7 +15,7 @@ import (
 // Generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyId).
 // There should always be two active keys available at any given time so that running applications are not interfered with.
 func (c client) rotateKeyCredential(tx azure.Transaction) (msgraph.KeyCredential, crypto.JwkPair, error) {
-	existingKeyCredential, err := c.getExistingKeyCredential(tx)
+	keys, err := c.getKeyCredentialSetInUse(tx)
 	if err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, err
 	}
@@ -23,7 +23,7 @@ func (c client) rotateKeyCredential(tx azure.Transaction) (msgraph.KeyCredential
 	if err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, err
 	}
-	keys := []msgraph.KeyCredential{keyCredential, existingKeyCredential}
+	keys = append(keys, keyCredential)
 	app := util.EmptyApplication().Keys(keys).Build()
 	if err := c.updateApplication(tx.Ctx, tx.Resource.Status.ObjectId, app); err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, fmt.Errorf("failed to update application with keycredential: %w", err)
@@ -31,24 +31,28 @@ func (c client) rotateKeyCredential(tx azure.Transaction) (msgraph.KeyCredential
 	return keyCredential, jwkPair, nil
 }
 
-func (c client) getExistingKeyCredential(tx azure.Transaction) (msgraph.KeyCredential, error) {
+// Returns a set containing the newest KeyCredential in use, or empty if none exist
+func (c client) getKeyCredentialSetInUse(tx azure.Transaction) ([]msgraph.KeyCredential, error) {
 	application, err := c.Get(tx)
 	if err != nil {
-		return msgraph.KeyCredential{}, err
+		return nil, err
 	}
-	newestCredential := application.KeyCredentials[0]
+	var newestCredential msgraph.KeyCredential
 	for _, keyCredential := range application.KeyCredentials {
+		if newestCredential.StartDateTime == nil {
+			newestCredential = keyCredential
+		}
 		if keyCredential.StartDateTime.After(*newestCredential.StartDateTime) {
 			newestCredential = keyCredential
 		}
 		if string(*keyCredential.KeyID) == tx.Resource.Status.CertificateKeyId {
-			return keyCredential, nil
+			return []msgraph.KeyCredential{keyCredential}, nil
 		}
 	}
-	if len(application.KeyCredentials) > 0 {
-		return newestCredential, nil
+	if newestCredential.StartDateTime == nil {
+		return make([]msgraph.KeyCredential, 0), nil
 	}
-	return msgraph.KeyCredential{}, fmt.Errorf("failed to find key credential for azure application")
+	return []msgraph.KeyCredential{newestCredential}, nil
 }
 
 func generateNewKeyCredentialFor(resource v1alpha1.AzureAdApplication) (msgraph.KeyCredential, crypto.JwkPair, error) {
