@@ -35,9 +35,9 @@ func (c client) rotatePasswordCredential(tx azure.Transaction) (msgraph.Password
 	return newCred, nil
 }
 
-func (c client) addPasswordCredential(ctx context.Context, objectId string) (msgraph.PasswordCredential, error) {
+func (c client) addPasswordCredential(ctx context.Context, id azure.ObjectId) (msgraph.PasswordCredential, error) {
 	requestParameter := addPasswordRequest()
-	request := c.graphClient.Applications().ID(objectId).AddPassword(requestParameter).Request()
+	request := c.graphClient.Applications().ID(id).AddPassword(requestParameter).Request()
 	response, err := request.Post(ctx)
 	if err != nil {
 		return msgraph.PasswordCredential{}, fmt.Errorf("failed to add password credentials for application: %w", err)
@@ -45,9 +45,9 @@ func (c client) addPasswordCredential(ctx context.Context, objectId string) (msg
 	return *response, nil
 }
 
-func (c client) removePasswordCredential(ctx context.Context, appId string, keyId *msgraph.UUID) error {
+func (c client) removePasswordCredential(ctx context.Context, id azure.ClientId, keyId *msgraph.UUID) error {
 	req := removePasswordRequest(keyId)
-	if err := c.graphClient.Applications().ID(appId).RemovePassword(req).Request().Post(ctx); err != nil {
+	if err := c.graphClient.Applications().ID(id).RemovePassword(req).Request().Post(ctx); err != nil {
 		return fmt.Errorf("failed to remove password credential: %w", err)
 	}
 	return nil

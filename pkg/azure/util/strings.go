@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nais/azureator/apis/v1alpha1"
+	"github.com/nais/azureator/pkg/azure"
 )
 
 func GetReplyUrlsStringSlice(resource v1alpha1.AzureAdApplication) []string {
@@ -16,11 +17,11 @@ func GetReplyUrlsStringSlice(resource v1alpha1.AzureAdApplication) []string {
 	return replyUrls
 }
 
-func IdentifierUri(id string) string {
+func IdentifierUri(id azure.ClientId) azure.IdentifierUri {
 	return fmt.Sprintf("api://%s", id)
 }
 
-func MapFiltersToFilter(filters []string) string {
+func MapFiltersToFilter(filters []azure.Filter) azure.Filter {
 	if len(filters) > 0 {
 		return strings.Join(filters[:], " ")
 	} else {
@@ -28,18 +29,18 @@ func MapFiltersToFilter(filters []string) string {
 	}
 }
 
-func FilterByName(name string) string {
+func FilterByName(name azure.DisplayName) azure.Filter {
 	return fmt.Sprintf("displayName eq '%s'", name)
 }
 
-func FilterByAppId(clientId string) string {
+func FilterByAppId(clientId azure.ClientId) azure.Filter {
 	return fmt.Sprintf("appId eq '%s'", clientId)
 }
 
-func FilterByClientId(clientId string) string {
+func FilterByClientId(clientId azure.ClientId) azure.Filter {
 	return fmt.Sprintf("clientId eq '%s'", clientId)
 }
 
-func DisplayName() string {
+func DisplayName() azure.DisplayName {
 	return fmt.Sprintf("azurerator-%s", time.Now().UTC().Format(time.RFC3339))
 }

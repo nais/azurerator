@@ -20,5 +20,12 @@ func (r *Reconciler) ensureStatusIsValid(tx transaction) error {
 		tx.resource.Status.ClientId = *application.AppID
 		tx.resource.Status.ObjectId = *application.ID
 	}
+	if len(tx.resource.Status.ServicePrincipalId) == 0 {
+		sp, err := r.AzureClient.GetServicePrincipal(tx.toAzureTx())
+		if err != nil {
+			return fmt.Errorf("failed to get service principal for application: %w", err)
+		}
+		tx.resource.Status.ServicePrincipalId = *sp.ID
+	}
 	return nil
 }

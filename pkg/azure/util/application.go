@@ -1,6 +1,7 @@
 package util
 
 import (
+	"github.com/nais/azureator/pkg/azure"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
@@ -31,7 +32,7 @@ func (a ApplicationBuilder) Api(apiApplication *msgraph.APIApplication) Applicat
 	return a
 }
 
-func (a ApplicationBuilder) IdentifierUri(uri string) ApplicationBuilder {
+func (a ApplicationBuilder) IdentifierUri(uri azure.IdentifierUri) ApplicationBuilder {
 	a.IdentifierUris = []string{uri}
 	return a
 }

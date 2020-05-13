@@ -10,6 +10,7 @@ spec:
   preAuthorizedApplications:
     - name: myapp-frontend
     - name: some-other-app
+    - name: testapp0008
   logoutUrl: "https://localhost:3000/oauth2/logout"
   replyUrls:
     - url: "http://localhost:3000/oauth2/callback"

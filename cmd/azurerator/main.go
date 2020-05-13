@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/nais/azureator/controllers/azureadapplication"
-	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client"
+	config2 "github.com/nais/azureator/pkg/azure/config"
 	"github.com/nais/azureator/pkg/config"
 	azureMetrics "github.com/nais/azureator/pkg/metrics"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -62,7 +62,7 @@ func run() error {
 	}
 
 	config.Print([]string{
-		azure.ClientSecret,
+		config2.ClientSecret,
 	})
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{

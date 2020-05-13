@@ -29,10 +29,11 @@ func (c client) registerApplication(tx azure.Transaction) (applicationResponse, 
 	if err != nil {
 		return applicationResponse{}, err
 	}
-	api, err := c.toApiApplication(tx)
+	preAuthApps, err := c.mapToMsGraphPreAuthApps(tx)
 	if err != nil {
 		return applicationResponse{}, err
 	}
+	api := toApiApplication(preAuthApps)
 	applicationRequest := util.Application(defaultApplicationTemplate(tx.Resource)).Key(key).Api(api).Build()
 	application, err := c.graphClient.Applications().Request().Add(tx.Ctx, applicationRequest)
 	if err != nil {
@@ -61,19 +62,6 @@ func (c client) setApplicationIdentifierUri(ctx context.Context, application msg
 	return nil
 }
 
-func (c client) toApiApplication(tx azure.Transaction) (*msgraph.APIApplication, error) {
-	preAuthorizedApplications, err := c.createPreAuthAppsMsGraph(tx)
-	if err != nil {
-		return nil, err
-	}
-	return &msgraph.APIApplication{
-		AcceptMappedClaims:          ptr.Bool(true),
-		RequestedAccessTokenVersion: ptr.Int(2),
-		Oauth2PermissionScopes:      toPermissionScopes(),
-		PreAuthorizedApplications:   preAuthorizedApplications,
-	}, nil
-}
-
 func (c client) updateApplication(ctx context.Context, id string, application *msgraph.Application) error {
 	if err := c.graphClient.Applications().ID(id).Request().Update(ctx, application); err != nil {
 		return fmt.Errorf("failed to update application: %w", err)
@@ -86,7 +74,7 @@ func (c client) applicationExists(tx azure.Transaction) (bool, error) {
 	return c.applicationExistsByFilter(tx.Ctx, util.FilterByName(name))
 }
 
-func (c client) applicationExistsByFilter(ctx context.Context, filter string) (bool, error) {
+func (c client) applicationExistsByFilter(ctx context.Context, filter azure.Filter) (bool, error) {
 	applications, err := c.getAllApplications(ctx, filter)
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
@@ -103,41 +91,37 @@ func (c client) getApplicationById(tx azure.Transaction) (msgraph.Application, e
 	return *application, nil
 }
 
-func (c client) getApplicationByName(tx azure.Transaction) (msgraph.Application, error) {
-	return c.getApplicationByStringName(tx.Ctx, tx.Resource.GetUniqueName())
-}
-
-func (c client) getApplicationByStringName(ctx context.Context, name string) (msgraph.Application, error) {
+func (c client) getApplicationByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
 	applications, err := c.getAllApplications(ctx, util.FilterByName(name))
 	if err != nil {
 		return msgraph.Application{}, err
 	}
-	if len(applications) == 0 {
+	switch {
+	case len(applications) == 0:
 		return msgraph.Application{}, fmt.Errorf("could not find azure application with name '%s'", name)
-	}
-	if len(applications) > 1 {
+	case len(applications) > 1:
 		return msgraph.Application{}, fmt.Errorf("found more than one azure application with name '%s'", name)
+	default:
+		return applications[0], nil
 	}
-	return applications[0], nil
 }
 
-func (c client) getApplicationByClientId(ctx context.Context, clientId string) (msgraph.Application, error) {
-	applications, err := c.getAllApplications(ctx, util.FilterByAppId(clientId))
+func (c client) getApplicationByClientId(ctx context.Context, id azure.ClientId) (msgraph.Application, error) {
+	applications, err := c.getAllApplications(ctx, util.FilterByAppId(id))
 	if err != nil {
 		return msgraph.Application{}, err
 	}
-	if len(applications) == 0 {
-		return msgraph.Application{}, fmt.Errorf("could not find azure application with clientId '%s'", clientId)
+	switch {
+	case len(applications) == 0:
+		return msgraph.Application{}, fmt.Errorf("could not find azure application with clientId '%s'", id)
+	case len(applications) > 1:
+		return msgraph.Application{}, fmt.Errorf("found more than one azure application with clientId '%s'", id)
+	default:
+		return applications[0], nil
 	}
-	if len(applications) > 1 {
-		return msgraph.Application{}, fmt.Errorf("found more than one azure application with clientId '%s'", clientId)
-	}
-	return applications[0], nil
 }
 
-func (c client) getAllApplications(ctx context.Context, filters ...string) ([]msgraph.Application, error) {
-	var applications []msgraph.Application
-
+func (c client) getAllApplications(ctx context.Context, filters ...azure.Filter) ([]msgraph.Application, error) {
 	r := c.graphClient.Applications().Request()
 	r.Filter(util.MapFiltersToFilter(filters))
 	applications, err := r.GetN(ctx, 1000)
@@ -145,17 +129,6 @@ func (c client) getAllApplications(ctx context.Context, filters ...string) ([]ms
 		return nil, fmt.Errorf("failed to get list applications: %w", err)
 	}
 	return applications, nil
-}
-
-func (c client) getClientId(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (string, error) {
-	if len(app.ClientId) > 0 {
-		return app.ClientId, nil
-	}
-	azureApp, err := c.GetByName(ctx, app.Name)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch pre-authorized application from Azure: %w", err)
-	}
-	return *azureApp.AppID, nil
 }
 
 func defaultApplicationTemplate(resource v1alpha1.AzureAdApplication) *msgraph.Application {
@@ -179,7 +152,16 @@ func defaultApplicationTemplate(resource v1alpha1.AzureAdApplication) *msgraph.A
 			microsoftGraphResourceAccess(),
 		},
 		AppRoles: []msgraph.AppRole{
-			toApprole(DefaultAppRole),
+			defaultAppRole(),
 		},
+	}
+}
+
+func toApiApplication(preAuthApps []msgraph.PreAuthorizedApplication) *msgraph.APIApplication {
+	return &msgraph.APIApplication{
+		AcceptMappedClaims:          ptr.Bool(true),
+		RequestedAccessTokenVersion: ptr.Int(2),
+		Oauth2PermissionScopes:      toPermissionScopes(),
+		PreAuthorizedApplications:   preAuthApps,
 	}
 }

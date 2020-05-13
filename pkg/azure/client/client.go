@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
+	config2 "github.com/nais/azureator/pkg/azure/config"
 	"github.com/nais/azureator/pkg/azure/util"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/msauth"
@@ -13,12 +14,12 @@ import (
 )
 
 type client struct {
-	config          *azure.Config
+	config          *config2.Config
 	graphClient     *msgraph.GraphServiceRequestBuilder
 	graphBetaClient *msgraphbeta.GraphServiceRequestBuilder
 }
 
-func New(ctx context.Context, cfg *azure.Config) (azure.Client, error) {
+func New(ctx context.Context, cfg *config2.Config) (azure.Client, error) {
 	m := msauth.NewManager()
 	scopes := []string{msauth.DefaultMSGraphScope}
 	ts, err := m.ClientCredentialsGrant(ctx, cfg.Tenant, cfg.Auth.ClientId, cfg.Auth.ClientSecret, scopes)
@@ -43,11 +44,11 @@ func (c client) Create(tx azure.Transaction) (azure.Application, error) {
 	if err != nil {
 		return azure.Application{}, err
 	}
-	servicePrincipal, err := c.registerServicePrincipal(tx.Ctx, applicationResponse.Application)
+	servicePrincipal, err := c.registerServicePrincipal(tx.Ctx, *applicationResponse.Application.AppID)
 	if err != nil {
 		return azure.Application{}, err
 	}
-	if err := c.registerOAuth2PermissionGrants(tx.Ctx, servicePrincipal); err != nil {
+	if err := c.registerOAuth2PermissionGrants(tx.Ctx, *servicePrincipal.ID); err != nil {
 		return azure.Application{}, err
 	}
 	passwordCredential, err := c.addPasswordCredential(tx.Ctx, *applicationResponse.Application.ID)
@@ -57,10 +58,10 @@ func (c client) Create(tx azure.Transaction) (azure.Application, error) {
 	if err := c.setApplicationIdentifierUri(tx.Ctx, applicationResponse.Application); err != nil {
 		return azure.Application{}, err
 	}
-	if err := c.addAppRoleAssignments(tx, servicePrincipal); err != nil {
-		return azure.Application{}, err
+	if err := c.addAppRoleAssignments(tx, *servicePrincipal.ID); err != nil {
+		return azure.Application{}, fmt.Errorf("failed to add app role assignments: %w", err)
 	}
-	preAuthApps, err := c.mapPreAuthAppsWithNames(tx.Ctx, applicationResponse.Application)
+	preAuthApps, err := c.mapPreAuthAppsWithNames(tx.Ctx, applicationResponse.Application.API.PreAuthorizedApplications)
 	if err != nil {
 		return azure.Application{}, err
 	}
@@ -109,14 +110,31 @@ func (c client) Exists(tx azure.Transaction) (bool, error) {
 // Get returns a Graph API Application entity, which represents an Application in AAD
 func (c client) Get(tx azure.Transaction) (msgraph.Application, error) {
 	if len(tx.Resource.Status.ObjectId) == 0 {
-		return c.getApplicationByName(tx)
+		return c.GetByName(tx.Ctx, tx.Resource.GetUniqueName())
 	}
 	return c.getApplicationById(tx)
 }
 
 // GetByName returns a Graph API Application entity given the displayName, which represents in Application in AAD
-func (c client) GetByName(ctx context.Context, name string) (msgraph.Application, error) {
-	return c.getApplicationByStringName(ctx, name)
+func (c client) GetByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
+	return c.getApplicationByName(ctx, name)
+}
+
+// GetServicePrincipal returns the application's associated Graph ServicePrincipal entity, or registers and returns one if none exist for the application.
+func (c client) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePrincipal, error) {
+	clientId := tx.Resource.Status.ClientId
+	exists, sp, err := c.servicePrincipalExists(tx.Ctx, clientId)
+	if err != nil {
+		return msgraphbeta.ServicePrincipal{}, err
+	}
+	if exists {
+		return sp, nil
+	}
+	sp, err = c.registerServicePrincipal(tx.Ctx, clientId)
+	if err != nil {
+		return msgraphbeta.ServicePrincipal{}, err
+	}
+	return sp, nil
 }
 
 // Rotate rotates credentials for an existing AAD application
@@ -152,6 +170,7 @@ func (c client) Rotate(tx azure.Transaction, app azure.Application) (azure.Appli
 func (c client) Update(tx azure.Transaction) (azure.Application, error) {
 	clientId := tx.Resource.Status.ClientId
 	objectId := tx.Resource.Status.ObjectId
+	spId := tx.Resource.Status.ServicePrincipalId
 
 	// TODO - update other metadata for application?
 	uri := util.IdentifierUri(tx.Resource.Status.ClientId)
@@ -159,17 +178,10 @@ func (c client) Update(tx azure.Transaction) (azure.Application, error) {
 	if err := c.updateApplication(tx.Ctx, objectId, app); err != nil {
 		return azure.Application{}, err
 	}
-	sp, err := c.upsertServicePrincipal(tx)
-	if err != nil {
-		return azure.Application{}, err
+	if err := c.updateAppRoles(tx, spId); err != nil {
+		return azure.Application{}, fmt.Errorf("failed to update app roles: %w", err)
 	}
-	if err := c.addAppRoleAssignments(tx, sp); err != nil {
-		return azure.Application{}, err
-	}
-	if err := c.deleteRevokedAppRoleAssignments(tx, sp); err != nil {
-		return azure.Application{}, err
-	}
-	if err := c.upsertOAuth2PermissionGrants(tx.Ctx, sp); err != nil {
+	if err := c.upsertOAuth2PermissionGrants(tx); err != nil {
 		return azure.Application{}, err
 	}
 	preAuthApps, err := c.updatePreAuthApps(tx)
@@ -179,7 +191,7 @@ func (c client) Update(tx azure.Transaction) (azure.Application, error) {
 	return azure.Application{
 		ClientId:           clientId,
 		ObjectId:           objectId,
-		ServicePrincipalId: *sp.ID,
+		ServicePrincipalId: spId,
 		PreAuthorizedApps:  preAuthApps,
 	}, nil
 }
