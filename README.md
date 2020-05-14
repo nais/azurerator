@@ -105,7 +105,7 @@ These are exposed to client applications.
 
 Redirect URIs are URIs that the Authorization Server will accept as destinations when returning authentication responses (tokens) after successfully authenticating users. Often referred to as reply URLs.
 
-These are registered according to the list of URIs defined in the `AzureAdApplication` resource, i.e. `[]Spec.ReplyUrls`.
+These are registered according to the list of URIs defined in the `AzureAdApplication` resource, i.e. `[]Spec.ReplyUrl`.
 
 See <https://docs.microsoft.com/en-gb/azure/active-directory/develop/reply-url> for restrictions and limitations.
 
@@ -117,7 +117,7 @@ See <https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocol
 
 ##### Application Roles
 
-An AppRole can be used to enforce authorization in the application.
+An Application Role (AppRole) can be used to enforce authorization in the application.
 The operator automatically registers an AppRole called `access_as_application`.
 
 This enables an additional option for authorization checks for service-to-service calls,
@@ -139,11 +139,11 @@ the `AzureAdApplication` resource, with the following caveats:
 correctly reference the intended application
 - The operator will attempt to register these in a "best effort" manner.
 - Any legitimate errors will be retried, however applications that do not exist will be skipped and not registered as a pre-authorized application.
-- It is thus the user's responsibility to ensure that applications defined in the list of pre-authorized applications list are (eventually) consistent.
+- It is thus the user's responsibility to ensure that applications defined in the list of pre-authorized applications are (eventually) consistent.
 
 The operator will register and grant admin consent for the **OAuth2 permission scopes** defined previously for all pre-authorized applications registered to the application.
 
-Each pre-authorized application will also be assigned the _AppRole_ described earlier.
+Each pre-authorized application will also be assigned the **AppRole** described earlier.
 
 #### 4.1.4 Service Principal
 
@@ -190,24 +190,27 @@ the required Azure resources/configurations are in place analogously to the case
 Changes in configurable metadata such as:
 
 - `[]Spec.PreAuthorizedApplication`
-- `[]Spec.ReplyUrls`
+- `[]Spec.ReplyUrl`
 - `Spec.LogoutUrl`
 
 will result in updates to the application in Azure AD so that the desired state represented in the
 resource is consistent with the actual state in Azure AD.
 
+The associated cluster resources for the `AzureAdApplication` will also be updated accordingly.
+
 #### 4.2.1 Credential Rotation
 
-Whenever the `AzureAdApplication` resource changes, the operator will regenerate a new set of credentials and
+Whenever the `AzureAdApplication` resource changes, the operator will generate a new set of credentials and
 associate these with the application.
 
 In order to ensure zero downtime when rotating credentials, the following algorithm is used:
 
-- The newly generated set of credentials are registered to the application in Azure AD
-- The previous set of credentials as denoted in `Spec.Status.PasswordKeyId` and `Spec.Status.CertificateKeyId` will not be revoked
-- Any other key registered in Azure AD not matching these will be revoked, i.e. any key deemed to be unused
-  - The exception being there being only one set of credentials registered for the application
-- The Status subresource is updated with the identifiers for the new set of credentials
+1. If the application only has a single set of registered credentials, then these will not be revoked.
+2. The new set of credentials are registered to the application in Azure AD
+3. The previous set of credentials as denoted in `Spec.Status.PasswordKeyId` and `Spec.Status.CertificateKeyId` will not be revoked
+4. Any other key registered in Azure AD not matching either the previous nor new set will be revoked, 
+i.e. any key deemed to be unused. 
+5. The Status subresource is updated with the identifiers for the new set of credentials
 
 ### 4.3 Cluster Resources
 
@@ -228,7 +231,7 @@ A `coreV1.Configmap` with the name as defined in `Spec.ConfigMapName` is created
 
 - client ID
 - public JWK
-- a list of names and client IDs for the valid applications defined in `[]Spec.PreAuthorizedApplications`
+- a list of names and client IDs for the valid applications defined in `[]Spec.PreAuthorizedApplication`
 
 ### 4.4 Deletion
 
