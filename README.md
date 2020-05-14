@@ -5,6 +5,45 @@ Azurerator is a Kubernetes cluster operator for automated registration and lifec
 This specific implementation is tailored towards managing Azure AD applications within a single tenant for use in Web APIs,
 i.e. both application and user authentication and authorization.
 
+<!-- omit in toc -->
+## Table of Contents
+
+- [azurerator](#azurerator)
+  - [Installation](#installation)
+  - [Development](#development)
+  - [CRD](#crd)
+  - [Lifecycle](#lifecycle)
+    - [New applications](#new-applications)
+      - [Display Name](#display-name)
+      - [Authentication Platform](#authentication-platform)
+      - [(Pre-)Authorized Client Applications](#pre-authorized-client-applications)
+      - [Service Principal](#service-principal)
+      - [Delegated Permissions](#delegated-permissions)
+      - [Credentials](#credentials)
+    - [Existing applications](#existing-applications)
+      - [Credential Rotation](#credential-rotation)
+    - [Cluster Resources](#cluster-resources)
+      - [Secret](#secret)
+      - [ConfigMap](#configmap)
+    - [Deletion](#deletion)
+
+## Installation
+
+```shell script
+make install
+```
+
+## Development
+
+Set up the required environment variables as per the [config](./pkg/config/config.go) and [Azure config](./pkg/azure/config/config.go).
+
+Then, assuming you have a Kubernetes cluster running locally (e.g. using [minikube](https://github.com/kubernetes/minikube)):
+
+```shell script
+make run
+kubectl apply -f ./config/samples/AzureAdApplication.yaml
+```
+
 ## CRD
 
 The operator introduces a new Kind `AzureAdApplication` (shortname `azuread`), and acts upon changes to resources of this kind.
@@ -190,20 +229,3 @@ The operator implements a finalizer of type `finalizers.azurerator.nais.io` whic
 whenever the `AzureAdApplication` resource is deleted. 
 
 OwnerReferences for the aforementioned cluster resources are also registered and should accordingly be garbage collected by the cluster.
-
-## Installation
-
-```shell script
-make install
-```
-
-## Development
-
-Set up the required environment variables as per the [config](./pkg/config/config.go) and [Azure config](./pkg/azure/config/config.go).
-
-Then, assuming you have a Kubernetes cluster running locally (e.g. using [minikube](https://github.com/kubernetes/minikube)):
-
-```shell script
-make run
-kubectl apply -f ./config/samples/AzureAdApplication.yaml
-```
