@@ -5,14 +5,14 @@ import (
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/nais/azureator/pkg/azure/config"
+	azure "github.com/nais/azureator/pkg/azure/config"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	AzureAd     config.Config `json:"azure"`
+	AzureAd     azure.Config `json:"azure"`
 	MetricsAddr string        `json:"metrics-address"`
 	ClusterName string        `json:"cluster-name"`
 }
@@ -35,7 +35,7 @@ func init() {
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("/etc")
 
-	config.SetupFlags()
+	azure.SetupFlags()
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
 	flag.String(ClusterName, "cluster-name-not-set", "The cluster in which this application should run")
