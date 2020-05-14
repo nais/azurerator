@@ -24,6 +24,14 @@ The following is a short overview of operations performed.
 
 Applications that do not exist in Azure AD will be registered with the following configuration:
 
+#### Display Name
+
+The application in Azure AD will be assigned a display name of the following format:
+
+```
+<ClusterName>:<Namespace>:<Metadata.Name>
+```
+
 #### Authentication Platform
 
 By default, a **Web API** is registered as the authentication platform for the application, allowing for usage in _OIDC/OAuth2_ authentication flows with Azure AD.
@@ -80,9 +88,11 @@ Pre-authorized client applications define the set of client applications allowed
 [on-behalf-of flow](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) 
 to obtain access tokens intended for the application.
 
-These are registered according to the list of applications defined in the `AzureAdApplication` resource, 
-with the following caveats:
+These are registered according to the list of applications defined in `[]Spec.PreAuthorizedApplication` in 
+the `AzureAdApplication` resource, with the following caveats:
 
+- `Spec.PreAuthorizedApplication.Name` must follow the format `<ClusterName>:<Namespace>:<Metadata.Name>` in order to
+correctly reference the intended application
 - The operator will attempt to register these in a "best effort" manner.
 - Any legitimate errors will be retried, however applications that do not exist will be skipped and not registered as a pre-authorized application.
 - It is thus the user's responsibility to ensure that applications defined in the list of pre-authorized applications list are (eventually) consistent.
@@ -135,7 +145,7 @@ the required Azure resources/configurations are in place analogously to the case
 
 Changes in configurable metadata such as:
 
-- `[]Spec.PreAuthorizedApplications`
+- `[]Spec.PreAuthorizedApplication`
 - `[]Spec.ReplyUrls`
 - `Spec.LogoutUrl` 
 
