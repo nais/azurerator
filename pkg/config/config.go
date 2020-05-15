@@ -13,8 +13,8 @@ import (
 
 type Config struct {
 	AzureAd     azure.Config `json:"azure"`
-	MetricsAddr string        `json:"metrics-address"`
-	ClusterName string        `json:"cluster-name"`
+	MetricsAddr string       `json:"metrics-address"`
+	ClusterName string       `json:"cluster-name"`
 }
 
 const (

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nais/azureator/apis/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/ptr"
@@ -16,8 +15,8 @@ const (
 	DefaultAppRoleId string = "00000001-abcd-9001-0000-000000000000"
 )
 
-func (c client) addAppRoleAssignments(tx azure.Transaction, targetId azure.ServicePrincipalId) error {
-	for _, app := range tx.Resource.Spec.PreAuthorizedApplications {
+func (c client) addAppRoleAssignments(tx azure.Transaction, targetId azure.ServicePrincipalId, preAuthApps []azure.PreAuthorizedApp) error {
+	for _, app := range preAuthApps {
 		if err := c.assignAppRole(tx, targetId, app); err != nil {
 			return err
 		}
@@ -25,11 +24,11 @@ func (c client) addAppRoleAssignments(tx azure.Transaction, targetId azure.Servi
 	return nil
 }
 
-func (c client) updateAppRoles(tx azure.Transaction, targetId azure.ServicePrincipalId) error {
-	if err := c.addAppRoleAssignments(tx, targetId); err != nil {
+func (c client) updateAppRoles(tx azure.Transaction, targetId azure.ServicePrincipalId, preAuthApps []azure.PreAuthorizedApp) error {
+	if err := c.addAppRoleAssignments(tx, targetId, preAuthApps); err != nil {
 		return fmt.Errorf("failed to add app role assignments: %w", err)
 	}
-	if err := c.deleteRevokedAppRoleAssignments(tx, targetId); err != nil {
+	if err := c.deleteRevokedAppRoleAssignments(tx, targetId, preAuthApps); err != nil {
 		return fmt.Errorf("failed to delete revoked app role assignments: %w", err)
 	}
 	return nil
@@ -48,22 +47,8 @@ func (c client) appRoleAssignmentExists(tx azure.Transaction, id azure.ServicePr
 	return false, nil
 }
 
-func (c client) assignAppRole(tx azure.Transaction, targetId azure.ServicePrincipalId, app v1alpha1.AzureAdPreAuthorizedApplication) error {
-	preAuthAppExists, err := c.preAuthAppExists(tx.Ctx, app)
-	if err != nil {
-		return fmt.Errorf("failed to lookup existence of PreAuthorizedApp (clientId '%s', name '%s'): %w", app.ClientId, app.Name, err)
-	}
-	if !preAuthAppExists {
-		tx.Log.Info(fmt.Sprintf("PreAuthorizedApp (clientId '%s', name '%s') does not exist, skipping AppRole assignment...", app.ClientId, app.Name))
-		return nil
-	}
-
-	clientId, err := c.getClientIdForPreAuthorizedApp(tx.Ctx, app)
-	if err != nil {
-		return err
-	}
-
-	spExists, assigneeSp, err := c.servicePrincipalExists(tx.Ctx, clientId)
+func (c client) assignAppRole(tx azure.Transaction, targetId azure.ServicePrincipalId, app azure.PreAuthorizedApp) error {
+	spExists, assigneeSp, err := c.servicePrincipalExists(tx.Ctx, app.ClientId)
 	if err != nil {
 		return err
 	}
@@ -78,21 +63,21 @@ func (c client) assignAppRole(tx azure.Transaction, targetId azure.ServicePrinci
 		return err
 	}
 	if assignmentExists {
-		tx.Log.Info(fmt.Sprintf("AppRole already assigned to PreAuthorizedApp (clientId '%s', name '%s'), skipping assignment..", app.ClientId, app.Name))
+		tx.Log.Info(fmt.Sprintf("AppRole already assigned for PreAuthorizedApp (clientId '%s', name '%s'), skipping assignment..", app.ClientId, app.Name))
 		return nil
 	}
 
-	tx.Log.Info(fmt.Sprintf("assigning AppRole for app with id '%s' to target with id '%s'...", clientId, targetId))
+	tx.Log.Info(fmt.Sprintf("AppRole not assigned for PreAuthorizedApp (clientId '%s', name '%s'), assigning...", app.ClientId, app.Name))
 	_, err = c.graphBetaClient.ServicePrincipals().ID(targetId).AppRoleAssignedTo().Request().Add(tx.Ctx, assignment)
 	if err != nil {
-		return fmt.Errorf("failed to add AppRole assignment to service principal: %w", err)
+		return fmt.Errorf("failed to add AppRole assignment to target service principal ID '%s': %w", targetId, err)
 	}
-	tx.Log.Info(fmt.Sprintf("successfully assigned AppRole"))
+	tx.Log.Info(fmt.Sprintf("successfully assigned AppRole for PreAuthorizedApp (clientId '%s', name '%s')", app.ClientId, app.Name))
 	return nil
 }
 
 // todo - remove approles for applications removed from preauthorizedapps
-func (c client) deleteRevokedAppRoleAssignments(tx azure.Transaction, id azure.ServicePrincipalId) error {
+func (c client) deleteRevokedAppRoleAssignments(tx azure.Transaction, id azure.ServicePrincipalId, preAuthApps []azure.PreAuthorizedApp) error {
 	return nil
 }
 

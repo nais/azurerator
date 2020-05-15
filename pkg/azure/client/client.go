@@ -58,12 +58,12 @@ func (c client) Create(tx azure.Transaction) (azure.Application, error) {
 	if err := c.setApplicationIdentifierUri(tx.Ctx, applicationResponse.Application); err != nil {
 		return azure.Application{}, err
 	}
-	if err := c.addAppRoleAssignments(tx, *servicePrincipal.ID); err != nil {
-		return azure.Application{}, fmt.Errorf("failed to add app role assignments: %w", err)
-	}
 	preAuthApps, err := c.mapPreAuthAppsWithNames(tx.Ctx, applicationResponse.Application.API.PreAuthorizedApplications)
 	if err != nil {
 		return azure.Application{}, err
+	}
+	if err := c.addAppRoleAssignments(tx, *servicePrincipal.ID, preAuthApps); err != nil {
+		return azure.Application{}, fmt.Errorf("failed to add app role assignments: %w", err)
 	}
 	return azure.Application{
 		Credentials: azure.Credentials{
@@ -178,15 +178,15 @@ func (c client) Update(tx azure.Transaction) (azure.Application, error) {
 	if err := c.updateApplication(tx.Ctx, objectId, app); err != nil {
 		return azure.Application{}, err
 	}
-	if err := c.updateAppRoles(tx, spId); err != nil {
-		return azure.Application{}, fmt.Errorf("failed to update app roles: %w", err)
-	}
 	if err := c.upsertOAuth2PermissionGrants(tx); err != nil {
 		return azure.Application{}, err
 	}
 	preAuthApps, err := c.updatePreAuthApps(tx)
 	if err != nil {
 		return azure.Application{}, err
+	}
+	if err := c.updateAppRoles(tx, spId, preAuthApps); err != nil {
+		return azure.Application{}, fmt.Errorf("failed to update app roles: %w", err)
 	}
 	return azure.Application{
 		ClientId:           clientId,
