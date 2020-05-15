@@ -62,7 +62,8 @@ func (c client) Create(tx azure.Transaction) (azure.Application, error) {
 	if err != nil {
 		return azure.Application{}, err
 	}
-	if err := c.addAppRoleAssignments(tx, *servicePrincipal.ID, preAuthApps); err != nil {
+	_, err = c.addAppRoleAssignments(tx, *servicePrincipal.ID, preAuthApps)
+	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to add app role assignments: %w", err)
 	}
 	return azure.Application{
