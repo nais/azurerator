@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/util"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
@@ -85,7 +86,7 @@ func (c client) deleteRevokedAppRoleAssignments(tx azure.Transaction, id azure.S
 	if err != nil {
 		return err
 	}
-	revokedAssignments := difference(existingAssignments, desiredAssignments)
+	revokedAssignments := util.Difference(existingAssignments, desiredAssignments)
 	for _, revoked := range revokedAssignments {
 		tx.Log.Info(fmt.Sprintf("AppRole revoked for PreAuthorizedApp (servicePrincipalId '%s'), deleting assignment...", *revoked.PrincipalID))
 		err = c.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().ID(*revoked.ID).Request().Delete(tx.Ctx)
@@ -129,20 +130,4 @@ func defaultAppRole() msgraph.AppRole {
 		IsEnabled:          ptr.Bool(true),
 		Value:              ptr.String(DefaultAppRole),
 	}
-}
-
-// difference returns the elements in `a` that aren't in `b`
-// shamelessly stolen and modified from https://stackoverflow.com/a/45428032/11868133
-func difference(a []msgraphbeta.AppRoleAssignment, b []msgraphbeta.AppRoleAssignment) []msgraphbeta.AppRoleAssignment {
-	mb := make(map[msgraphbeta.UUID]struct{}, len(b))
-	for _, x := range b {
-		mb[*x.PrincipalID] = struct{}{}
-	}
-	diff := make([]msgraphbeta.AppRoleAssignment, 0)
-	for _, x := range a {
-		if _, found := mb[*x.PrincipalID]; !found {
-			diff = append(diff, x)
-		}
-	}
-	return diff
 }
