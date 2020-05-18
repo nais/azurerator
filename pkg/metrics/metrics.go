@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/nais/azureator/apis/v1alpha1"
+	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/resourcecreator"
 	"github.com/prometheus/client_golang/prometheus"
 	v1 "k8s.io/api/core/v1"

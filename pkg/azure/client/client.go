@@ -96,7 +96,7 @@ func (c client) Delete(tx azure.Transaction) error {
 	if exists {
 		return c.application().delete(tx)
 	}
-	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", tx.Resource.GetUniqueName(), tx.Resource.Status.ClientId, tx.Resource.Status.ObjectId)
+	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", tx.Instance.GetUniqueName(), tx.Instance.Status.ClientId, tx.Instance.Status.ObjectId)
 }
 
 // Exists returns an indication of whether the application exists in AAD or not
@@ -110,8 +110,8 @@ func (c client) Exists(tx azure.Transaction) (bool, error) {
 
 // Get returns a Graph API Application entity, which represents an Application in AAD
 func (c client) Get(tx azure.Transaction) (msgraph.Application, error) {
-	if len(tx.Resource.Status.ObjectId) == 0 {
-		return c.GetByName(tx.Ctx, tx.Resource.GetUniqueName())
+	if len(tx.Instance.Status.ObjectId) == 0 {
+		return c.GetByName(tx.Ctx, tx.Instance.GetUniqueName())
 	}
 	return c.application().getById(tx)
 }
@@ -123,7 +123,7 @@ func (c client) GetByName(ctx context.Context, name azure.DisplayName) (msgraph.
 
 // GetServicePrincipal returns the application's associated Graph ServicePrincipal entity, or registers and returns one if none exist for the application.
 func (c client) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePrincipal, error) {
-	clientId := tx.Resource.Status.ClientId
+	clientId := tx.Instance.Status.ClientId
 	exists, sp, err := c.servicePrincipal().exists(tx.Ctx, clientId)
 	if err != nil {
 		return msgraphbeta.ServicePrincipal{}, err
@@ -140,7 +140,7 @@ func (c client) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePr
 
 // Rotate rotates credentials for an existing AAD application
 func (c client) Rotate(tx azure.Transaction, app azure.Application) (azure.Application, error) {
-	clientId := tx.Resource.Status.ClientId
+	clientId := tx.Instance.Status.ClientId
 
 	passwordCredential, err := c.passwordCredential().rotate(tx)
 	if err != nil {
@@ -169,9 +169,9 @@ func (c client) Rotate(tx azure.Transaction, app azure.Application) (azure.Appli
 
 // Update updates an existing AAD application. Should be an idempotent operation
 func (c client) Update(tx azure.Transaction) (azure.Application, error) {
-	clientId := tx.Resource.Status.ClientId
-	objectId := tx.Resource.Status.ObjectId
-	spId := tx.Resource.Status.ServicePrincipalId
+	clientId := tx.Instance.Status.ClientId
+	objectId := tx.Instance.Status.ObjectId
+	spId := tx.Instance.Status.ServicePrincipalId
 
 	if err := c.application().identifierUri().update(tx); err != nil {
 		return azure.Application{}, err

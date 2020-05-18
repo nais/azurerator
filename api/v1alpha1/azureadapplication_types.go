@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	hash "github.com/mitchellh/hashstructure"
+	"github.com/nais/azureator/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -116,27 +117,34 @@ func (in *AzureAdApplication) SetStatusProvisioned() {
 	in.Status.ProvisionStateTime = metav1.Now()
 }
 
-func (in *AzureAdApplication) SetCertificateKeyId(keyId string) {
-	in.Status.CertificateKeyId = keyId
+func (in *AzureAdApplication) IsBeingDeleted() bool {
+	return !in.ObjectMeta.DeletionTimestamp.IsZero()
 }
 
-func (in *AzureAdApplication) SetPasswordKeyId(keyId string) {
-	in.Status.PasswordKeyId = keyId
+func (in *AzureAdApplication) HasFinalizer(finalizerName string) bool {
+	return util.ContainsString(in.ObjectMeta.Finalizers, finalizerName)
 }
 
-func (in *AzureAdApplication) SetClientId(id string) {
-	in.Status.ClientId = id
+func (in *AzureAdApplication) AddFinalizer(finalizerName string) {
+	in.ObjectMeta.Finalizers = append(in.ObjectMeta.Finalizers, finalizerName)
 }
 
-func (in *AzureAdApplication) SetObjectId(id string) {
-	in.Status.ObjectId = id
+func (in *AzureAdApplication) RemoveFinalizer(finalizerName string) {
+	in.ObjectMeta.Finalizers = util.RemoveString(in.ObjectMeta.Finalizers, finalizerName)
 }
 
-func (in *AzureAdApplication) SetServicePrincipalId(id string) {
-	in.Status.ServicePrincipalId = id
+func (in *AzureAdApplication) IsUpToDate() (bool, error) {
+	hashUnchanged, err := in.HashUnchanged()
+	if err != nil {
+		return false, err
+	}
+	if hashUnchanged && in.Status.UpToDate {
+		return true, nil
+	}
+	return false, nil
 }
 
-func (in *AzureAdApplication) CalculateAndSetHash() error {
+func (in *AzureAdApplication) UpdateHash() error {
 	newHash, err := in.Hash()
 	if err != nil {
 		return fmt.Errorf("failed to calculate application hash: %w", err)

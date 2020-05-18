@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/nais/azureator/apis/v1alpha1"
+	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
@@ -27,13 +27,13 @@ func (k keyCredential) rotate(tx azure.Transaction) (msgraph.KeyCredential, cryp
 	if err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, err
 	}
-	keyCredential, jwkPair, err := k.new(tx.Resource)
+	keyCredential, jwkPair, err := k.new(tx.Instance)
 	if err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, err
 	}
 	keys = append(keys, keyCredential)
 	app := util.EmptyApplication().Keys(keys).Build()
-	if err := k.application().update(tx.Ctx, tx.Resource.Status.ObjectId, app); err != nil {
+	if err := k.application().update(tx.Ctx, tx.Instance.Status.ObjectId, app); err != nil {
 		return msgraph.KeyCredential{}, crypto.JwkPair{}, fmt.Errorf("failed to update application with keycredential: %w", err)
 	}
 	return keyCredential, jwkPair, nil
@@ -53,7 +53,7 @@ func (k keyCredential) getSetsInUse(tx azure.Transaction) ([]msgraph.KeyCredenti
 		if keyCredential.StartDateTime.After(*newestCredential.StartDateTime) {
 			newestCredential = keyCredential
 		}
-		if string(*keyCredential.KeyID) == tx.Resource.Status.CertificateKeyId {
+		if string(*keyCredential.KeyID) == tx.Instance.Status.CertificateKeyId {
 			return []msgraph.KeyCredential{keyCredential}, nil
 		}
 	}

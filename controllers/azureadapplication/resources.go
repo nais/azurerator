@@ -15,14 +15,14 @@ import (
 func (r *Reconciler) createOrUpdateResource(tx transaction, creator resourcecreator.Creator) (ctrlutil.OperationResult, error) {
 	spec, err := creator.Spec()
 	if err != nil {
-		return ctrlutil.OperationResultNone, fmt.Errorf("could not create spec for resource: %w", err)
+		return ctrlutil.OperationResultNone, fmt.Errorf("could not create spec for instance: %w", err)
 	}
 	mutateFn, err := creator.MutateFn(spec)
 	if err != nil {
-		return ctrlutil.OperationResultNone, fmt.Errorf("could not create mutate function for resource: %w", err)
+		return ctrlutil.OperationResultNone, fmt.Errorf("could not create mutate function for instance: %w", err)
 	}
 
-	if err := ctrl.SetControllerReference(tx.resource, spec.(metav1.Object), r.Scheme); err != nil {
+	if err := ctrl.SetControllerReference(tx.instance, spec.(metav1.Object), r.Scheme); err != nil {
 		return ctrlutil.OperationResultNone, fmt.Errorf("failed to set controller reference %w", err)
 	}
 
@@ -34,7 +34,7 @@ func (r *Reconciler) createOrUpdateResource(tx transaction, creator resourcecrea
 }
 
 func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Application) error {
-	secretCreator := secret.New(*tx.resource, application)
+	secretCreator := secret.New(*tx.instance, application)
 	log.Info(fmt.Sprintf("processing secret with name '%s'...", secretCreator.Name()))
 	res, err := r.createOrUpdateResource(tx, secretCreator)
 	log.Info(fmt.Sprintf("secret %s", res))
@@ -45,7 +45,7 @@ func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Appl
 }
 
 func (r *Reconciler) createOrUpdateConfigMap(tx transaction, application azure.Application) error {
-	configMapCreator := configmap.New(*tx.resource, application)
+	configMapCreator := configmap.New(*tx.instance, application)
 	log.Info(fmt.Sprintf("processing configMap with name '%s'...", configMapCreator.Name()))
 	res, err := r.createOrUpdateResource(tx, configMapCreator)
 	log.Info(fmt.Sprintf("configMap %s", res))

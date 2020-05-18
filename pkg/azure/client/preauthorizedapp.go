@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nais/azureator/apis/v1alpha1"
+	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
@@ -28,7 +28,7 @@ func (c client) preAuthApps() preAuthApps {
 }
 
 func (p preAuthApps) update(tx azure.Transaction) ([]azure.PreAuthorizedApp, error) {
-	objectId := tx.Resource.Status.ObjectId
+	objectId := tx.Instance.Status.ObjectId
 	preAuthApps, err := p.mapToMsGraph(tx)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (p preAuthApps) exists(ctx context.Context, app v1alpha1.AzureAdPreAuthoriz
 
 func (p preAuthApps) mapToMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
 	preAuthorizedApplications := make([]msgraph.PreAuthorizedApplication, 0)
-	for _, app := range tx.Resource.Spec.PreAuthorizedApplications {
+	for _, app := range tx.Instance.Spec.PreAuthorizedApplications {
 		exists, err := p.exists(tx.Ctx, app)
 		if err != nil {
 			return nil, fmt.Errorf("failed to lookup existence of PreAuthorizedApp (clientId '%s', name '%s'): %w", app.ClientId, app.Name, err)

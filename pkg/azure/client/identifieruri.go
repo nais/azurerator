@@ -27,8 +27,8 @@ func (i identifierUri) set(ctx context.Context, application msgraph.Application)
 }
 
 func (i identifierUri) update(tx azure.Transaction) error {
-	clientId := tx.Resource.Status.ClientId
-	objectId := tx.Resource.Status.ObjectId
+	clientId := tx.Instance.Status.ClientId
+	objectId := tx.Instance.Status.ObjectId
 	uri := util.IdentifierUri(clientId)
 	app := util.EmptyApplication().IdentifierUri(uri).Build()
 	if err := i.application.update(tx.Ctx, objectId, app); err != nil {

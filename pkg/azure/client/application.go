@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nais/azureator/apis/v1alpha1"
+	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
@@ -33,7 +33,7 @@ func (c client) application() application {
 }
 
 func (a application) register(tx azure.Transaction) (applicationResponse, error) {
-	key, jwkPair, err := a.keyCredential().new(tx.Resource)
+	key, jwkPair, err := a.keyCredential().new(tx.Instance)
 	if err != nil {
 		return applicationResponse{}, err
 	}
@@ -47,7 +47,7 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 		Oauth2PermissionScopes:      a.oAuth2PermissionScopes().defaultScopes(),
 		PreAuthorizedApplications:   preAuthApps,
 	}
-	req := util.Application(a.defaultTemplate(tx.Resource)).Key(key).Api(api).Build()
+	req := util.Application(a.defaultTemplate(tx.Instance)).Key(key).Api(api).Build()
 	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
 		return applicationResponse{}, fmt.Errorf("failed to register application: %w", err)
@@ -60,7 +60,7 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 }
 
 func (a application) delete(tx azure.Transaction) error {
-	if err := a.graphClient.Applications().ID(tx.Resource.Status.ObjectId).Request().Delete(tx.Ctx); err != nil {
+	if err := a.graphClient.Applications().ID(tx.Instance.Status.ObjectId).Request().Delete(tx.Ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	return nil
@@ -74,7 +74,7 @@ func (a application) update(ctx context.Context, id string, application *msgraph
 }
 
 func (a application) exists(tx azure.Transaction) (bool, error) {
-	name := tx.Resource.GetUniqueName()
+	name := tx.Instance.GetUniqueName()
 	return a.existsByFilter(tx.Ctx, util.FilterByName(name))
 }
 
@@ -87,7 +87,7 @@ func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (b
 }
 
 func (a application) getById(tx azure.Transaction) (msgraph.Application, error) {
-	objectId := tx.Resource.Status.ObjectId
+	objectId := tx.Instance.Status.ObjectId
 	application, err := a.graphClient.Applications().ID(objectId).Request().Get(tx.Ctx)
 	if err != nil {
 		return msgraph.Application{}, fmt.Errorf("failed to lookup azure application with ID '%s'", objectId)

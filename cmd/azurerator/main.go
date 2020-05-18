@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	naisiov1alpha1 "github.com/nais/azureator/apis/v1alpha1"
+	naisiov1alpha1 "github.com/nais/azureator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -85,6 +85,7 @@ func run() error {
 		Scheme:      mgr.GetScheme(),
 		AzureClient: azureClient,
 		ClusterName: cfg.ClusterName,
+		Recorder:    mgr.GetEventRecorderFor("azurerator"),
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller: %w", err)
 	}

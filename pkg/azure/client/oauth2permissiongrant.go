@@ -30,7 +30,7 @@ func (o oAuth2PermissionGrant) add(ctx context.Context, id azure.ServicePrincipa
 func (o oAuth2PermissionGrant) exists(tx azure.Transaction) (bool, error) {
 	// For some odd reason Graph has defined 'clientId' in the oAuth2PermissionGrant resource to be the _objectId_
 	// for the ServicePrincipal when referring to the id of the ServicePrincipal granted consent...
-	clientId := tx.Resource.Status.ServicePrincipalId
+	clientId := tx.Instance.Status.ServicePrincipalId
 	r := o.graphBetaClient.Oauth2PermissionGrants().Request()
 	r.Filter(util.FilterByClientId(clientId))
 	grants, err := r.GetN(tx.Ctx, 1000)
@@ -48,7 +48,7 @@ func (o oAuth2PermissionGrant) upsert(tx azure.Transaction) error {
 	if exists {
 		return nil
 	}
-	if err := o.add(tx.Ctx, tx.Resource.Status.ServicePrincipalId); err != nil {
+	if err := o.add(tx.Ctx, tx.Instance.Status.ServicePrincipalId); err != nil {
 		return err
 	}
 	return nil

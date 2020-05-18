@@ -9,7 +9,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/nais/azureator/apis/v1alpha1"
+	"github.com/nais/azureator/api/v1alpha1"
 )
 
 func GenerateCertificate(template *x509.Certificate, keyPair KeyPair) (*x509.Certificate, error) {

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nais/azureator/apis/v1alpha1"
+	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 )
 

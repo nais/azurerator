@@ -32,7 +32,7 @@ func (p passwordCredential) rotate(tx azure.Transaction) (msgraph.PasswordCreden
 	for _, cred := range app.PasswordCredentials {
 		keyId := string(*cred.KeyID)
 		isNewCredKeyId := keyId == string(*newCred.KeyID)
-		isPreviousKeyId := keyId == tx.Resource.Status.PasswordKeyId
+		isPreviousKeyId := keyId == tx.Instance.Status.PasswordKeyId
 		if isPreviousKeyId || isNewCredKeyId {
 			continue
 		}
