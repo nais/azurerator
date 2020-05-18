@@ -12,12 +12,20 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-func (c client) rotatePasswordCredential(tx azure.Transaction) (msgraph.PasswordCredential, error) {
-	app, err := c.Get(tx)
+type passwordCredential struct {
+	client
+}
+
+func (c client) passwordCredential() passwordCredential {
+	return passwordCredential{c}
+}
+
+func (p passwordCredential) rotate(tx azure.Transaction) (msgraph.PasswordCredential, error) {
+	app, err := p.Get(tx)
 	if err != nil {
 		return msgraph.PasswordCredential{}, err
 	}
-	newCred, err := c.addPasswordCredential(tx.Ctx, *app.ID)
+	newCred, err := p.add(tx.Ctx, *app.ID)
 	if err != nil {
 		return msgraph.PasswordCredential{}, err
 	}
@@ -28,16 +36,16 @@ func (c client) rotatePasswordCredential(tx azure.Transaction) (msgraph.Password
 		if isPreviousKeyId || isNewCredKeyId {
 			continue
 		}
-		if err := c.removePasswordCredential(tx.Ctx, *app.ID, cred.KeyID); err != nil {
+		if err := p.remove(tx.Ctx, *app.ID, cred.KeyID); err != nil {
 			return msgraph.PasswordCredential{}, err
 		}
 	}
 	return newCred, nil
 }
 
-func (c client) addPasswordCredential(ctx context.Context, id azure.ObjectId) (msgraph.PasswordCredential, error) {
-	requestParameter := addPasswordRequest()
-	request := c.graphClient.Applications().ID(id).AddPassword(requestParameter).Request()
+func (p passwordCredential) add(ctx context.Context, id azure.ObjectId) (msgraph.PasswordCredential, error) {
+	requestParameter := p.toAddRequest()
+	request := p.graphClient.Applications().ID(id).AddPassword(requestParameter).Request()
 	response, err := request.Post(ctx)
 	if err != nil {
 		return msgraph.PasswordCredential{}, fmt.Errorf("failed to add password credentials for application: %w", err)
@@ -45,15 +53,15 @@ func (c client) addPasswordCredential(ctx context.Context, id azure.ObjectId) (m
 	return *response, nil
 }
 
-func (c client) removePasswordCredential(ctx context.Context, id azure.ClientId, keyId *msgraph.UUID) error {
-	req := removePasswordRequest(keyId)
-	if err := c.graphClient.Applications().ID(id).RemovePassword(req).Request().Post(ctx); err != nil {
+func (p passwordCredential) remove(ctx context.Context, id azure.ClientId, keyId *msgraph.UUID) error {
+	req := p.toRemoveRequest(keyId)
+	if err := p.graphClient.Applications().ID(id).RemovePassword(req).Request().Post(ctx); err != nil {
 		return fmt.Errorf("failed to remove password credential: %w", err)
 	}
 	return nil
 }
 
-func addPasswordRequest() *msgraph.ApplicationAddPasswordRequestParameter {
+func (p passwordCredential) toAddRequest() *msgraph.ApplicationAddPasswordRequestParameter {
 	startDateTime := time.Now()
 	endDateTime := time.Now().AddDate(1, 0, 0)
 	keyId := msgraph.UUID(uuid.New().String())
@@ -67,7 +75,7 @@ func addPasswordRequest() *msgraph.ApplicationAddPasswordRequestParameter {
 	}
 }
 
-func removePasswordRequest(keyId *msgraph.UUID) *msgraph.ApplicationRemovePasswordRequestParameter {
+func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.ApplicationRemovePasswordRequestParameter {
 	return &msgraph.ApplicationRemovePasswordRequestParameter{
 		KeyID: keyId,
 	}

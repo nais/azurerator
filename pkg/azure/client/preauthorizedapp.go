@@ -19,9 +19,17 @@ type preAuthAppApi struct {
 	PreAuthorizedApplications []msgraph.PreAuthorizedApplication `json:"preAuthorizedApplications"`
 }
 
-func (c client) updatePreAuthApps(tx azure.Transaction) ([]azure.PreAuthorizedApp, error) {
+type preAuthApps struct {
+	client
+}
+
+func (c client) preAuthApps() preAuthApps {
+	return preAuthApps{c}
+}
+
+func (p preAuthApps) update(tx azure.Transaction) ([]azure.PreAuthorizedApp, error) {
 	objectId := tx.Resource.Status.ObjectId
-	preAuthApps, err := c.mapToMsGraphPreAuthApps(tx)
+	preAuthApps, err := p.mapToMsGraph(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -29,24 +37,24 @@ func (c client) updatePreAuthApps(tx azure.Transaction) ([]azure.PreAuthorizedAp
 		msgraph.DirectoryObject
 		API preAuthAppApi `json:"api"`
 	}{API: preAuthAppApi{PreAuthorizedApplications: preAuthApps}}
-	appReq := c.graphClient.Applications().ID(objectId).Request()
+	appReq := p.graphClient.Applications().ID(objectId).Request()
 	if err := appReq.JSONRequest(tx.Ctx, "PATCH", "", app, nil); err != nil {
 		return nil, fmt.Errorf("failed to update PreAuthorizedApps in azure: %w", err)
 	}
-	return c.mapPreAuthAppsWithNames(tx.Ctx, preAuthApps)
+	return p.mapWithNames(tx.Ctx, preAuthApps)
 }
 
-func (c client) preAuthAppExists(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (bool, error) {
+func (p preAuthApps) exists(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (bool, error) {
 	if len(app.ClientId) == 0 {
-		return c.applicationExistsByFilter(ctx, util.FilterByName(app.Name))
+		return p.application().existsByFilter(ctx, util.FilterByName(app.Name))
 	}
-	return c.applicationExistsByFilter(ctx, util.FilterByAppId(app.ClientId))
+	return p.application().existsByFilter(ctx, util.FilterByAppId(app.ClientId))
 }
 
-func (c client) mapToMsGraphPreAuthApps(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
+func (p preAuthApps) mapToMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
 	preAuthorizedApplications := make([]msgraph.PreAuthorizedApplication, 0)
 	for _, app := range tx.Resource.Spec.PreAuthorizedApplications {
-		exists, err := c.preAuthAppExists(tx.Ctx, app)
+		exists, err := p.exists(tx.Ctx, app)
 		if err != nil {
 			return nil, fmt.Errorf("failed to lookup existence of PreAuthorizedApp (clientId '%s', name '%s'): %w", app.ClientId, app.Name, err)
 		}
@@ -54,7 +62,7 @@ func (c client) mapToMsGraphPreAuthApps(tx azure.Transaction) ([]msgraph.PreAuth
 			tx.Log.Info(fmt.Sprintf("PreAuthorizedApp (clientId '%s', name '%s') does not exist, skipping assignment...", app.ClientId, app.Name))
 			continue
 		}
-		clientId, err := c.getClientIdForPreAuthorizedApp(tx.Ctx, app)
+		clientId, err := p.getClientIdFor(tx.Ctx, app)
 		if err != nil {
 			return nil, err
 		}
@@ -67,10 +75,10 @@ func (c client) mapToMsGraphPreAuthApps(tx azure.Transaction) ([]msgraph.PreAuth
 	return preAuthorizedApplications, nil
 }
 
-func (c client) mapPreAuthAppsWithNames(ctx context.Context, preAuthApps []msgraph.PreAuthorizedApplication) ([]azure.PreAuthorizedApp, error) {
+func (p preAuthApps) mapWithNames(ctx context.Context, preAuthApps []msgraph.PreAuthorizedApplication) ([]azure.PreAuthorizedApp, error) {
 	a := make([]azure.PreAuthorizedApp, 0)
 	for _, preAuthApp := range preAuthApps {
-		app, err := c.getApplicationByClientId(ctx, *preAuthApp.AppID)
+		app, err := p.application().getByClientId(ctx, *preAuthApp.AppID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to map preauthorized apps with names: %w", err)
 		}
@@ -82,11 +90,11 @@ func (c client) mapPreAuthAppsWithNames(ctx context.Context, preAuthApps []msgra
 	return a, nil
 }
 
-func (c client) getClientIdForPreAuthorizedApp(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (azure.ClientId, error) {
+func (p preAuthApps) getClientIdFor(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (azure.ClientId, error) {
 	if len(app.ClientId) > 0 {
 		return app.ClientId, nil
 	}
-	azureApp, err := c.GetByName(ctx, app.Name)
+	azureApp, err := p.GetByName(ctx, app.Name)
 	if err != nil {
 		return "", fmt.Errorf("failed to get client ID for preauthorized app: %w", err)
 	}

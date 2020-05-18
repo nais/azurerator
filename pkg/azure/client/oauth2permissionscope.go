@@ -14,7 +14,15 @@ const (
 	OAuth2DefaultPermissionScopeId string = "00000000-1337-d34d-b33f-000000000000"
 )
 
-func toPermissionScopes() []msgraph.PermissionScope {
+type oAuth2PermissionScopes struct {
+	client
+}
+
+func (c client) oAuth2PermissionScopes() oAuth2PermissionScopes {
+	return oAuth2PermissionScopes{c}
+}
+
+func (o oAuth2PermissionScopes) defaultScopes() []msgraph.PermissionScope {
 	defaultAccessScopeId := msgraph.UUID(OAuth2DefaultPermissionScopeId)
 	return []msgraph.PermissionScope{
 		{

@@ -5,8 +5,16 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
+type requiredResourceAccess struct {
+	client
+}
+
+func (c client) requiredResourceAccess() requiredResourceAccess {
+	return requiredResourceAccess{c}
+}
+
 // Access to Microsoft Graph API
-func microsoftGraphResourceAccess() msgraph.RequiredResourceAccess {
+func (r requiredResourceAccess) microsoftGraph() msgraph.RequiredResourceAccess {
 	userReadScopeId := msgraph.UUID("e1fe6dd8-ba31-4d61-89e7-88639da4683d") // User.Read
 	openidScopeId := msgraph.UUID("37f7f235-527c-4136-accd-4a02d197296e")   // openid
 	return msgraph.RequiredResourceAccess{
