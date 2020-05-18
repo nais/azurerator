@@ -124,6 +124,7 @@ spec:
           required:
           - certificateKeyId
           - clientId
+          - correlationId
           - objectId
           - passwordKeyId
           - provisionState
