@@ -70,7 +70,7 @@ func (p passwordCredential) toAddRequest() *msgraph.ApplicationAddPasswordReques
 			StartDateTime: &startDateTime,
 			EndDateTime:   &endDateTime,
 			KeyID:         &keyId,
-			DisplayName:   ptr.String(util.DisplayName()),
+			DisplayName:   ptr.String(util.DisplayName(time.Now())),
 		},
 	}
 }

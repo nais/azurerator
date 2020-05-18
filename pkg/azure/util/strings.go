@@ -41,6 +41,6 @@ func FilterByClientId(clientId azure.ClientId) azure.Filter {
 	return fmt.Sprintf("clientId eq '%s'", clientId)
 }
 
-func DisplayName() azure.DisplayName {
-	return fmt.Sprintf("azurerator-%s", time.Now().UTC().Format(time.RFC3339))
+func DisplayName(t time.Time) azure.DisplayName {
+	return fmt.Sprintf("azurerator-%s", t.UTC().Format(time.RFC3339))
 }

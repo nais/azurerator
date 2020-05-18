@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/nais/azureator/api/v1alpha1"
@@ -77,7 +78,7 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCreden
 	keyBase64 := msgraph.Binary(jwkPair.PublicPem)
 	return msgraph.KeyCredential{
 		KeyID:       &keyId,
-		DisplayName: ptr.String(util.DisplayName()),
+		DisplayName: ptr.String(util.DisplayName(time.Now())),
 		Type:        ptr.String("AsymmetricX509Cert"),
 		Usage:       ptr.String("Verify"),
 		Key:         &keyBase64,
