@@ -32,25 +32,29 @@ func TestGetReplyUrlsStringSlice(t *testing.T) {
 func TestFilterByAppId(t *testing.T) {
 	p := "test"
 	actual := FilterByAppId(p)
-	assert.Equal(t, fmt.Sprintf("appId eq '%s'", p), actual)
+	expected := fmt.Sprintf("appId eq '%s'", p)
+	assert.Equal(t, expected, actual)
 }
 
 func TestFilterByClientId(t *testing.T) {
 	p := "test"
 	actual := FilterByClientId(p)
-	assert.Equal(t, fmt.Sprintf("clientId eq '%s'", p), actual)
+	expected := fmt.Sprintf("clientId eq '%s'", p)
+	assert.Equal(t, expected, actual)
 }
 
 func TestFilterByName(t *testing.T) {
 	p := "test"
 	actual := FilterByName(p)
-	assert.Equal(t, fmt.Sprintf("displayName eq '%s'", p), actual)
+	expected := fmt.Sprintf("displayName eq '%s'", p)
+	assert.Equal(t, expected, actual)
 }
 
 func TestIdentifierUri(t *testing.T) {
 	p := "some-uuid"
 	actual := IdentifierUri(p)
-	assert.Equal(t, fmt.Sprintf("api://%s", p), actual)
+	expected := fmt.Sprintf("api://%s", p)
+	assert.Equal(t, expected, actual)
 }
 
 func TestMapFiltersToFilter(t *testing.T) {
