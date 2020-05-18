@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	azureMetrics "github.com/nais/azureator/pkg/metrics"
@@ -41,12 +42,14 @@ func (t transaction) toAzureTx() azure.Transaction {
 }
 
 var log logr.Logger
+var correlationId string
 
 // +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications/status,verbs=get;update;patch
 
 func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	log = r.Log.WithValues("AzureAdApplication", req.NamespacedName)
+	correlationId = uuid.New().String()
+	log = r.Log.WithValues("AzureAdApplication", req.NamespacedName, "correlationId", correlationId)
 	ctx := context.Background()
 
 	instance := &v1alpha1.AzureAdApplication{}
@@ -57,6 +60,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	instance.SetClusterName(r.ClusterName)
+	instance.Status.CorrelationId = correlationId
 	log.Info("processing AzureAdApplication...", "AzureAdApplication", instance)
 
 	tx := transaction{

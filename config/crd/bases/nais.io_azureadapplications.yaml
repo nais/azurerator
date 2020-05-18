@@ -85,6 +85,10 @@ spec:
             clientId:
               description: ClientId is the Azure application client ID
               type: string
+            correlationId:
+              description: CorrelationId is the ID referencing the processing transaction
+                last performed on this resource
+              type: string
             objectId:
               description: ObjectId is the Azure AD Application object ID
               type: string

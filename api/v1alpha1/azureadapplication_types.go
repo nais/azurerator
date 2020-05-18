@@ -57,6 +57,8 @@ type AzureAdApplicationStatus struct {
 	ProvisionStateTime metav1.Time `json:"provisionStateTime,omitempty"`
 	// ProvisionHash is the hash of the AzureAdApplication object
 	ProvisionHash string `json:"provisionHash,omitempty"`
+	// CorrelationId is the ID referencing the processing transaction last performed on this resource
+	CorrelationId string `json:"correlationId"`
 	// PasswordKeyId is the key ID for the latest valid password credential
 	PasswordKeyId string `json:"passwordKeyId"`
 	// CertificateKeyId is the certificate ID for the latest valid certificate credential
