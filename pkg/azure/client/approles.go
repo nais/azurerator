@@ -89,20 +89,35 @@ func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServiceP
 	return *assignment, nil
 }
 
-func (a appRoleAssignments) deleteRevoked(tx azure.Transaction, id azure.ServicePrincipalId, desiredAssignments []msgraphbeta.AppRoleAssignment) error {
-	existingAssignments, err := a.getAllFor(tx.Ctx, id)
+func (a appRoleAssignments) getRevoked(tx azure.Transaction, id azure.ServicePrincipalId, desired []msgraphbeta.AppRoleAssignment) ([]msgraphbeta.AppRoleAssignment, error) {
+	existing, err := a.getAllFor(tx.Ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	revoked := util.Difference(existing, desired)
+	return revoked, nil
+}
+
+func (a appRoleAssignments) deleteRevoked(tx azure.Transaction, id azure.ServicePrincipalId, desired []msgraphbeta.AppRoleAssignment) error {
+	revoked, err := a.getRevoked(tx, id, desired)
 	if err != nil {
 		return err
 	}
-	revokedAssignments := util.Difference(existingAssignments, desiredAssignments)
-	for _, revoked := range revokedAssignments {
-		tx.Log.Info(fmt.Sprintf("AppRole revoked for PreAuthorizedApp (servicePrincipalId '%s'), deleting assignment...", *revoked.PrincipalID))
-		err = a.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().ID(*revoked.ID).Request().Delete(tx.Ctx)
-		if err != nil {
-			return fmt.Errorf("failed to delete revoked AppRole assignment: %w", err)
+	for _, r := range revoked {
+		tx.Log.Info(fmt.Sprintf("AppRole revoked for PreAuthorizedApp (servicePrincipalId '%s'), deleting assignment...", *r.PrincipalID))
+		if err := a.delete(tx, id, r); err != nil {
+			return err
 		}
-		tx.Log.Info(fmt.Sprintf("successfully deleted AppRole assignment for PreAuthorizedApp (servicePrincipalId '%s')", *revoked.PrincipalID))
 	}
+	return nil
+}
+
+func (a appRoleAssignments) delete(tx azure.Transaction, id azure.ServicePrincipalId, revoked msgraphbeta.AppRoleAssignment) error {
+	err := a.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().ID(*revoked.ID).Request().Delete(tx.Ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete revoked AppRole assignment: %w", err)
+	}
+	tx.Log.Info(fmt.Sprintf("successfully deleted AppRole assignment for PreAuthorizedApp (servicePrincipalId '%s')", *revoked.PrincipalID))
 	return nil
 }
 
