@@ -75,7 +75,6 @@ func (c client) Create(tx azure.Transaction) (azure.Application, error) {
 				Jwk:      res.JwkPair.Public,
 			},
 			Private: azure.Private{
-				ClientId:     *res.Application.AppID,
 				ClientSecret: *passwordCredential.SecretText,
 				Jwk:          res.JwkPair.Private,
 			},
@@ -159,7 +158,6 @@ func (c client) Rotate(tx azure.Transaction, app azure.Application) (azure.Appli
 			Jwk:      jwkPair.Public,
 		},
 		Private: azure.Private{
-			ClientId:     clientId,
 			ClientSecret: *passwordCredential.SecretText,
 			Jwk:          jwkPair.Private,
 		},

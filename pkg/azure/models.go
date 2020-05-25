@@ -48,7 +48,6 @@ type Public struct {
 }
 
 type Private struct {
-	ClientId     string          `json:"clientId"`
 	ClientSecret string          `json:"clientSecret"`
 	Jwk          jose.JSONWebKey `json:"jwk"`
 }

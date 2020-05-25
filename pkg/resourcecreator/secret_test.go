@@ -47,11 +47,6 @@ func TestSecretCreator(t *testing.T) {
 			assert.Equal(t, expected, secret.Type)
 		})
 
-		t.Run("Secret Data should contain Client ID", func(t *testing.T) {
-			expected := c.Application.Credentials.Private.ClientId
-			assert.Equal(t, expected, secret.StringData["clientId"])
-		})
-
 		t.Run("Secret Data should contain Client Secret", func(t *testing.T) {
 			expected := c.Application.Credentials.Private.ClientSecret
 			assert.Equal(t, expected, secret.StringData["clientSecret"])

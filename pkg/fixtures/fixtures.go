@@ -41,12 +41,11 @@ func AzureApp() azure.Application {
 	return azure.Application{
 		Credentials: azure.Credentials{
 			Public: azure.Public{
-				ClientId: "",
+				ClientId: clientId,
 				Jwk:      jwk.Public,
 			},
 			Private: azure.Private{
 				Jwk:          jwk.Private,
-				ClientId:     clientId,
 				ClientSecret: "test-secret",
 			},
 		},

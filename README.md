@@ -221,8 +221,7 @@ and other metadata that the application should use in order to authenticate itse
 
 A `coreV1.Secret` with the name as defined in `Spec.SecretName` is created, containing:
 
-- client ID
-- client secret (or password)
+- client secret (i.e. password)
 - private JWK, i.e. containing the private key
 
 #### 4.3.2 ConfigMap

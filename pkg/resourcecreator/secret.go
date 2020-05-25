@@ -52,7 +52,6 @@ func (c SecretCreator) toSecretData() (map[string]string, error) {
 		return nil, fmt.Errorf("failed to unmarshal private JWK: %w", err)
 	}
 	return map[string]string{
-		"clientId":     c.Application.Credentials.Private.ClientId,
 		"clientSecret": c.Application.Credentials.Private.ClientSecret,
 		"jwk":          string(jwkJson),
 	}, nil
