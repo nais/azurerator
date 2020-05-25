@@ -131,12 +131,10 @@ func (a appRoleAssignments) getAllFor(ctx context.Context, id azure.ServicePrinc
 
 func (a appRoleAssignments) toAssignment(target azure.ObjectId, assignee azure.ObjectId) *msgraphbeta.AppRoleAssignment {
 	appRoleId := msgraphbeta.UUID(DefaultAppRoleId)
-	principalId := msgraphbeta.UUID(assignee) // Service Principal ID for the assignee, i.e. the application that should be assigned to the app role
-	resourceId := msgraphbeta.UUID(target)    // Service Principal ID for the target resource, i.e. the application that owns the app role
 	appRoleAssignment := &msgraphbeta.AppRoleAssignment{
 		AppRoleID:   &appRoleId,
-		PrincipalID: &principalId,
-		ResourceID:  &resourceId,
+		PrincipalID: (*msgraphbeta.UUID)(&assignee), // Service Principal ID for the assignee, i.e. the application that should be assigned to the app role
+		ResourceID:  (*msgraphbeta.UUID)(&target),   // Service Principal ID for the target resource, i.e. the application that owns the app role
 	}
 	return appRoleAssignment
 }
