@@ -97,7 +97,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if err := r.process(tx); err != nil {
 		r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", "Failed to synchronize Azure application, retrying")
-		tx.instance.SetStatusRetrying()
+		tx.instance.SetNotSynchronized()
 		if err := r.updateStatusSubresource(tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to process and set status to retrying: %w", err)
 		}
@@ -167,7 +167,7 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.Application)
 	tx.instance.Status.ClientId = application.ClientId
 	tx.instance.Status.ObjectId = application.ObjectId
 	tx.instance.Status.ServicePrincipalId = application.ServicePrincipalId
-	tx.instance.SetStatusProvisioned()
+	tx.instance.SetSynchronized()
 
 	if err := tx.instance.UpdateHash(); err != nil {
 		return err

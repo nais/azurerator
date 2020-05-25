@@ -99,37 +99,26 @@ spec:
             provisionHash:
               description: ProvisionHash is the hash of the AzureAdApplication object
               type: string
-            provisionState:
-              description: ProvisionState is a one-word CamelCase machine-readable
-                representation of the current state of the object
-              enum:
-              - New
-              - Rotate
-              - Retrying
-              - Provisioned
-              type: string
-            provisionStateTime:
-              description: ProvisionStateTime is the last time the state transitioned
-                from one state to another
-              format: date-time
-              type: string
             servicePrincipalId:
               description: ServicePrincipalId is the Azure applications service principal
                 object ID
               type: string
-            upToDate:
-              description: UpToDate denotes whether the provisioning of the AzureAdApplication
+            synchronized:
+              description: Synchronized denotes whether the provisioning of the AzureAdApplication
                 has been successfully completed or not
               type: boolean
+            timestamp:
+              description: Timestamp is the last time the Status subresource was updated
+              format: date-time
+              type: string
           required:
           - certificateKeyId
           - clientId
           - correlationId
           - objectId
           - passwordKeyId
-          - provisionState
           - servicePrincipalId
-          - upToDate
+          - synchronized
           type: object
       type: object
   version: v1alpha1

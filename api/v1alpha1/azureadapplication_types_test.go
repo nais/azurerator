@@ -92,21 +92,21 @@ func TestAzureAdApplication_UpdateHash(t *testing.T) {
 }
 
 func TestAzureAdApplication_IsUpToDate(t *testing.T) {
-	t.Run("Minimal Application should not be up to date", func(t *testing.T) {
+	t.Run("Minimal Application should not be synchronized", func(t *testing.T) {
 		actual, err := minimalApplication().IsUpToDate()
 		assert.NoError(t, err)
 		assert.False(t, actual)
 	})
-	t.Run("Application should not be up to date", func(t *testing.T) {
+	t.Run("Application should not synchronized", func(t *testing.T) {
 		app := minimalApplication()
-		app.Status.UpToDate = false
+		app.Status.Synchronized = false
 		actual, err := app.IsUpToDate()
 		assert.NoError(t, err)
 		assert.False(t, actual)
 	})
-	t.Run("Application should be up to date", func(t *testing.T) {
+	t.Run("Application should be synchronized", func(t *testing.T) {
 		app := minimalApplication()
-		app.Status.UpToDate = true
+		app.Status.Synchronized = true
 		actual, err := app.IsUpToDate()
 		assert.NoError(t, err)
 		assert.True(t, actual)
@@ -116,32 +116,16 @@ func TestAzureAdApplication_IsUpToDate(t *testing.T) {
 func TestAzureAdApplication_SetStatuses(t *testing.T) {
 	app := minimalApplication()
 
-	t.Run("Set Status to New", func(t *testing.T) {
-		app.SetStatusNew()
-		assert.NotEmpty(t, app.Status.ProvisionStateTime)
-		assert.False(t, app.Status.UpToDate)
-		assert.Equal(t, New, app.Status.ProvisionState)
+	t.Run("Set Synchronized Status to false", func(t *testing.T) {
+		app.SetNotSynchronized()
+		assert.NotEmpty(t, app.Status.Timestamp)
+		assert.False(t, app.Status.Synchronized)
 	})
 
-	t.Run("Set Status to Retrying", func(t *testing.T) {
-		app.SetStatusRetrying()
-		assert.NotEmpty(t, app.Status.ProvisionStateTime)
-		assert.False(t, app.Status.UpToDate)
-		assert.Equal(t, Retrying, app.Status.ProvisionState)
-	})
-
-	t.Run("Set Status to Rotate", func(t *testing.T) {
-		app.SetStatusRotate()
-		assert.NotEmpty(t, app.Status.ProvisionStateTime)
-		assert.False(t, app.Status.UpToDate)
-		assert.Equal(t, Rotate, app.Status.ProvisionState)
-	})
-
-	t.Run("Set Status to Provisioned", func(t *testing.T) {
-		app.SetStatusProvisioned()
-		assert.NotEmpty(t, app.Status.ProvisionStateTime)
-		assert.True(t, app.Status.UpToDate)
-		assert.Equal(t, Provisioned, app.Status.ProvisionState)
+	t.Run("Set Synchronized Status to true", func(t *testing.T) {
+		app.SetSynchronized()
+		assert.NotEmpty(t, app.Status.Timestamp)
+		assert.True(t, app.Status.Synchronized)
 	})
 }
 

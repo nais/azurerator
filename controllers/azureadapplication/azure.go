@@ -8,10 +8,6 @@ import (
 
 func (r *Reconciler) create(tx transaction) (azure.Application, error) {
 	log.Info("Azure application not found, registering...")
-	tx.instance.SetStatusNew()
-	if err := r.updateStatusSubresource(tx); err != nil {
-		return azure.Application{}, err
-	}
 	return r.AzureClient.Create(tx.toAzureTx())
 }
 
@@ -26,10 +22,6 @@ func (r *Reconciler) update(tx transaction) (azure.Application, error) {
 	}
 
 	// todo - separate rotate operation?
-	tx.instance.SetStatusRotate()
-	if err := r.updateStatusSubresource(tx); err != nil {
-		return azure.Application{}, err
-	}
 	log.Info("rotating credentials for Azure application...")
 	return r.AzureClient.Rotate(tx.toAzureTx(), app)
 }

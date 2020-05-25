@@ -48,13 +48,10 @@ type AzureAdApplicationSpec struct {
 
 // AzureAdApplicationStatus defines the observed state of AzureAdApplication
 type AzureAdApplicationStatus struct {
-	// UpToDate denotes whether the provisioning of the AzureAdApplication has been successfully completed or not
-	UpToDate bool `json:"upToDate"`
-	// ProvisionState is a one-word CamelCase machine-readable representation of the current state of the object
-	// +kubebuilder:validation:Enum=New;Rotate;Retrying;Provisioned
-	ProvisionState ProvisionState `json:"provisionState"`
-	// ProvisionStateTime is the last time the state transitioned from one state to another
-	ProvisionStateTime metav1.Time `json:"provisionStateTime,omitempty"`
+	// Synchronized denotes whether the provisioning of the AzureAdApplication has been successfully completed or not
+	Synchronized bool `json:"synchronized"`
+	// Timestamp is the last time the Status subresource was updated
+	Timestamp metav1.Time `json:"timestamp,omitempty"`
 	// ProvisionHash is the hash of the AzureAdApplication object
 	ProvisionHash string `json:"provisionHash,omitempty"`
 	// CorrelationId is the ID referencing the processing transaction last performed on this resource
@@ -71,15 +68,6 @@ type AzureAdApplicationStatus struct {
 	ServicePrincipalId string `json:"servicePrincipalId"`
 }
 
-type ProvisionState string
-
-const (
-	New         ProvisionState = "New"
-	Rotate      ProvisionState = "Rotate"
-	Retrying    ProvisionState = "Retrying"
-	Provisioned ProvisionState = "Provisioned"
-)
-
 // AzureAdReplyUrl defines the valid reply URLs for callbacks after OIDC flows for this application
 type AzureAdReplyUrl struct {
 	Url string `json:"url,omitempty"`
@@ -95,28 +83,14 @@ func init() {
 	SchemeBuilder.Register(&AzureAdApplication{}, &AzureAdApplicationList{})
 }
 
-func (in *AzureAdApplication) SetStatusNew() {
-	in.Status.UpToDate = false
-	in.Status.ProvisionState = New
-	in.Status.ProvisionStateTime = metav1.Now()
+func (in *AzureAdApplication) SetNotSynchronized() {
+	in.Status.Synchronized = false
+	in.Status.Timestamp = metav1.Now()
 }
 
-func (in *AzureAdApplication) SetStatusRotate() {
-	in.Status.UpToDate = false
-	in.Status.ProvisionState = Rotate
-	in.Status.ProvisionStateTime = metav1.Now()
-}
-
-func (in *AzureAdApplication) SetStatusRetrying() {
-	in.Status.UpToDate = false
-	in.Status.ProvisionState = Retrying
-	in.Status.ProvisionStateTime = metav1.Now()
-}
-
-func (in *AzureAdApplication) SetStatusProvisioned() {
-	in.Status.UpToDate = true
-	in.Status.ProvisionState = Provisioned
-	in.Status.ProvisionStateTime = metav1.Now()
+func (in *AzureAdApplication) SetSynchronized() {
+	in.Status.Synchronized = true
+	in.Status.Timestamp = metav1.Now()
 }
 
 func (in *AzureAdApplication) IsBeingDeleted() bool {
@@ -140,7 +114,7 @@ func (in *AzureAdApplication) IsUpToDate() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if hashUnchanged && in.Status.UpToDate {
+	if hashUnchanged && in.Status.Synchronized {
 		return true, nil
 	}
 	return false, nil
