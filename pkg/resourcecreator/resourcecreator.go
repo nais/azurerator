@@ -26,14 +26,14 @@ type DefaultCreator struct {
 func (c DefaultCreator) ObjectMeta(name string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:      name,
-		Namespace: c.Resource.Namespace,
+		Namespace: c.Resource.GetNamespace(),
 		Labels:    c.Labels(),
 	}
 }
 
 func (c DefaultCreator) Labels() map[string]string {
 	return map[string]string{
-		"app":  c.Resource.Name,
+		"app":  c.Resource.GetName(),
 		"type": LabelType,
 	}
 }

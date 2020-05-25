@@ -5,8 +5,6 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/resourcecreator"
-	"github.com/nais/azureator/pkg/resourcecreator/configmap"
-	"github.com/nais/azureator/pkg/resourcecreator/secret"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -34,7 +32,7 @@ func (r *Reconciler) createOrUpdateResource(tx transaction, creator resourcecrea
 }
 
 func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Application) error {
-	secretCreator := secret.New(*tx.instance, application)
+	secretCreator := resourcecreator.NewSecret(*tx.instance, application)
 	log.Info(fmt.Sprintf("processing secret with name '%s'...", secretCreator.Name()))
 	res, err := r.createOrUpdateResource(tx, secretCreator)
 	log.Info(fmt.Sprintf("secret %s", res))
@@ -45,7 +43,7 @@ func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Appl
 }
 
 func (r *Reconciler) createOrUpdateConfigMap(tx transaction, application azure.Application) error {
-	configMapCreator := configmap.New(*tx.instance, application)
+	configMapCreator := resourcecreator.NewConfigMap(*tx.instance, application)
 	log.Info(fmt.Sprintf("processing configMap with name '%s'...", configMapCreator.Name()))
 	res, err := r.createOrUpdateResource(tx, configMapCreator)
 	log.Info(fmt.Sprintf("configMap %s", res))
