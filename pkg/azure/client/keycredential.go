@@ -48,14 +48,14 @@ func (k keyCredential) getSetsInUse(tx azure.Transaction) ([]msgraph.KeyCredenti
 	}
 	var newestCredential msgraph.KeyCredential
 	for _, keyCredential := range application.KeyCredentials {
+		if keyCredentialInUse(tx, keyCredential) {
+			return []msgraph.KeyCredential{keyCredential}, nil
+		}
 		if newestCredential.StartDateTime == nil {
 			newestCredential = keyCredential
 		}
 		if keyCredential.StartDateTime.After(*newestCredential.StartDateTime) {
 			newestCredential = keyCredential
-		}
-		if string(*keyCredential.KeyID) == tx.Instance.Status.CertificateKeyId {
-			return []msgraph.KeyCredential{keyCredential}, nil
 		}
 	}
 	if newestCredential.StartDateTime == nil {
@@ -83,4 +83,8 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCreden
 		Usage:       ptr.String("Verify"),
 		Key:         &keyBase64,
 	}
+}
+
+func keyCredentialInUse(tx azure.Transaction, key msgraph.KeyCredential) bool {
+	return string(*key.KeyID) == tx.Instance.Status.CertificateKeyId
 }
