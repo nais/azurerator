@@ -30,10 +30,7 @@ func (p passwordCredential) rotate(tx azure.Transaction) (msgraph.PasswordCreden
 		return msgraph.PasswordCredential{}, err
 	}
 	for _, cred := range app.PasswordCredentials {
-		keyId := string(*cred.KeyID)
-		isNewCredKeyId := keyId == string(*newCred.KeyID)
-		isPreviousKeyId := keyId == tx.Instance.Status.PasswordKeyId
-		if isPreviousKeyId || isNewCredKeyId {
+		if isPasswordInUse(cred, newCred, tx.Instance.Status.PasswordKeyId) {
 			continue
 		}
 		if err := p.remove(tx.Ctx, *app.ID, cred.KeyID); err != nil {
@@ -79,4 +76,11 @@ func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.Applic
 	return &msgraph.ApplicationRemovePasswordRequestParameter{
 		KeyID: keyId,
 	}
+}
+
+func isPasswordInUse(cred msgraph.PasswordCredential, new msgraph.PasswordCredential, currentId string) bool {
+	keyId := string(*cred.KeyID)
+	isNewCredKeyId := keyId == string(*new.KeyID)
+	isPreviousKeyId := keyId == currentId
+	return isPreviousKeyId || isNewCredKeyId
 }
