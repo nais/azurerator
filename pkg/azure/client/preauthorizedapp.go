@@ -52,7 +52,7 @@ func (p preAuthApps) exists(ctx context.Context, app v1alpha1.AzureAdPreAuthoriz
 }
 
 func (p preAuthApps) mapToMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
-	preAuthorizedApplications := make([]msgraph.PreAuthorizedApplication, 0)
+	apps := make([]msgraph.PreAuthorizedApplication, 0)
 	for _, app := range tx.Instance.Spec.PreAuthorizedApplications {
 		exists, err := p.exists(tx.Ctx, app)
 		if err != nil {
@@ -62,17 +62,24 @@ func (p preAuthApps) mapToMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorized
 			tx.Log.Info(fmt.Sprintf("PreAuthorizedApp (clientId '%s', name '%s') does not exist, skipping assignment...", app.ClientId, app.Name))
 			continue
 		}
-		clientId, err := p.getClientIdFor(tx.Ctx, app)
+		a, err := p.toMsGraph(tx, app)
 		if err != nil {
 			return nil, err
 		}
-		preAuthorizedApplication := msgraph.PreAuthorizedApplication{
-			AppID:                  &clientId,
-			DelegatedPermissionIDs: []string{OAuth2DefaultPermissionScopeId},
-		}
-		preAuthorizedApplications = append(preAuthorizedApplications, preAuthorizedApplication)
+		apps = append(apps, a)
 	}
-	return preAuthorizedApplications, nil
+	return apps, nil
+}
+
+func (p preAuthApps) toMsGraph(tx azure.Transaction, app v1alpha1.AzureAdPreAuthorizedApplication) (msgraph.PreAuthorizedApplication, error) {
+	clientId, err := p.getClientIdFor(tx.Ctx, app)
+	if err != nil {
+		return msgraph.PreAuthorizedApplication{}, err
+	}
+	return msgraph.PreAuthorizedApplication{
+		AppID:                  &clientId,
+		DelegatedPermissionIDs: []string{OAuth2DefaultPermissionScopeId},
+	}, nil
 }
 
 func (p preAuthApps) mapWithNames(ctx context.Context, preAuthApps []msgraph.PreAuthorizedApplication) ([]azure.PreAuthorizedApp, error) {
