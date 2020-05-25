@@ -128,7 +128,7 @@ func (a application) getByClientId(ctx context.Context, id azure.ClientId) (msgr
 func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msgraph.Application, error) {
 	r := a.graphClient.Applications().Request()
 	r.Filter(util.MapFiltersToFilter(filters))
-	applications, err := r.GetN(ctx, 1000)
+	applications, err := r.GetN(ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get list applications: %w", err)
 	}

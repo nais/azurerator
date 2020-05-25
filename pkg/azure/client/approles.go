@@ -107,7 +107,7 @@ func (a appRoleAssignments) deleteRevoked(tx azure.Transaction, id azure.Service
 }
 
 func (a appRoleAssignments) getAllFor(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
-	assignments, err := a.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().Request().GetN(ctx, 10000)
+	assignments, err := a.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().Request().GetN(ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup AppRoleAssignments for service principal: %w", err)
 	}

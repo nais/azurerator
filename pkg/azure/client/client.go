@@ -12,6 +12,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const MaxNumberOfPagesToFetch = 1000
+
 type client struct {
 	config          *config2.Config
 	graphClient     *msgraph.GraphServiceRequestBuilder

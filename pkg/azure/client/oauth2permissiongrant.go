@@ -33,7 +33,7 @@ func (o oAuth2PermissionGrant) exists(tx azure.Transaction) (bool, error) {
 	clientId := tx.Instance.Status.ServicePrincipalId
 	r := o.graphBetaClient.Oauth2PermissionGrants().Request()
 	r.Filter(util.FilterByClientId(clientId))
-	grants, err := r.GetN(tx.Ctx, 1000)
+	grants, err := r.GetN(tx.Ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
 		return false, fmt.Errorf("failed to lookup oauth2 permission grants: %w", err)
 	}

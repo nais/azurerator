@@ -29,7 +29,7 @@ func (s servicePrincipal) register(ctx context.Context, id azure.ClientId) (msgr
 func (s servicePrincipal) exists(ctx context.Context, id azure.ClientId) (bool, msgraphbeta.ServicePrincipal, error) {
 	r := s.graphBetaClient.ServicePrincipals().Request()
 	r.Filter(util.FilterByAppId(id))
-	sps, err := r.GetN(ctx, 1000)
+	sps, err := r.GetN(ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
 		return false, msgraphbeta.ServicePrincipal{}, fmt.Errorf("failed to lookup service principal: %w", err)
 	}
@@ -42,7 +42,7 @@ func (s servicePrincipal) exists(ctx context.Context, id azure.ClientId) (bool, 
 func (s servicePrincipal) getWithFilter(ctx context.Context, filter azure.Filter) ([]msgraphbeta.ServicePrincipal, error) {
 	r := s.graphBetaClient.ServicePrincipals().Request()
 	r.Filter(filter)
-	sps, err := r.GetN(ctx, 1000)
+	sps, err := r.GetN(ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
 		return []msgraphbeta.ServicePrincipal{}, fmt.Errorf("failed to lookup service principals with filter '%s': %w", filter, err)
 	}
