@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"sort"
 	"strings"
 
@@ -38,7 +39,7 @@ func init() {
 	azure.SetupFlags()
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
-	flag.String(ClusterName, "cluster-name-not-set", "The cluster in which this application should run")
+	flag.String(ClusterName, "", "The cluster in which this application should run")
 }
 
 // Print out all configuration options except secret stuff.
@@ -62,6 +63,33 @@ func Print(redacted []string) {
 			log.Printf("%s: ***REDACTED***", key)
 		}
 	}
+}
+
+func (c Config) validate(required []string) error {
+	present := func(key string) bool {
+		for _, requiredKey := range required {
+			if requiredKey == key {
+				return len(viper.GetString(requiredKey)) > 0
+			}
+		}
+		return true
+	}
+	var keys sort.StringSlice = viper.AllKeys()
+	errs := make([]string, 0)
+
+	keys.Sort()
+	for _, key := range keys {
+		if !present(key) {
+			errs = append(errs, key)
+		}
+	}
+	for _, key := range errs {
+		log.Printf("required key '%s' not configured", key)
+	}
+	if len(errs) > 0 {
+		return errors.New("missing configuration values")
+	}
+	return nil
 }
 
 func decoderHook(dc *mapstructure.DecoderConfig) {
@@ -88,6 +116,17 @@ func New() (*Config, error) {
 	}
 
 	err = viper.Unmarshal(&cfg, decoderHook)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cfg.validate([]string{
+		azure.Tenant,
+		azure.ClientId,
+		azure.ClientSecret,
+		azure.PermissionGrantResourceId,
+		ClusterName,
+	})
 	if err != nil {
 		return nil, err
 	}

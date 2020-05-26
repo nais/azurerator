@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
-	config2 "github.com/nais/azureator/pkg/azure/config"
+	azureConfig "github.com/nais/azureator/pkg/azure/config"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/msauth"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
@@ -15,12 +15,12 @@ import (
 const MaxNumberOfPagesToFetch = 1000
 
 type client struct {
-	config          *config2.Config
+	config          *azureConfig.Config
 	graphClient     *msgraph.GraphServiceRequestBuilder
 	graphBetaClient *msgraphbeta.GraphServiceRequestBuilder
 }
 
-func New(ctx context.Context, cfg *config2.Config) (azure.Client, error) {
+func New(ctx context.Context, cfg *azureConfig.Config) (azure.Client, error) {
 	m := msauth.NewManager()
 	scopes := []string{msauth.DefaultMSGraphScope}
 	ts, err := m.ClientCredentialsGrant(ctx, cfg.Tenant, cfg.Auth.ClientId, cfg.Auth.ClientSecret, scopes)
