@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
-	azureMetrics "github.com/nais/azureator/pkg/metrics"
+	"github.com/nais/azureator/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -54,26 +54,18 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	instance := &v1alpha1.AzureAdApplication{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		// we'll ignore not-found errors, since they can't be fixed by an immediate
-		// requeue (we'll need to wait for a new notification), and we can get them
-		// on deleted requests.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	instance.SetClusterName(r.ClusterName)
 	instance.Status.CorrelationId = correlationId
 	log.Info("processing AzureAdApplication...", "AzureAdApplication", instance)
 
-	tx := transaction{
-		ctx,
-		instance,
-		log,
-	}
+	tx := transaction{ctx, instance, log}
 
 	if instance.IsBeingDeleted() {
 		if err := r.processFinalizer(tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error when processing finalizer: %v", err)
 		}
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Deleted", "Object finalizer is deleted")
 		return ctrl.Result{}, nil
 	}
 
@@ -81,7 +73,6 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if err := r.registerFinalizer(tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error when registering finalizer: %v", err)
 		}
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Added", "Object finalizer is added")
 		return ctrl.Result{}, nil
 	}
 
@@ -97,14 +88,8 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if err := r.process(tx); err != nil {
 		r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", "Failed to synchronize Azure application, retrying")
-		tx.instance.SetNotSynchronized()
-		if err := r.updateStatusSubresource(tx); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to process and set status to retrying: %w", err)
-		}
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("failed to process Azure application: %w", err)
 	}
-	azureMetrics.AzureAppsProcessedCount.Inc()
-	r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Synchronized", "Azure application is up-to-date")
 	return ctrl.Result{}, nil
 }
 
@@ -115,6 +100,10 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) process(tx transaction) error {
+	tx.instance.SetNotSynchronized()
+	if err := r.updateStatusSubresource(tx); err != nil {
+		return fmt.Errorf("failed to set processing status: %w", err)
+	}
 	application, err := r.createOrUpdateAzureApp(tx)
 	if err != nil {
 		return err
@@ -128,6 +117,8 @@ func (r *Reconciler) process(tx transaction) error {
 	if err := r.updateStatus(tx, application); err != nil {
 		return err
 	}
+	metrics.AzureAppsProcessedCount.Inc()
+	r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Synchronized", "Azure application is up-to-date")
 	return nil
 }
 
@@ -145,9 +136,7 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction) (azure.Application, 
 			return azure.Application{}, fmt.Errorf("failed to create azure application: %w", err)
 		}
 		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Created", "Azure application is created")
-	}
-
-	if exists {
+	} else {
 		application, err = r.update(tx)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to update azure application: %w", err)
@@ -159,7 +148,6 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction) (azure.Application, 
 	return application, nil
 }
 
-// Update AzureAdApplication.Status
 func (r *Reconciler) updateStatus(tx transaction, application azure.Application) error {
 	log.Info("updating status for AzureAdApplication")
 	tx.instance.Status.CertificateKeyId = application.CertificateKeyId

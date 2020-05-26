@@ -17,7 +17,7 @@ func (r *Reconciler) registerFinalizer(tx transaction) error {
 		if err := r.Update(tx.ctx, tx.instance); err != nil {
 			return err
 		}
-		log.Info("finalizer successfully registered")
+		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Added", "Object finalizer is added")
 	}
 	return nil
 }
@@ -34,6 +34,6 @@ func (r *Reconciler) processFinalizer(tx transaction) error {
 			return fmt.Errorf("failed to remove finalizer from list: %w", err)
 		}
 	}
-	log.Info("finalizer processed successfully")
+	r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Deleted", "Object finalizer is deleted")
 	return nil
 }
