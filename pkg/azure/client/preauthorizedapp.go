@@ -101,7 +101,7 @@ func (p preAuthApps) getClientIdFor(ctx context.Context, app v1alpha1.AzureAdPre
 	if len(app.ClientId) > 0 {
 		return app.ClientId, nil
 	}
-	azureApp, err := p.GetByName(ctx, app.Name)
+	azureApp, err := p.application().getByName(ctx, app.Name)
 	if err != nil {
 		return "", fmt.Errorf("failed to get client ID for preauthorized app: %w", err)
 	}

@@ -10,8 +10,8 @@ import (
 )
 
 func TestConfigMapCreator(t *testing.T) {
-	app := fixtures.MinimalApplication()
-	azureApp := fixtures.AzureApp()
+	app := fixtures.MinimalK8sAzureAdApplication()
+	azureApp := fixtures.InternalAzureApp(*app)
 	c := ConfigMapCreator{DefaultCreator{
 		Resource:    *app,
 		Application: azureApp,

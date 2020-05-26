@@ -9,8 +9,8 @@ import (
 )
 
 func TestSecretCreator(t *testing.T) {
-	app := fixtures.MinimalApplication()
-	azureApp := fixtures.AzureApp()
+	app := fixtures.MinimalK8sAzureAdApplication()
+	azureApp := fixtures.InternalAzureApp(*app)
 	c := SecretCreator{DefaultCreator{
 		Resource:    *app,
 		Application: azureApp,

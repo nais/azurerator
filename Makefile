@@ -14,8 +14,12 @@ endif
 
 all: manager
 
-# Run tests
+# Run tests excluding integration tests
 test: generate fmt vet manifests
+	go test ./... -coverprofile cover.out -short
+
+# Run tests including integration tests
+verify: generate fmt vet manifests
 	go test ./... -coverprofile cover.out
 
 # Build manager binary

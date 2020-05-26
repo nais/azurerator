@@ -15,7 +15,6 @@ type Client interface {
 	Delete(tx Transaction) error
 	Exists(tx Transaction) (bool, error)
 	Get(tx Transaction) (msgraph.Application, error)
-	GetByName(ctx context.Context, name string) (msgraph.Application, error)
 	GetServicePrincipal(tx Transaction) (msgraphbeta.ServicePrincipal, error)
 	Rotate(tx Transaction, app Application) (Application, error)
 	Update(tx Transaction) (Application, error)

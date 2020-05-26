@@ -9,7 +9,7 @@ import (
 )
 
 func TestDefaultCreator(t *testing.T) {
-	app := fixtures.MinimalApplication()
+	app := fixtures.MinimalK8sAzureAdApplication()
 	c := DefaultCreator{
 		Resource:    *app,
 		Application: azure.Application{},
