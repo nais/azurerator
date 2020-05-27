@@ -12,7 +12,7 @@ import (
 )
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:shortName=azuread
+// +kubebuilder:resource:shortName=azureapp
 // +kubebuilder:subresource:status
 
 // AzureAdApplication is the Schema for the AzureAdApplications API

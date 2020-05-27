@@ -14,7 +14,7 @@ spec:
     listKind: AzureAdApplicationList
     plural: azureadapplications
     shortNames:
-    - azuread
+    - azureapp
     singular: azureadapplication
   scope: Namespaced
   subresources:
