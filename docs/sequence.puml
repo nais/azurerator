@@ -15,15 +15,13 @@ developer -> cluster: apply YAML
 cluster <- naiserator: read YAML
 cluster <- naiserator: apply azurerator CRD
 naiserator -> cluster: wait for synchronization
-note over naiserator, cluster: mount expected secret
+note over naiserator, cluster: mount expected secret and configmap
 
 loop forever
 	azurerator -> cluster: watch azurerator CRD
 end
 
 ==Create or update AAD app==
-azurerator -> azurerator: check if app exists
-note left: cached from AAD
 azurerator -> azuread: check if app exists
 alt app does not exist in AAD
 	azurerator -> azuread: register new application
