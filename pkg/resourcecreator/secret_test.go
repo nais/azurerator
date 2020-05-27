@@ -1,6 +1,7 @@
 package resourcecreator
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/nais/azureator/pkg/fixtures"
@@ -53,9 +54,9 @@ func TestSecretCreator(t *testing.T) {
 		})
 
 		t.Run("Secret Data should contain Private JWK", func(t *testing.T) {
-			expected, err := c.Application.Credentials.Private.Jwk.MarshalJSON()
+			expected, err := json.Marshal(c.Application.Credentials.Private.Jwk)
 			assert.NoError(t, err)
-			assert.Equal(t, string(expected), secret.StringData["jwk"])
+			assert.Equal(t, string(expected), secret.StringData[JwksSecretKey])
 		})
 	})
 }

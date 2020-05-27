@@ -200,7 +200,7 @@ func testCreate(t *testing.T, name string) {
 		})
 
 		t.Run("should contain expected keys", func(t *testing.T) {
-			assertContainsKeysWithNonEmptyValues(t, a.Data, []string{"clientSecret", "jwk"})
+			assertContainsKeysWithNonEmptyValues(t, a.Data, []string{"clientSecret", resourcecreator.JwksSecretKey})
 		})
 	})
 
@@ -216,7 +216,7 @@ func testCreate(t *testing.T, name string) {
 		})
 
 		t.Run("should contain expected keys", func(t *testing.T) {
-			assertContainsKeysWithNonEmptyValues(t, a.Data, []string{"clientId", "jwk", "preAuthorizedApps"})
+			assertContainsKeysWithNonEmptyValues(t, a.Data, []string{"clientId", resourcecreator.JwksSecretKey, "preAuthorizedApps"})
 		})
 	})
 }

@@ -1,6 +1,7 @@
 package resourcecreator
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/nais/azureator/api/v1alpha1"
@@ -47,12 +48,12 @@ func (c SecretCreator) Name() string {
 }
 
 func (c SecretCreator) toSecretData() (map[string]string, error) {
-	jwkJson, err := c.Application.Credentials.Private.Jwk.MarshalJSON()
+	jwkJson, err := json.Marshal(c.Application.Credentials.Private.Jwk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal private JWK: %w", err)
 	}
 	return map[string]string{
 		"clientSecret": c.Application.Credentials.Private.ClientSecret,
-		"jwk":          string(jwkJson),
+		JwksSecretKey:  string(jwkJson),
 	}, nil
 }

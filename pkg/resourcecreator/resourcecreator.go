@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	LabelType string = "azurerator.nais.io"
+	LabelType     string = "azurerator.nais.io"
+	JwksSecretKey        = "jwks"
 )
 
 type Creator interface {

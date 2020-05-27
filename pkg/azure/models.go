@@ -42,13 +42,13 @@ type Credentials struct {
 }
 
 type Public struct {
-	ClientId string          `json:"clientId"`
-	Jwk      jose.JSONWebKey `json:"jwk"`
+	ClientId string             `json:"clientId"`
+	Jwk      jose.JSONWebKeySet `json:"jwk"`
 }
 
 type Private struct {
-	ClientSecret string          `json:"clientSecret"`
-	Jwk          jose.JSONWebKey `json:"jwk"`
+	ClientSecret string             `json:"clientSecret"`
+	Jwk          jose.JSONWebKeySet `json:"jwk"`
 }
 
 type PreAuthorizedApp struct {

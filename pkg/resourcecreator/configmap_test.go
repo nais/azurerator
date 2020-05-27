@@ -56,9 +56,9 @@ func TestConfigMapCreator(t *testing.T) {
 		})
 
 		t.Run("ConfigMap Data should contain Public JWK", func(t *testing.T) {
-			expected, err := c.Application.Credentials.Public.Jwk.MarshalJSON()
+			expected, err := json.Marshal(c.Application.Credentials.Public.Jwk)
 			assert.NoError(t, err)
-			assert.Equal(t, string(expected), configMap.Data["jwk"])
+			assert.Equal(t, string(expected), configMap.Data[JwksSecretKey])
 		})
 	})
 }

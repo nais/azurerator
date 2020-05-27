@@ -47,7 +47,7 @@ func (c ConfigMapCreator) Name() string {
 }
 
 func (c ConfigMapCreator) toConfigMapData() (map[string]string, error) {
-	jwkJson, err := c.Application.Credentials.Public.Jwk.MarshalJSON()
+	jwkJson, err := json.Marshal(c.Application.Credentials.Public.Jwk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal public JWK: %w", err)
 	}
@@ -58,7 +58,7 @@ func (c ConfigMapCreator) toConfigMapData() (map[string]string, error) {
 	}
 	return map[string]string{
 		"clientId":          c.Application.Credentials.Public.ClientId,
-		"jwk":               string(jwkJson),
+		"jwks":              string(jwkJson),
 		"preAuthorizedApps": string(preAuthAppsJson),
 	}, nil
 }

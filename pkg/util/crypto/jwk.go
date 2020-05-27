@@ -15,9 +15,9 @@ const (
 )
 
 type JwkPair struct {
-	Private   jose.JSONWebKey `json:"private"`
-	Public    jose.JSONWebKey `json:"public"`
-	PublicPem []byte          `json:"publicPem"`
+	Private   jose.JSONWebKeySet `json:"private"`
+	Public    jose.JSONWebKeySet `json:"public"`
+	PublicPem []byte             `json:"publicPem"`
 }
 
 func GenerateJwkPair(application v1alpha1.AzureAdApplication) (JwkPair, error) {
@@ -31,8 +31,16 @@ func GenerateJwkPair(application v1alpha1.AzureAdApplication) (JwkPair, error) {
 func JwkToJwkPair(jwk jose.JSONWebKey) JwkPair {
 	jwkPublic := jwk.Public()
 	return JwkPair{
-		Private:   jwk,
-		Public:    jwkPublic,
+		Private: jose.JSONWebKeySet{
+			Keys: []jose.JSONWebKey{
+				jwk,
+			},
+		},
+		Public: jose.JSONWebKeySet{
+			Keys: []jose.JSONWebKey{
+				jwkPublic,
+			},
+		},
 		PublicPem: ConvertToPem(jwkPublic.Certificates[0]),
 	}
 }
