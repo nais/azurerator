@@ -98,8 +98,8 @@ func mapToInternalPreAuthApps(apps []v1alpha1.AzureAdPreAuthorizedApplication) [
 }
 
 func mapToInternalPreAuthApp(app v1alpha1.AzureAdPreAuthorizedApplication) azure.PreAuthorizedApp {
-	clientId := getOrGenerate(app.ClientId)
-	name := getOrGenerate(app.Name)
+	clientId := uuid.New().String()
+	name := getOrGenerate(app.GetUniqueName())
 	return azure.PreAuthorizedApp{
 		Name:     name,
 		ClientId: clientId,

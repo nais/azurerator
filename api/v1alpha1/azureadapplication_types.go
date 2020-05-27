@@ -75,8 +75,13 @@ type AzureAdReplyUrl struct {
 
 // AzureAdPreAuthorizedApplication describes an application that are allowed to request an on-behalf-of token for this application
 type AzureAdPreAuthorizedApplication struct {
-	Name     string `json:"name,omitempty"`
-	ClientId string `json:"clientId,omitempty"`
+	Application string `json:"application"`
+	Namespace   string `json:"namespace"`
+	Cluster     string `json:"cluster"`
+}
+
+func (in AzureAdPreAuthorizedApplication) GetUniqueName() string {
+	return fmt.Sprintf("%s:%s:%s", in.Cluster, in.Namespace, in.Application)
 }
 
 func init() {

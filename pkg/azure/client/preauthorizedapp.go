@@ -45,10 +45,7 @@ func (p preAuthApps) update(tx azure.Transaction) ([]azure.PreAuthorizedApp, err
 }
 
 func (p preAuthApps) exists(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (bool, error) {
-	if len(app.ClientId) == 0 {
-		return p.application().existsByFilter(ctx, util.FilterByName(app.Name))
-	}
-	return p.application().existsByFilter(ctx, util.FilterByAppId(app.ClientId))
+	return p.application().existsByFilter(ctx, util.FilterByName(app.GetUniqueName()))
 }
 
 func (p preAuthApps) mapToMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
@@ -56,10 +53,10 @@ func (p preAuthApps) mapToMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorized
 	for _, app := range tx.Instance.Spec.PreAuthorizedApplications {
 		exists, err := p.exists(tx.Ctx, app)
 		if err != nil {
-			return nil, fmt.Errorf("failed to lookup existence of PreAuthorizedApp (clientId '%s', name '%s'): %w", app.ClientId, app.Name, err)
+			return nil, fmt.Errorf("failed to lookup existence of PreAuthorizedApp '%s': %w", app.GetUniqueName(), err)
 		}
 		if !exists {
-			tx.Log.Info(fmt.Sprintf("PreAuthorizedApp (clientId '%s', name '%s') does not exist, skipping assignment...", app.ClientId, app.Name))
+			tx.Log.Info(fmt.Sprintf("PreAuthorizedApp '%s' does not exist, skipping assignment...", app.GetUniqueName()))
 			continue
 		}
 		a, err := p.toMsGraph(tx, app)
@@ -98,10 +95,7 @@ func (p preAuthApps) mapWithNames(ctx context.Context, preAuthApps []msgraph.Pre
 }
 
 func (p preAuthApps) getClientIdFor(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (azure.ClientId, error) {
-	if len(app.ClientId) > 0 {
-		return app.ClientId, nil
-	}
-	azureApp, err := p.application().getByName(ctx, app.Name)
+	azureApp, err := p.application().getByName(ctx, app.GetUniqueName())
 	if err != nil {
 		return "", fmt.Errorf("failed to get client ID for preauthorized app: %w", err)
 	}

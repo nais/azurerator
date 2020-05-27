@@ -8,8 +8,12 @@ metadata:
     team: myteam
 spec:
   preAuthorizedApplications:
-    - name: myapp-frontend
-    - name: some-other-app
+    - application: myapp2
+      cluster: minikube
+      namespace: default
+    - application: some-other-app
+      cluster: test-cluster
+      namespace: default
   logoutUrl: "https://localhost:3000/oauth2/logout"
   replyUrls:
     - url: "http://localhost:3000/oauth2/callback"

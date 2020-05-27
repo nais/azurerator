@@ -52,10 +52,16 @@ spec:
                 description: AzureAdPreAuthorizedApplication describes an application
                   that are allowed to request an on-behalf-of token for this application
                 properties:
-                  clientId:
+                  application:
                     type: string
-                  name:
+                  cluster:
                     type: string
+                  namespace:
+                    type: string
+                required:
+                - application
+                - cluster
+                - namespace
                 type: object
               type: array
             replyUrls:
