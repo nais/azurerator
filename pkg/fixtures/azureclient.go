@@ -8,6 +8,10 @@ import (
 
 type azureMockClient struct{}
 
+const (
+	ApplicationNotExistsName = "not-exists"
+)
+
 func (a azureMockClient) Create(tx azure.Transaction) (azure.Application, error) {
 	return InternalAzureApp(tx.Instance), nil
 }
@@ -16,8 +20,13 @@ func (a azureMockClient) Delete(azure.Transaction) error {
 	return nil
 }
 
-func (a azureMockClient) Exists(azure.Transaction) (bool, error) {
-	return true, nil
+func (a azureMockClient) Exists(tx azure.Transaction) (bool, error) {
+	switch tx.Instance.Name {
+	case ApplicationNotExistsName:
+		return false, nil
+	default:
+		return true, nil
+	}
 }
 
 func (a azureMockClient) Get(tx azure.Transaction) (msgraph.Application, error) {

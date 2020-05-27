@@ -8,30 +8,41 @@ import (
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func MinimalK8sAzureAdApplication() *v1alpha1.AzureAdApplication {
+	key := types.NamespacedName{
+		Name:      "test-app",
+		Namespace: "test-namespace",
+	}
+	spec := v1alpha1.AzureAdApplicationSpec{
+		ReplyUrls:                 nil,
+		PreAuthorizedApplications: nil,
+		LogoutUrl:                 "test",
+		SecretName:                "test",
+		ConfigMapName:             "test",
+	}
+	status := v1alpha1.AzureAdApplicationStatus{
+		PasswordKeyId:      "test",
+		CertificateKeyId:   "test",
+		ClientId:           "test",
+		ObjectId:           "test",
+		ServicePrincipalId: "test",
+		ProvisionHash:      "100306fda4b3e77",
+	}
+	return K8sAzureAdApplication(key, spec, status)
+}
+
+func K8sAzureAdApplication(key types.NamespacedName, spec v1alpha1.AzureAdApplicationSpec, status v1alpha1.AzureAdApplicationStatus) *v1alpha1.AzureAdApplication {
 	return &v1alpha1.AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-app",
-			Namespace:   "test-namespace",
+			Name:        key.Name,
+			Namespace:   key.Namespace,
 			ClusterName: "test-cluster",
 		},
-		Spec: v1alpha1.AzureAdApplicationSpec{
-			ReplyUrls:                 nil,
-			PreAuthorizedApplications: nil,
-			LogoutUrl:                 "test",
-			SecretName:                "test",
-			ConfigMapName:             "test",
-		},
-		Status: v1alpha1.AzureAdApplicationStatus{
-			PasswordKeyId:      "test",
-			CertificateKeyId:   "test",
-			ClientId:           "test",
-			ObjectId:           "test",
-			ServicePrincipalId: "test",
-			ProvisionHash:      "100306fda4b3e77",
-		},
+		Spec:   spec,
+		Status: status,
 	}
 }
 

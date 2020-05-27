@@ -69,7 +69,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if !instance.HasFinalizer(finalizerName) {
+	if !instance.HasFinalizer(FinalizerName) {
 		if err := r.registerFinalizer(tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error when registering finalizer: %v", err)
 		}
