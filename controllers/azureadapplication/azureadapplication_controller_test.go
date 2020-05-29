@@ -2,8 +2,8 @@ package azureadapplication
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -11,8 +11,10 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	azureClient "github.com/nais/azureator/pkg/azure/client"
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/fixtures"
+	azureFixtures "github.com/nais/azureator/pkg/fixtures/azure"
+	"github.com/nais/azureator/pkg/fixtures/k8s"
 	"github.com/nais/azureator/pkg/resourcecreator"
+	"github.com/nais/azureator/pkg/util/test"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,8 +32,11 @@ const (
 	timeout  = time.Second * 10
 	interval = time.Second * 1
 
-	secretName    = "test-secret"
-	configMapName = "test-configmap"
+	alreadyInUseSecret = "in-use-by-pod"
+	unusedSecret       = "unused-secret"
+	newSecret          = "new-secret"
+
+	namespace = "default"
 )
 
 var cli client.Client
@@ -55,11 +60,225 @@ func TestReconcilerIntegration(t *testing.T) {
 }
 
 func TestReconcilerIntegrationMock(t *testing.T) {
-	az := fixtures.NewAzureClient()
+	az := azureFixtures.NewAzureClient()
 	testReconciler(t, az)
 }
 
 func testReconciler(t *testing.T, az azure.Client) {
+	testEnv := setup(t, az)
+
+	cases := []struct {
+		name    string
+		appName string
+	}{
+		{
+			"Application already exists in Azure AD",
+			azureFixtures.ApplicationExists,
+		},
+		{
+			"Application does not exist in Azure AD",
+			azureFixtures.ApplicationNotExistsName,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Run("Create new AzureAdApplication", func(t *testing.T) {
+				testCreate(t, c.appName)
+			})
+			t.Run("Update existing AzureAdApplication", func(t *testing.T) {
+				testUpdate(t, c.appName)
+			})
+			t.Run("Delete existing AzureAdApplication", func(t *testing.T) {
+				testDelete(t, c.appName)
+			})
+		})
+	}
+
+	err := testEnv.Stop()
+	assert.NoError(t, err)
+}
+
+func testCreate(t *testing.T, name string) {
+	// prefix app name to secret name for "unique" secret in this test environment
+	secretName := fmt.Sprintf("%s-%s", name, alreadyInUseSecret)
+
+	// set up preconditions for cluster
+	clusterFixtures := k8s.ClusterFixtures{
+		Name:             name,
+		SecretName:       secretName,
+		UnusedSecretName: unusedSecret,
+		Namespace:        namespace,
+	}
+	if err := clusterFixtures.Setup(cli); err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	instance := assertApplicationExists(t, name)
+	assertSecretExists(t, secretName, instance)
+	assertSecretDoesNotExist(t, unusedSecret)
+}
+
+func testUpdate(t *testing.T, name string) {
+	// existing application should exist
+	instance := assertApplicationExists(t, name)
+
+	// fetch secret name referenced by previous generation
+	previousSecretName := instance.Spec.SecretName
+
+	// update with new secret name
+	newSecretName := fmt.Sprintf("%s-%s", instance.GetName(), newSecret)
+	instance.Spec.SecretName = newSecretName
+	err := cli.Update(context.Background(), instance)
+	assert.NoError(t, err)
+
+	// application should still exist and be synchronized
+	newInstance := assertApplicationExists(t, instance.GetName())
+
+	// status subresource should contain new IDs for rotated credentials
+	t.Run("Status subresource should contain new IDs for rotated credentials", func(t *testing.T) {
+		assert.Eventually(t, func() bool {
+			passwordKeyIdsValid := len(newInstance.Status.PasswordKeyIds) == 2
+			certificateKeyIdsValid := len(newInstance.Status.CertificateKeyIds) == 2
+			return passwordKeyIdsValid && certificateKeyIdsValid
+		}, timeout, interval)
+	})
+
+	// new secret should exist
+	assertSecretExists(t, newSecretName, instance)
+
+	// old secret referenced by pod should still exist
+	assertSecretExists(t, previousSecretName, instance)
+}
+
+func testDelete(t *testing.T, name string) {
+	// existing application should exist
+	instance := assertApplicationExists(t, name)
+
+	// delete existing application
+	if err := cli.Delete(context.Background(), instance); err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	t.Run("AzureAdApplication should be deleted", func(t *testing.T) {
+		key := types.NamespacedName{
+			Name:      name,
+			Namespace: namespace,
+		}
+		assert.Eventually(t, resourceDoesNotExist(key, instance), timeout, interval)
+	})
+}
+
+// asserts that the application exists in the cluster and is valid
+func assertApplicationExists(t *testing.T, name string) *v1alpha1.AzureAdApplication {
+	instance := &v1alpha1.AzureAdApplication{}
+	t.Run("AzureAdApplication", func(t *testing.T) {
+		t.Run("should exist in cluster", func(t *testing.T) {
+			key := types.NamespacedName{
+				Name:      name,
+				Namespace: namespace,
+			}
+			assert.Eventually(t, resourceExists(key, instance), timeout, interval)
+		})
+
+		t.Run("should be synchronized", func(t *testing.T) {
+			assert.Eventually(t, func() bool {
+				b, err := instance.IsUpToDate()
+				assert.NoError(t, err)
+				return b
+			}, timeout, interval, "AzureAdApplication should be synchronized")
+		})
+
+		t.Run("should have a finalizer", func(t *testing.T) {
+			assert.True(t, instance.HasFinalizer(FinalizerName))
+		})
+
+		t.Run("should have a valid status subresource", func(t *testing.T) {
+			test.AssertAllNotEmpty(t, []interface{}{
+				instance.Status.CertificateKeyIds,
+				instance.Status.ClientId,
+				instance.Status.CorrelationId,
+				instance.Status.ObjectId,
+				instance.Status.PasswordKeyIds,
+				instance.Status.ProvisionHash,
+				instance.Status.ServicePrincipalId,
+				instance.Status.Timestamp,
+			})
+			assert.True(t, instance.Status.Synchronized)
+		})
+	})
+	return instance
+}
+
+func assertSecretExists(t *testing.T, name string, instance *v1alpha1.AzureAdApplication) {
+	t.Run(fmt.Sprintf("Secret '%s'", name), func(t *testing.T) {
+		key := types.NamespacedName{
+			Namespace: namespace,
+			Name:      name,
+		}
+		a := &corev1.Secret{}
+		t.Run("should exist in cluster", func(t *testing.T) {
+			assert.Eventually(t, resourceExists(key, a), timeout, interval)
+		})
+
+		t.Run("should have correct OwnerReference", func(t *testing.T) {
+			assert.True(t, containsOwnerRef(a.GetOwnerReferences(), *instance))
+		})
+
+		t.Run("should contain expected keys", func(t *testing.T) {
+			test.AssertContainsKeysWithNonEmptyValues(t, a.Data, resourcecreator.AllKeys)
+		})
+	})
+}
+
+func assertSecretDoesNotExist(t *testing.T, name string) {
+	t.Run("Unused Secret", func(t *testing.T) {
+		key := types.NamespacedName{
+			Namespace: namespace,
+			Name:      name,
+		}
+		a := &corev1.Secret{}
+		t.Run("should not exist in cluster", func(t *testing.T) {
+			assert.Eventually(t, resourceDoesNotExist(key, a), timeout, interval)
+		})
+	})
+}
+
+func resourceExists(key types.NamespacedName, instance runtime.Object) func() bool {
+	return func() bool {
+		err := cli.Get(context.Background(), key, instance)
+		return !errors.IsNotFound(err)
+	}
+}
+
+func resourceDoesNotExist(key types.NamespacedName, instance runtime.Object) func() bool {
+	return func() bool {
+		err := cli.Get(context.Background(), key, instance)
+		return errors.IsNotFound(err)
+	}
+}
+
+func containsOwnerRef(refs []v1.OwnerReference, owner v1alpha1.AzureAdApplication) bool {
+	expected := v1.OwnerReference{
+		APIVersion: owner.APIVersion,
+		Kind:       owner.Kind,
+		Name:       owner.Name,
+		UID:        owner.UID,
+	}
+	for _, ref := range refs {
+		sameApiVersion := ref.APIVersion == expected.APIVersion
+		sameKind := ref.Kind == expected.Kind
+		sameName := ref.Name == expected.Name
+		sameUID := ref.UID == expected.UID
+		if sameApiVersion && sameKind && sameName && sameUID {
+			return true
+		}
+	}
+	return false
+}
+
+func setup(t *testing.T, az azure.Client) *envtest.Environment {
 	log := zap.New(zap.UseDevMode(true))
 	ctrl.SetLogger(log)
 
@@ -101,223 +320,5 @@ func testReconciler(t *testing.T, az azure.Client) {
 		}
 	}()
 
-	cases := []struct {
-		name          string
-		keyName       string
-		existsInAzure bool
-	}{
-		{
-			"Application already exists in Azure AD",
-			"test-azureadapplication",
-			true,
-		},
-		{
-			"Application does not exist in Azure AD",
-			fixtures.ApplicationNotExistsName,
-			false,
-		},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			t.Run("Create new AzureAdApplication", func(t *testing.T) {
-				testCreate(t, c.keyName)
-			})
-			t.Run("Update existing AzureAdApplication", func(t *testing.T) {
-				if c.existsInAzure {
-					testUpdateExistsInAzure(t)
-				} else {
-					testUpdateNotExistsInAzure(t)
-				}
-			})
-			t.Run("Delete existing AzureAdApplication", func(t *testing.T) {
-				testDelete(t)
-			})
-		})
-	}
-
-	err = testEnv.Stop()
-	assert.NoError(t, err)
-}
-
-func testCreate(t *testing.T, name string) {
-	key := types.NamespacedName{
-		Name:      name,
-		Namespace: name,
-	}
-	spec := v1alpha1.AzureAdApplicationSpec{
-		ReplyUrls:                 nil,
-		PreAuthorizedApplications: nil,
-		LogoutUrl:                 "",
-		SecretName:                secretName,
-		ConfigMapName:             configMapName,
-	}
-	instance := fixtures.K8sAzureAdApplication(key, spec, v1alpha1.AzureAdApplicationStatus{})
-	azureApp := fixtures.InternalAzureApp(*instance)
-
-	err := cli.Create(context.Background(), instance)
-	assert.NoError(t, err)
-
-	t.Run("AzureAdApplication", func(t *testing.T) {
-		instance = &v1alpha1.AzureAdApplication{}
-		t.Run("should exist in cluster", func(t *testing.T) {
-			assert.Eventually(t, resourceExists(key, instance), timeout, interval)
-		})
-
-		t.Run("should be synchronized", func(t *testing.T) {
-			b, err := instance.IsUpToDate()
-			assert.NoError(t, err)
-			assert.True(t, b, "AzureAdApplication should be synchronized")
-		})
-
-		t.Run("should have a finalizer", func(t *testing.T) {
-			assert.True(t, instance.HasFinalizer(FinalizerName))
-		})
-
-		t.Run("should have a valid status subresource", func(t *testing.T) {
-			assertAllNotEmpty(t, []interface{}{
-				instance.Status.ClientId,
-				instance.Status.ObjectId,
-				instance.Status.ServicePrincipalId,
-				instance.Status.Timestamp,
-				instance.Status.ProvisionHash,
-				instance.Status.CorrelationId,
-				instance.Status.PasswordKeyId,
-				instance.Status.CertificateKeyId,
-			})
-			assert.True(t, instance.Status.Synchronized)
-		})
-	})
-
-	t.Run("Secret", func(t *testing.T) {
-		key := expectedSecretKey(instance, azureApp)
-		a := &corev1.Secret{}
-		t.Run("should exist in cluster", func(t *testing.T) {
-			assert.Eventually(t, resourceExists(key, a), timeout, interval)
-		})
-
-		t.Run("should have correct OwnerReference", func(t *testing.T) {
-			assert.True(t, containsOwnerRef(a.GetOwnerReferences(), *instance))
-		})
-
-		t.Run("should contain expected keys", func(t *testing.T) {
-			assertContainsKeysWithNonEmptyValues(t, a.Data, []string{"clientSecret", resourcecreator.JwksSecretKey})
-		})
-	})
-
-	t.Run("ConfigMap", func(t *testing.T) {
-		key := expectedConfigMapKey(instance, azureApp)
-		a := &corev1.ConfigMap{}
-		t.Run("should exist in cluster", func(t *testing.T) {
-			assert.Eventually(t, resourceExists(key, a), timeout, interval)
-		})
-
-		t.Run("should have correct OwnerReference", func(t *testing.T) {
-			assert.True(t, containsOwnerRef(a.GetOwnerReferences(), *instance))
-		})
-
-		t.Run("should contain expected keys", func(t *testing.T) {
-			assertContainsKeysWithNonEmptyValues(t, a.Data, []string{"clientId", resourcecreator.JwksSecretKey, "preAuthorizedApps"})
-		})
-	})
-}
-
-// TODO
-func testUpdateExistsInAzure(t *testing.T) {
-	t.Run("AzureAdApplication should have updated status subresource", func(t *testing.T) {
-
-	})
-
-	t.Run("Secret should be updated", func(t *testing.T) {
-
-	})
-
-	t.Run("ConfigMap should be updated", func(t *testing.T) {
-
-	})
-}
-
-// TODO
-func testUpdateNotExistsInAzure(t *testing.T) {
-	t.Run("AzureAdApplication should not be updated", func(t *testing.T) {
-
-	})
-
-	t.Run("Secret should not be updated", func(t *testing.T) {
-
-	})
-
-	t.Run("ConfigMap should not be updated", func(t *testing.T) {
-
-	})
-}
-
-// TODO
-func testDelete(t *testing.T) {
-	t.Run("AzureAdApplication should be deleted", func(t *testing.T) {
-
-	})
-}
-
-func resourceExists(key types.NamespacedName, instance runtime.Object) func() bool {
-	return func() bool {
-		err := cli.Get(context.Background(), key, instance)
-		return !errors.IsNotFound(err)
-	}
-}
-
-func expectedSecretKey(instance *v1alpha1.AzureAdApplication, app azure.Application) types.NamespacedName {
-	creator := resourcecreator.NewSecret(*instance, app)
-	spec, _ := creator.Spec()
-	secret := spec.(*corev1.Secret)
-	return types.NamespacedName{
-		Namespace: secret.GetNamespace(),
-		Name:      secret.GetName(),
-	}
-}
-
-func expectedConfigMapKey(instance *v1alpha1.AzureAdApplication, app azure.Application) types.NamespacedName {
-	creator := resourcecreator.NewConfigMap(*instance, app)
-	spec, _ := creator.Spec()
-	secret := spec.(*corev1.ConfigMap)
-	return types.NamespacedName{
-		Namespace: secret.GetNamespace(),
-		Name:      secret.GetName(),
-	}
-}
-
-func assertContainsKeysWithNonEmptyValues(t *testing.T, a interface{}, keys []string) {
-	for _, key := range keys {
-		assert.Contains(t, a, key)
-	}
-	v := reflect.ValueOf(a)
-	if v.Kind() == reflect.Map {
-		for _, val := range v.MapKeys() {
-			assert.NotEmpty(t, v.MapIndex(val).String())
-		}
-	}
-}
-
-func assertAllNotEmpty(t *testing.T, values []interface{}) {
-	for _, val := range values {
-		assert.NotEmpty(t, val)
-	}
-}
-
-func containsOwnerRef(refs []v1.OwnerReference, owner v1alpha1.AzureAdApplication) bool {
-	expected := v1.OwnerReference{
-		APIVersion: owner.APIVersion,
-		Kind:       owner.Kind,
-		Name:       owner.Name,
-		UID:        owner.UID,
-	}
-	for _, ref := range refs {
-		sameApiVersion := ref.APIVersion == expected.APIVersion
-		sameKind := ref.Kind == expected.Kind
-		sameName := ref.Name == expected.Name
-		sameUID := ref.UID == expected.UID
-		if sameApiVersion && sameKind && sameName && sameUID {
-			return true
-		}
-	}
-	return false
+	return testEnv
 }

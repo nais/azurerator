@@ -11,13 +11,13 @@ import (
 )
 
 type Client interface {
-	Create(tx Transaction) (Application, error)
+	Create(tx Transaction) (*Application, error)
 	Delete(tx Transaction) error
 	Exists(tx Transaction) (bool, error)
 	Get(tx Transaction) (msgraph.Application, error)
 	GetServicePrincipal(tx Transaction) (msgraphbeta.ServicePrincipal, error)
-	Rotate(tx Transaction, app Application) (Application, error)
-	Update(tx Transaction) (Application, error)
+	Rotate(tx Transaction, app Application) (*Application, error)
+	Update(tx Transaction) (*Application, error)
 }
 
 type Transaction struct {
@@ -27,28 +27,32 @@ type Transaction struct {
 }
 
 type Application struct {
-	Credentials        Credentials        `json:"credentials"`
+	Certificate        Certificate        `json:"certificate"`
+	Password           Password           `json:"password"`
 	ClientId           string             `json:"clientId"`
 	ObjectId           string             `json:"objectId"`
 	ServicePrincipalId string             `json:"servicePrincipalId"`
-	CertificateKeyId   string             `json:"certificateKeyId"`
-	PasswordKeyId      string             `json:"passwordKeyId"`
 	PreAuthorizedApps  []PreAuthorizedApp `json:"preAuthorizedApps"`
 }
 
-type Credentials struct {
-	Public  Public  `json:"public"`
-	Private Private `json:"private"`
+type Certificate struct {
+	KeyId KeyId `json:"keyId"`
+	Jwks  Jwks  `json:"jwks"`
 }
 
-type Public struct {
-	ClientId string             `json:"clientId"`
-	Jwk      jose.JSONWebKeySet `json:"jwk"`
+type Password struct {
+	KeyId        KeyId  `json:"keyId"`
+	ClientSecret string `json:"clientSecret"`
 }
 
-type Private struct {
-	ClientSecret string             `json:"clientSecret"`
-	Jwk          jose.JSONWebKeySet `json:"jwk"`
+type Jwks struct {
+	Public  jose.JSONWebKeySet `json:"public"`
+	Private jose.JSONWebKeySet `json:"private"`
+}
+
+type KeyId struct {
+	Latest   string   `json:"latest"`
+	AllInUse []string `json:"allInUse"`
 }
 
 type PreAuthorizedApp struct {

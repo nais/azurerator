@@ -58,7 +58,7 @@ func (m metrics) Refresh(ctx context.Context) error {
 	exp := 10 * time.Second
 
 	var mLabels = client.MatchingLabels{}
-	mLabels["type"] = resourcecreator.LabelType
+	mLabels[resourcecreator.TypeLabelKey] = resourcecreator.TypeLabelValue
 
 	var secretList v1.SecretList
 	var configMapList v1.ConfigMapList

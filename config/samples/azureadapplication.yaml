@@ -18,4 +18,3 @@ spec:
   replyUrls:
     - url: "http://localhost:3000/oauth2/callback"
   secretName: azuread-myapp
-  configMapName: azuread-myapp

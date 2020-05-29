@@ -21,56 +21,55 @@ func (c client) keyCredential() keyCredential {
 	return keyCredential{c}
 }
 
-// Generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyId).
-// There should always be two active keys available at any given time so that running applications are not interfered with.
-func (k keyCredential) rotate(tx azure.Transaction) (msgraph.KeyCredential, crypto.JwkPair, error) {
-	keys, err := k.getSetsInUse(tx)
+// Generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
+// With the exception of new applications, there should always be two active keys available at any given time so that running applications are not interfered with.
+func (k keyCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (*msgraph.KeyCredential, *crypto.JwkPair, error) {
+	keysInUse, err := k.mapToKeyCredentials(tx, keyIdsInUse)
 	if err != nil {
-		return msgraph.KeyCredential{}, crypto.JwkPair{}, err
+		return nil, nil, err
 	}
 	keyCredential, jwkPair, err := k.new(tx.Instance)
 	if err != nil {
-		return msgraph.KeyCredential{}, crypto.JwkPair{}, err
+		return nil, nil, err
 	}
-	keys = append(keys, keyCredential)
-	app := util.EmptyApplication().Keys(keys).Build()
+	keysInUse = append(keysInUse, *keyCredential)
+	app := util.EmptyApplication().Keys(keysInUse).Build()
 	if err := k.application().update(tx.Ctx, tx.Instance.Status.ObjectId, app); err != nil {
-		return msgraph.KeyCredential{}, crypto.JwkPair{}, fmt.Errorf("failed to update application with keycredential: %w", err)
+		return nil, nil, fmt.Errorf("failed to update application with keycredential: %w", err)
 	}
 	return keyCredential, jwkPair, nil
 }
 
-// Returns a set containing the newest KeyCredential in use, or empty if none exist
-func (k keyCredential) getSetsInUse(tx azure.Transaction) ([]msgraph.KeyCredential, error) {
+// Maps a list of key IDs to a list of KeyCredentials
+func (k keyCredential) mapToKeyCredentials(tx azure.Transaction, keyIdsInUse []string) ([]msgraph.KeyCredential, error) {
 	application, err := k.Get(tx)
 	if err != nil {
 		return nil, err
 	}
+	keyCredentialsInUse := make([]msgraph.KeyCredential, 0)
+
+	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
+	// This case assumes the possibility of the Azure application being used in applications external to the cluster.
+	// There should always be at least one keycredential registered for an application.
 	var newestCredential msgraph.KeyCredential
 	for _, keyCredential := range application.KeyCredentials {
-		if keyCredentialInUse(tx, keyCredential) {
-			return []msgraph.KeyCredential{keyCredential}, nil
+		if keyCredentialInUse(keyCredential, keyIdsInUse) {
+			keyCredentialsInUse = append(keyCredentialsInUse, keyCredential)
 		}
-		if newestCredential.StartDateTime == nil {
-			newestCredential = keyCredential
-		}
-		if keyCredential.StartDateTime.After(*newestCredential.StartDateTime) {
+		if newestCredential.StartDateTime == nil || keyCredential.StartDateTime.After(*newestCredential.StartDateTime) {
 			newestCredential = keyCredential
 		}
 	}
-	if newestCredential.StartDateTime == nil {
-		return make([]msgraph.KeyCredential, 0), nil
-	}
-	return []msgraph.KeyCredential{newestCredential}, nil
+	return append(keyCredentialsInUse, newestCredential), nil
 }
 
-func (k keyCredential) new(resource v1alpha1.AzureAdApplication) (msgraph.KeyCredential, crypto.JwkPair, error) {
+func (k keyCredential) new(resource v1alpha1.AzureAdApplication) (*msgraph.KeyCredential, *crypto.JwkPair, error) {
 	jwkPair, err := crypto.GenerateJwkPair(resource)
 	if err != nil {
-		return msgraph.KeyCredential{}, crypto.JwkPair{}, fmt.Errorf("failed to generate JWK pair for application: %w", err)
+		return nil, nil, fmt.Errorf("failed to generate JWK pair for application: %w", err)
 	}
 	newKeyCredential := k.toKeyCredential(jwkPair)
-	return newKeyCredential, jwkPair, nil
+	return &newKeyCredential, &jwkPair, nil
 }
 
 func (k keyCredential) toKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCredential {
@@ -85,6 +84,11 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCreden
 	}
 }
 
-func keyCredentialInUse(tx azure.Transaction, key msgraph.KeyCredential) bool {
-	return string(*key.KeyID) == tx.Instance.Status.CertificateKeyId
+func keyCredentialInUse(key msgraph.KeyCredential, keyIdsInUse []string) bool {
+	for _, id := range keyIdsInUse {
+		if string(*key.KeyID) == id {
+			return true
+		}
+	}
+	return false
 }

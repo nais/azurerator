@@ -42,8 +42,6 @@ type AzureAdApplicationSpec struct {
 	LogoutUrl string `json:"logoutUrl,omitempty"`
 	// SecretName is the name of the resulting Secret resource to be created
 	SecretName string `json:"secretName"`
-	// ConfigMapName is the name of the resulting ConfigMap resource to be created
-	ConfigMapName string `json:"configMapName"`
 }
 
 // AzureAdApplicationStatus defines the observed state of AzureAdApplication
@@ -56,10 +54,10 @@ type AzureAdApplicationStatus struct {
 	ProvisionHash string `json:"provisionHash,omitempty"`
 	// CorrelationId is the ID referencing the processing transaction last performed on this resource
 	CorrelationId string `json:"correlationId"`
-	// PasswordKeyId is the key ID for the latest valid password credential
-	PasswordKeyId string `json:"passwordKeyId"`
-	// CertificateKeyId is the certificate ID for the latest valid certificate credential
-	CertificateKeyId string `json:"certificateKeyId"`
+	// PasswordKeyIds is the list of key IDs for the latest valid password credentials in use
+	PasswordKeyIds []string `json:"passwordKeyIds"`
+	// CertificateKeyIds is the list of key IDs for the latest valid certificate credentials in use
+	CertificateKeyIds []string `json:"certificateKeyIds"`
 	// ClientId is the Azure application client ID
 	ClientId string `json:"clientId"`
 	// ObjectId is the Azure AD Application object ID
@@ -91,6 +89,12 @@ func init() {
 func (in *AzureAdApplication) SetNotSynchronized() {
 	in.Status.Synchronized = false
 	in.Status.Timestamp = metav1.Now()
+	if in.Status.PasswordKeyIds == nil {
+		in.Status.PasswordKeyIds = make([]string, 0)
+	}
+	if in.Status.CertificateKeyIds == nil {
+		in.Status.CertificateKeyIds = make([]string, 0)
+	}
 }
 
 func (in *AzureAdApplication) SetSynchronized() {
@@ -147,15 +151,15 @@ func (in AzureAdApplication) Hash() (string, error) {
 	// creating a hash of an AzureAdApplication object
 	relevantValues := struct {
 		AzureAdApplicationSpec AzureAdApplicationSpec
-		CertificateKeyId       string
-		SecretKeyid            string
+		CertificateKeyIds      []string
+		SecretKeyIds           []string
 		ClientId               string
 		ObjectId               string
 		ServicePrincipalId     string
 	}{
 		in.Spec,
-		in.Status.CertificateKeyId,
-		in.Status.PasswordKeyId,
+		in.Status.CertificateKeyIds,
+		in.Status.PasswordKeyIds,
 		in.Status.ClientId,
 		in.Status.ObjectId,
 		in.Status.ServicePrincipalId,

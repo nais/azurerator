@@ -4,16 +4,26 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/nais/azureator/pkg/fixtures"
+	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/pkg/fixtures/azure"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestSecretCreator(t *testing.T) {
-	app := fixtures.MinimalK8sAzureAdApplication()
-	azureApp := fixtures.InternalAzureApp(*app)
+	app := v1alpha1.AzureAdApplication{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-app",
+			Namespace: "test",
+		},
+		Spec: v1alpha1.AzureAdApplicationSpec{
+			SecretName: "test-secret",
+		},
+	}
+	azureApp := azure.InternalAzureApp(app)
 	c := SecretCreator{DefaultCreator{
-		Resource:    *app,
+		Resource:    app,
 		Application: azureApp,
 	}}
 
@@ -49,14 +59,41 @@ func TestSecretCreator(t *testing.T) {
 		})
 
 		t.Run("Secret Data should contain Client Secret", func(t *testing.T) {
-			expected := c.Application.Credentials.Private.ClientSecret
-			assert.Equal(t, expected, secret.StringData["clientSecret"])
+			expected := c.Application.Password.ClientSecret
+			assert.Equal(t, expected, secret.StringData[ClientSecretKey])
 		})
 
 		t.Run("Secret Data should contain Private JWK", func(t *testing.T) {
-			expected, err := json.Marshal(c.Application.Credentials.Private.Jwk)
+			expected, err := json.Marshal(c.Application.Certificate.Jwks.Private)
 			assert.NoError(t, err)
-			assert.Equal(t, string(expected), secret.StringData[JwksSecretKey])
+			assert.Equal(t, string(expected), secret.StringData[JwksPrivateKey])
+		})
+
+		t.Run("Secret Data should contain Certificate Key ID", func(t *testing.T) {
+			expected := c.Application.Certificate.KeyId.Latest
+			assert.Equal(t, expected, secret.StringData[CertificateIdKey])
+		})
+
+		t.Run("Secret Data should contain Password Key ID", func(t *testing.T) {
+			expected := c.Application.Password.KeyId.Latest
+			assert.Equal(t, expected, secret.StringData[PasswordIdKey])
+		})
+
+		t.Run("Secret Data should contain Client ID", func(t *testing.T) {
+			expected := c.Application.ClientId
+			assert.Equal(t, expected, secret.StringData[ClientIdKey])
+		})
+
+		t.Run("Secret Data should contain list of PreAuthorizedApps", func(t *testing.T) {
+			expected, err := json.Marshal(c.Application.PreAuthorizedApps)
+			assert.NoError(t, err)
+			assert.Equal(t, string(expected), secret.StringData[PreAuthAppsKey])
+		})
+
+		t.Run("Secret Data should contain Public JWK", func(t *testing.T) {
+			expected, err := json.Marshal(c.Application.Certificate.Jwks.Public)
+			assert.NoError(t, err)
+			assert.Equal(t, string(expected), secret.StringData[JwksPublicKey])
 		})
 	})
 }

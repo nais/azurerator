@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	LabelType     string = "azurerator.nais.io"
-	JwksSecretKey        = "jwks"
+	AppLabelKey    string = "app"
+	TypeLabelKey   string = "type"
+	TypeLabelValue string = "azurerator.nais.io"
 )
 
 type Creator interface {
@@ -34,7 +35,7 @@ func (c DefaultCreator) ObjectMeta(name string) metav1.ObjectMeta {
 
 func (c DefaultCreator) Labels() map[string]string {
 	return map[string]string{
-		"app":  c.Resource.GetName(),
-		"type": LabelType,
+		AppLabelKey:  c.Resource.GetName(),
+		TypeLabelKey: TypeLabelValue,
 	}
 }

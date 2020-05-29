@@ -20,7 +20,7 @@ func (c client) passwordCredential() passwordCredential {
 	return passwordCredential{c}
 }
 
-func (p passwordCredential) rotate(tx azure.Transaction) (msgraph.PasswordCredential, error) {
+func (p passwordCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (msgraph.PasswordCredential, error) {
 	app, err := p.Get(tx)
 	if err != nil {
 		return msgraph.PasswordCredential{}, err
@@ -29,10 +29,8 @@ func (p passwordCredential) rotate(tx azure.Transaction) (msgraph.PasswordCreden
 	if err != nil {
 		return msgraph.PasswordCredential{}, err
 	}
-	for _, cred := range app.PasswordCredentials {
-		if isPasswordInUse(cred, newCred, tx.Instance.Status.PasswordKeyId) {
-			continue
-		}
+	revocationCandidates := p.revocationCandidates(app, append(keyIdsInUse, string(*newCred.KeyID)))
+	for _, cred := range revocationCandidates {
 		if err := p.remove(tx.Ctx, *app.ID, cred.KeyID); err != nil {
 			return msgraph.PasswordCredential{}, err
 		}
@@ -78,9 +76,35 @@ func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.Applic
 	}
 }
 
-func isPasswordInUse(cred msgraph.PasswordCredential, new msgraph.PasswordCredential, currentId string) bool {
+func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIdsInUse []string) []msgraph.PasswordCredential {
+	revoked := make([]msgraph.PasswordCredential, 0)
+
+	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
+	// This case assumes the possibility of the Azure application being used in applications external to the cluster.
+	// There should always be at least one passwordcredential registered for an application.
+	var newestCredential msgraph.PasswordCredential
+	var newestCredentialIndex int
+	for i, passwordCredential := range app.PasswordCredentials {
+		if newestCredential.StartDateTime == nil || passwordCredential.StartDateTime.After(*newestCredential.StartDateTime) {
+			newestCredential = passwordCredential
+			newestCredentialIndex = i
+		}
+	}
+	for i, passwordCredential := range app.PasswordCredentials {
+		if isPasswordInUse(passwordCredential, keyIdsInUse) || i == newestCredentialIndex {
+			continue
+		}
+		revoked = append(revoked, passwordCredential)
+	}
+	return revoked
+}
+
+func isPasswordInUse(cred msgraph.PasswordCredential, idsInUse []string) bool {
 	keyId := string(*cred.KeyID)
-	isNewCredKeyId := keyId == string(*new.KeyID)
-	isPreviousKeyId := keyId == currentId
-	return isPreviousKeyId || isNewCredKeyId
+	for _, idInUse := range idsInUse {
+		if keyId == idInUse {
+			return true
+		}
+	}
+	return false
 }

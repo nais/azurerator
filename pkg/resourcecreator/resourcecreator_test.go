@@ -3,15 +3,21 @@ package resourcecreator
 import (
 	"testing"
 
+	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/fixtures"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestDefaultCreator(t *testing.T) {
-	app := fixtures.MinimalK8sAzureAdApplication()
+	app := v1alpha1.AzureAdApplication{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-app",
+			Namespace: "test",
+		},
+	}
 	c := DefaultCreator{
-		Resource:    *app,
+		Resource:    app,
 		Application: azure.Application{},
 	}
 	name := "test-name"
@@ -30,8 +36,8 @@ func TestDefaultCreator(t *testing.T) {
 	})
 	t.Run("Labels should be set", func(t *testing.T) {
 		expected := map[string]string{
-			"app":  app.GetName(),
-			"type": LabelType,
+			AppLabelKey:  app.GetName(),
+			TypeLabelKey: TypeLabelValue,
 		}
 		actual := om.GetLabels()
 		assert.NotEmpty(t, actual)

@@ -1,4 +1,4 @@
-package fixtures
+package azure
 
 import (
 	"github.com/google/uuid"

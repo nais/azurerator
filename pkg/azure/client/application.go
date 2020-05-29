@@ -47,15 +47,15 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 		Oauth2PermissionScopes:      a.oAuth2PermissionScopes().defaultScopes(),
 		PreAuthorizedApplications:   preAuthApps,
 	}
-	req := util.Application(a.defaultTemplate(tx.Instance)).Key(key).Api(api).Build()
+	req := util.Application(a.defaultTemplate(tx.Instance)).Key(*key).Api(api).Build()
 	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
 		return applicationResponse{}, fmt.Errorf("failed to register application: %w", err)
 	}
 	return applicationResponse{
 		Application:   *app,
-		KeyCredential: key,
-		JwkPair:       jwkPair,
+		KeyCredential: *key,
+		JwkPair:       *jwkPair,
 	}, nil
 }
 

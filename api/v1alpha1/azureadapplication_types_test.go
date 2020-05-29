@@ -64,7 +64,7 @@ func TestAzureAdApplication_IsBeingDeleted(t *testing.T) {
 func TestAzureAdApplication_Hash(t *testing.T) {
 	actual, err := minimalApplication().Hash()
 	assert.NoError(t, err)
-	assert.Equal(t, "100306fda4b3e77", actual)
+	assert.Equal(t, "39b173d62bd3f1e3", actual)
 }
 
 func TestAzureAdApplication_HashUnchanged(t *testing.T) {
@@ -88,7 +88,7 @@ func TestAzureAdApplication_UpdateHash(t *testing.T) {
 
 	err := app.UpdateHash()
 	assert.NoError(t, err)
-	assert.Equal(t, "2bf0d1b52d35c54d", app.Status.ProvisionHash)
+	assert.Equal(t, "8993bcc81d12b0bb", app.Status.ProvisionHash)
 }
 
 func TestAzureAdApplication_IsUpToDate(t *testing.T) {
@@ -141,15 +141,14 @@ func minimalApplication() *AzureAdApplication {
 			PreAuthorizedApplications: nil,
 			LogoutUrl:                 "test",
 			SecretName:                "test",
-			ConfigMapName:             "test",
 		},
 		Status: AzureAdApplicationStatus{
-			PasswordKeyId:      "test",
-			CertificateKeyId:   "test",
+			PasswordKeyIds:     []string{"test"},
+			CertificateKeyIds:  []string{"test"},
 			ClientId:           "test",
 			ObjectId:           "test",
 			ServicePrincipalId: "test",
-			ProvisionHash:      "100306fda4b3e77",
+			ProvisionHash:      "39b173d62bd3f1e3",
 		},
 	}
 }

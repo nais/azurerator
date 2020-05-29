@@ -40,50 +40,59 @@ func New(ctx context.Context, cfg *azureConfig.Config) (azure.Client, error) {
 }
 
 // Create registers a new AAD application with all the required accompanying resources
-func (c client) Create(tx azure.Transaction) (azure.Application, error) {
+func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 	app := c.application()
 	res, err := app.register(tx)
 	if err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
 	servicePrincipal, err := c.servicePrincipal().register(tx.Ctx, *res.Application.AppID)
 	if err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
 	if err := c.oAuth2PermissionGrant().add(tx.Ctx, *servicePrincipal.ID); err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
 	passwordCredential, err := c.passwordCredential().add(tx.Ctx, *res.Application.ID)
 	if err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
 	if err := app.identifierUri().set(tx.Ctx, res.Application); err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
 	preAuthApps, err := c.preAuthApps().mapWithNames(tx.Ctx, res.Application.API.PreAuthorizedApplications)
 	if err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
 	_, err = c.appRoles().add(tx, *servicePrincipal.ID, preAuthApps)
 	if err != nil {
-		return azure.Application{}, fmt.Errorf("failed to add app role assignments: %w", err)
+		return nil, fmt.Errorf("failed to add app role assignments: %w", err)
 	}
-	return azure.Application{
-		Credentials: azure.Credentials{
-			Public: azure.Public{
-				ClientId: *res.Application.AppID,
-				Jwk:      res.JwkPair.Public,
+
+	lastPasswordKeyId := string(*passwordCredential.KeyID)
+	lastCertificateKeyId := string(*res.KeyCredential.KeyID)
+
+	return &azure.Application{
+		Certificate: azure.Certificate{
+			KeyId: azure.KeyId{
+				Latest:   lastCertificateKeyId,
+				AllInUse: []string{lastCertificateKeyId},
 			},
-			Private: azure.Private{
-				ClientSecret: *passwordCredential.SecretText,
-				Jwk:          res.JwkPair.Private,
+			Jwks: azure.Jwks{
+				Public:  res.JwkPair.Public,
+				Private: res.JwkPair.Private,
 			},
+		},
+		Password: azure.Password{
+			KeyId: azure.KeyId{
+				Latest:   lastPasswordKeyId,
+				AllInUse: []string{lastPasswordKeyId},
+			},
+			ClientSecret: *passwordCredential.SecretText,
 		},
 		ClientId:           *res.Application.AppID,
 		ObjectId:           *res.Application.ID,
 		ServicePrincipalId: *servicePrincipal.ID,
-		PasswordKeyId:      string(*passwordCredential.KeyID),
-		CertificateKeyId:   string(*res.KeyCredential.KeyID),
 		PreAuthorizedApps:  preAuthApps,
 	}, nil
 }
@@ -135,53 +144,61 @@ func (c client) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePr
 }
 
 // Rotate rotates credentials for an existing AAD application
-func (c client) Rotate(tx azure.Transaction, app azure.Application) (azure.Application, error) {
-	clientId := tx.Instance.Status.ClientId
-
-	passwordCredential, err := c.passwordCredential().rotate(tx)
+func (c client) Rotate(tx azure.Transaction, app azure.Application) (*azure.Application, error) {
+	existingPasswordKeyIdsInUse := app.Password.KeyId.AllInUse
+	newPasswordCredential, err := c.passwordCredential().rotate(tx, existingPasswordKeyIdsInUse)
 	if err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
-	keyCredential, jwkPair, err := c.keyCredential().rotate(tx)
-	if err != nil {
-		return azure.Application{}, err
-	}
+	newPasswordKeyId := string(*newPasswordCredential.KeyID)
 
-	app.Credentials = azure.Credentials{
-		Public: azure.Public{
-			ClientId: clientId,
-			Jwk:      jwkPair.Public,
+	existingCertificateKeyIdsInUse := app.Certificate.KeyId.AllInUse
+	NewCertificateKeyCredential, jwkPair, err := c.keyCredential().rotate(tx, existingCertificateKeyIdsInUse)
+	if err != nil {
+		return nil, err
+	}
+	newCertificateKeyId := string(*NewCertificateKeyCredential.KeyID)
+
+	app.Password = azure.Password{
+		KeyId: azure.KeyId{
+			Latest:   newPasswordKeyId,
+			AllInUse: append(existingPasswordKeyIdsInUse, newPasswordKeyId),
 		},
-		Private: azure.Private{
-			ClientSecret: *passwordCredential.SecretText,
-			Jwk:          jwkPair.Private,
+		ClientSecret: *newPasswordCredential.SecretText,
+	}
+	app.Certificate = azure.Certificate{
+		KeyId: azure.KeyId{
+			Latest:   newCertificateKeyId,
+			AllInUse: append(existingCertificateKeyIdsInUse, newCertificateKeyId),
+		},
+		Jwks: azure.Jwks{
+			Public:  jwkPair.Public,
+			Private: jwkPair.Private,
 		},
 	}
-	app.CertificateKeyId = string(*keyCredential.KeyID)
-	app.PasswordKeyId = string(*passwordCredential.KeyID)
-	return app, nil
+	return &app, nil
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation
-func (c client) Update(tx azure.Transaction) (azure.Application, error) {
+func (c client) Update(tx azure.Transaction) (*azure.Application, error) {
 	clientId := tx.Instance.Status.ClientId
 	objectId := tx.Instance.Status.ObjectId
 	spId := tx.Instance.Status.ServicePrincipalId
 
 	if err := c.application().identifierUri().update(tx); err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
 	if err := c.oAuth2PermissionGrant().upsert(tx); err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
 	preAuthApps, err := c.preAuthApps().update(tx)
 	if err != nil {
-		return azure.Application{}, err
+		return nil, err
 	}
 	if err := c.appRoles().update(tx, spId, preAuthApps); err != nil {
-		return azure.Application{}, fmt.Errorf("failed to update app roles: %w", err)
+		return nil, fmt.Errorf("failed to update app roles: %w", err)
 	}
-	return azure.Application{
+	return &azure.Application{
 		ClientId:           clientId,
 		ObjectId:           objectId,
 		ServicePrincipalId: spId,

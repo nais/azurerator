@@ -10,6 +10,7 @@ import (
 	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/metrics"
+	"github.com/nais/azureator/pkg/secret"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -87,6 +88,10 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	if err := r.process(tx); err != nil {
+		tx.instance.SetNotSynchronized()
+		if err := r.updateStatusSubresource(tx); err != nil {
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("failed to set synchronized status: %w", err)
+		}
 		r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", "Failed to synchronize Azure application, retrying")
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("failed to process Azure application: %w", err)
 	}
@@ -100,21 +105,21 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) process(tx transaction) error {
-	tx.instance.SetNotSynchronized()
-	if err := r.updateStatusSubresource(tx); err != nil {
-		return fmt.Errorf("failed to set processing status: %w", err)
+	managedSecrets, err := r.getManagedSecrets(tx)
+	if err != nil {
+		return err
 	}
-	application, err := r.createOrUpdateAzureApp(tx)
+	application, err := r.createOrUpdateAzureApp(tx, *managedSecrets)
 	if err != nil {
 		return err
 	}
 	if err := r.createOrUpdateSecret(tx, application); err != nil {
 		return fmt.Errorf("failed to create or update secret: %w", err)
 	}
-	if err := r.createOrUpdateConfigMap(tx, application); err != nil {
-		return fmt.Errorf("failed to create or update configMap: %w", err)
-	}
 	if err := r.updateStatus(tx, application); err != nil {
+		return err
+	}
+	if err := r.deleteUnusedSecrets(tx, *managedSecrets); err != nil {
 		return err
 	}
 	metrics.AzureAppsProcessedCount.Inc()
@@ -122,8 +127,8 @@ func (r *Reconciler) process(tx transaction) error {
 	return nil
 }
 
-func (r *Reconciler) createOrUpdateAzureApp(tx transaction) (azure.Application, error) {
-	var application azure.Application
+func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secret.Lists) (azure.Application, error) {
+	var application *azure.Application
 
 	exists, err := r.AzureClient.Exists(tx.toAzureTx())
 	if err != nil {
@@ -142,16 +147,22 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction) (azure.Application, 
 			return azure.Application{}, fmt.Errorf("failed to update azure application: %w", err)
 		}
 		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Updated", "Azure application is updated")
+
+		application, err = r.rotate(tx, *application, managedSecrets)
+		if err != nil {
+			return azure.Application{}, fmt.Errorf("failed to rotate azure credentials: %w", err)
+		}
+		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Rotated", "Azure credentials is rotated")
 	}
 
 	log.Info("successfully synchronized AzureAdApplication with Azure")
-	return application, nil
+	return *application, nil
 }
 
 func (r *Reconciler) updateStatus(tx transaction, application azure.Application) error {
 	log.Info("updating status for AzureAdApplication")
-	tx.instance.Status.CertificateKeyId = application.CertificateKeyId
-	tx.instance.Status.PasswordKeyId = application.PasswordKeyId
+	tx.instance.Status.CertificateKeyIds = application.Certificate.KeyId.AllInUse
+	tx.instance.Status.PasswordKeyIds = application.Password.KeyId.AllInUse
 	tx.instance.Status.ClientId = application.ClientId
 	tx.instance.Status.ObjectId = application.ObjectId
 	tx.instance.Status.ServicePrincipalId = application.ServicePrincipalId

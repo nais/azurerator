@@ -5,8 +5,11 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/resourcecreator"
+	"github.com/nais/azureator/pkg/secret"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -42,13 +45,55 @@ func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Appl
 	return nil
 }
 
-func (r *Reconciler) createOrUpdateConfigMap(tx transaction, application azure.Application) error {
-	configMapCreator := resourcecreator.NewConfigMap(*tx.instance, application)
-	log.Info(fmt.Sprintf("processing configMap with name '%s'...", configMapCreator.Name()))
-	res, err := r.createOrUpdateResource(tx, configMapCreator)
-	log.Info(fmt.Sprintf("configMap %s", res))
+func (r *Reconciler) getApplicationPods(tx transaction) (*corev1.PodList, error) {
+	selector := client.MatchingLabels{
+		resourcecreator.AppLabelKey: tx.instance.GetName(),
+	}
+	namespace := client.InNamespace(tx.instance.GetNamespace())
+	podList := &corev1.PodList{}
+	err := r.List(tx.ctx, podList, selector, namespace)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	return podList, nil
+}
+
+func (r *Reconciler) getSecrets(tx transaction) (corev1.SecretList, error) {
+	var secrets corev1.SecretList
+	var mLabels = client.MatchingLabels{}
+
+	mLabels[resourcecreator.AppLabelKey] = tx.instance.GetName()
+	mLabels[resourcecreator.TypeLabelKey] = resourcecreator.TypeLabelValue
+	if err := r.List(tx.ctx, &secrets, client.InNamespace(tx.instance.Namespace), mLabels); err != nil {
+		return secrets, err
+	}
+	return secrets, nil
+}
+
+func (r *Reconciler) getManagedSecrets(tx transaction) (*secret.Lists, error) {
+	// fetch all application pods for this app
+	podList, err := r.getApplicationPods(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	// fetch all managed secrets
+	allSecrets, err := r.getSecrets(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	// find intersect between secrets in use by application pods and all managed secrets
+	secrets := secret.PodSecretLists(allSecrets, *podList)
+	return &secrets, nil
+}
+
+func (r *Reconciler) deleteUnusedSecrets(tx transaction, lists secret.Lists) error {
+	for _, oldSecret := range lists.Unused.Items {
+		log.Info(fmt.Sprintf("deleting unused secret '%s'...", oldSecret.Name))
+		if err := r.Delete(tx.ctx, &oldSecret); err != nil {
+			return fmt.Errorf("failed to delete unused secret: %w", err)
+		}
 	}
 	return nil
 }

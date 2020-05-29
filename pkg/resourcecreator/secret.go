@@ -15,6 +15,26 @@ type SecretCreator struct {
 	DefaultCreator
 }
 
+const (
+	CertificateIdKey = "certificateKeyId"
+	ClientIdKey      = "clientId"
+	ClientSecretKey  = "clientSecret"
+	JwksPrivateKey   = "jwksPrivate"
+	JwksPublicKey    = "jwksPublic"
+	PasswordIdKey    = "passwordKeyId"
+	PreAuthAppsKey   = "preAuthorizedApps"
+)
+
+var AllKeys = []string{
+	CertificateIdKey,
+	ClientIdKey,
+	ClientSecretKey,
+	JwksPrivateKey,
+	JwksPublicKey,
+	PasswordIdKey,
+	PreAuthAppsKey,
+}
+
 func NewSecret(resource v1alpha1.AzureAdApplication, application azure.Application) Creator {
 	return SecretCreator{
 		DefaultCreator{
@@ -48,12 +68,26 @@ func (c SecretCreator) Name() string {
 }
 
 func (c SecretCreator) toSecretData() (map[string]string, error) {
-	jwkJson, err := json.Marshal(c.Application.Credentials.Private.Jwk)
+	jwkPrivateJson, err := json.Marshal(c.Application.Certificate.Jwks.Private)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal private JWK: %w", err)
 	}
+	jwkPublicJson, err := json.Marshal(c.Application.Certificate.Jwks.Public)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal public JWK: %w", err)
+	}
+	// TODO - more user friendly format?
+	preAuthAppsJson, err := json.Marshal(c.Application.PreAuthorizedApps)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal preauthorized apps: %w", err)
+	}
 	return map[string]string{
-		"clientSecret": c.Application.Credentials.Private.ClientSecret,
-		JwksSecretKey:  string(jwkJson),
+		CertificateIdKey: c.Application.Certificate.KeyId.Latest,
+		ClientIdKey:      c.Application.ClientId,
+		ClientSecretKey:  c.Application.Password.ClientSecret,
+		JwksPrivateKey:   string(jwkPrivateJson),
+		JwksPublicKey:    string(jwkPublicJson),
+		PasswordIdKey:    c.Application.Password.KeyId.Latest,
+		PreAuthAppsKey:   string(preAuthAppsJson),
 	}, nil
 }

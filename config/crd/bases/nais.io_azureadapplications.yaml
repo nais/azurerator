@@ -38,10 +38,6 @@ spec:
         spec:
           description: AzureAdApplicationSpec defines the desired state of AzureAdApplication
           properties:
-            configMapName:
-              description: ConfigMapName is the name of the resulting ConfigMap resource
-                to be created
-              type: string
             logoutUrl:
               description: LogoutUrl is the URL where Azure AD sends a request to
                 have the application clear the user's session data. This is required
@@ -78,16 +74,17 @@ spec:
                 to be created
               type: string
           required:
-          - configMapName
           - secretName
           type: object
         status:
           description: AzureAdApplicationStatus defines the observed state of AzureAdApplication
           properties:
-            certificateKeyId:
-              description: CertificateKeyId is the certificate ID for the latest valid
-                certificate credential
-              type: string
+            certificateKeyIds:
+              description: CertificateKeyIds is the list of key IDs for the latest
+                valid certificate credentials in use
+              items:
+                type: string
+              type: array
             clientId:
               description: ClientId is the Azure application client ID
               type: string
@@ -98,10 +95,12 @@ spec:
             objectId:
               description: ObjectId is the Azure AD Application object ID
               type: string
-            passwordKeyId:
-              description: PasswordKeyId is the key ID for the latest valid password
-                credential
-              type: string
+            passwordKeyIds:
+              description: PasswordKeyIds is the list of key IDs for the latest valid
+                password credentials in use
+              items:
+                type: string
+              type: array
             provisionHash:
               description: ProvisionHash is the hash of the AzureAdApplication object
               type: string
@@ -118,11 +117,11 @@ spec:
               format: date-time
               type: string
           required:
-          - certificateKeyId
+          - certificateKeyIds
           - clientId
           - correlationId
           - objectId
-          - passwordKeyId
+          - passwordKeyIds
           - servicePrincipalId
           - synchronized
           type: object
