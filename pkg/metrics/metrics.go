@@ -23,12 +23,6 @@ var (
 			Help: "Total number of azureadapp secrets",
 		},
 	)
-	AzureAppConfigMapsTotal = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "azureadapp_configmaps_total",
-			Help: "Total number of azureadapp configmaps",
-		},
-	)
 	AzureAppsProcessedCount = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "azureadapp_processed_count",
@@ -61,8 +55,6 @@ func (m metrics) Refresh(ctx context.Context) error {
 	mLabels[resourcecreator.TypeLabelKey] = resourcecreator.TypeLabelValue
 
 	var secretList v1.SecretList
-	var configMapList v1.ConfigMapList
-
 	var azureAdAppList v1alpha1.AzureAdApplicationList
 
 	t := time.NewTicker(exp)
@@ -73,11 +65,6 @@ func (m metrics) Refresh(ctx context.Context) error {
 			return err
 		}
 		AzureAppSecretsTotal.Set(float64(len(secretList.Items)))
-
-		if err = m.cli.List(ctx, &configMapList, mLabels); err != nil {
-			return err
-		}
-		AzureAppConfigMapsTotal.Set(float64(len(configMapList.Items)))
 
 		if err = m.cli.List(ctx, &azureAdAppList); err != nil {
 			return err

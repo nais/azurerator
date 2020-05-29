@@ -28,7 +28,6 @@ var (
 
 func init() {
 	metrics.Registry.MustRegister(
-		azureMetrics.AzureAppConfigMapsTotal,
 		azureMetrics.AzureAppSecretsTotal,
 		azureMetrics.AzureAppsTotal,
 		azureMetrics.AzureAppsProcessedCount,
