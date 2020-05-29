@@ -59,7 +59,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 	instance.SetClusterName(r.ClusterName)
 	instance.Status.CorrelationId = correlationId
-	log.Info("processing AzureAdApplication...", "AzureAdApplication", instance)
+	log.Info("processing AzureAdApplication...")
 
 	tx := transaction{ctx, instance, log}
 
@@ -174,6 +174,12 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.Application)
 	if err := r.updateStatusSubresource(tx); err != nil {
 		return err
 	}
-	log.Info("status subresource successfully updated", "AzureAdApplicationStatus", tx.instance.Status)
+	log.Info("status subresource successfully updated",
+		"CertificateKeyIDs", tx.instance.Status.CertificateKeyIds,
+		"PasswordKeyIDs", tx.instance.Status.PasswordKeyIds,
+		"ClientID", tx.instance.Status.ClientId,
+		"ObjectID", tx.instance.Status.ObjectId,
+		"ServicePrincipalID", tx.instance.Status.ServicePrincipalId,
+	)
 	return nil
 }

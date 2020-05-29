@@ -50,7 +50,7 @@ func main() {
 }
 
 func run() error {
-	log := zap.New(zap.UseDevMode(true))
+	log := zap.New()
 	ctrl.SetLogger(log)
 
 	ctx := context.Background()
