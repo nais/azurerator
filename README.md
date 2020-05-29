@@ -45,6 +45,7 @@ Set up the required environment variables as per the [config](./pkg/config/confi
 Then, assuming you have a Kubernetes cluster running locally (e.g. using [minikube](https://github.com/kubernetes/minikube)):
 
 ```shell script
+ulimit -n 4096  # for controller-gen
 make run
 kubectl apply -f ./config/samples/AzureAdApplication.yaml
 ```
