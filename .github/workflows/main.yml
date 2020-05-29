@@ -1,0 +1,57 @@
+name: Build and deploy azurerator
+
+on: [push]
+
+env:
+  image: docker.pkg.github.com/${{ github.repository }}/azurerator
+
+jobs:
+  build:
+    name: Checkout code and setup node
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Generate image environment variable
+        run: |
+          version=$(./version.sh)
+          echo ::set-env name=version::${version}
+          echo ::set-env name=IMAGE::${image}:${version}
+      - name: Build docker image
+        run: docker build . --tag $IMAGE
+      - name: Login to Github package registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GITHUB_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_REPOSITORY" --password-stdin
+      - name: Push docker image
+        run: docker push $IMAGE
+  deploy:
+    name: Deploy to Kubernetes
+    if: github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Generate image environment variable
+      run: |
+        version=$(./version.sh)
+        echo ::set-env name=version::${version}
+        echo ::set-env name=IMAGE::${image}:${version}
+        echo ::set-env name=NAIS_YAML::${GITHUB_WORKSPACE}/nais-yaml
+        pwd
+    - name: Bump version in nais-yaml
+      env:
+        DEPLOY_KEY: ${{ secrets.NAIS_YAML_DEPLOY_KEY }}
+        GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
+      run: |
+        eval "$(ssh-agent -s)"
+        ssh-add - <<< "${DEPLOY_KEY}"
+        mkdir -p $NAIS_YAML
+        git clone git@github.com:navikt/nais-yaml.git $NAIS_YAML
+        cd $NAIS_YAML
+        git config user.email "aura@nav.no"
+        git config user.name "NAIS deploy pipeline"
+        sed -E -i "s#image: .+#image: ${IMAGE}#" vars/azurerator.yaml
+        git add .
+        git --no-pager diff --cached
+        git commit -a -m "Bump azurerator to version ${version}"
+        git push
