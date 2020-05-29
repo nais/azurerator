@@ -2,11 +2,15 @@ package k8s
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/resourcecreator"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -18,28 +22,28 @@ type ClusterFixtures struct {
 	Namespace        string
 }
 
-func (p ClusterFixtures) Setup(cli client.Client) error {
+func (c ClusterFixtures) Setup(cli client.Client) error {
 	ctx := context.Background()
-	pod := p.podFixture()
+	pod := c.podFixture()
 	if err := cli.Create(ctx, pod); err != nil {
 		return err
 	}
 
-	secret := p.unusedSecretFixture()
+	secret := c.unusedSecretFixture()
 	if err := cli.Create(ctx, secret); err != nil {
 		return err
 	}
-	azureAdApplication := p.azureAdApplicationFixture()
+	azureAdApplication := c.azureAdApplicationFixture()
 	if err := cli.Create(ctx, azureAdApplication); err != nil {
 		return err
 	}
-	return nil
+	return c.waitForClusterResources(ctx, cli)
 }
 
-func (p ClusterFixtures) azureAdApplicationFixture() *v1alpha1.AzureAdApplication {
+func (c ClusterFixtures) azureAdApplicationFixture() *v1alpha1.AzureAdApplication {
 	key := types.NamespacedName{
-		Namespace: p.Namespace,
-		Name:      p.Name,
+		Namespace: c.Namespace,
+		Name:      c.Name,
 	}
 	spec := v1alpha1.AzureAdApplicationSpec{
 		ReplyUrls: []v1alpha1.AzureAdReplyUrl{
@@ -55,7 +59,7 @@ func (p ClusterFixtures) azureAdApplicationFixture() *v1alpha1.AzureAdApplicatio
 			},
 		},
 		LogoutUrl:  "",
-		SecretName: p.SecretName,
+		SecretName: c.SecretName,
 	}
 	return &v1alpha1.AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
@@ -67,34 +71,34 @@ func (p ClusterFixtures) azureAdApplicationFixture() *v1alpha1.AzureAdApplicatio
 	}
 }
 
-func (p ClusterFixtures) unusedSecretFixture() *corev1.Secret {
+func (c ClusterFixtures) unusedSecretFixture() *corev1.Secret {
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      p.UnusedSecretName,
-			Namespace: p.Namespace,
+			Name:      c.UnusedSecretName,
+			Namespace: c.Namespace,
 			Labels: map[string]string{
-				resourcecreator.AppLabelKey:  p.Name,
+				resourcecreator.AppLabelKey:  c.Name,
 				resourcecreator.TypeLabelKey: resourcecreator.TypeLabelValue,
 			},
 		},
 	}
 }
 
-func (p ClusterFixtures) podFixture() *corev1.Pod {
+func (c ClusterFixtures) podFixture() *corev1.Pod {
 	return &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      p.Name,
-			Namespace: p.Namespace,
+			Name:      c.Name,
+			Namespace: c.Namespace,
 			Labels: map[string]string{
-				resourcecreator.AppLabelKey: p.Name,
+				resourcecreator.AppLabelKey: c.Name,
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -109,11 +113,48 @@ func (p ClusterFixtures) podFixture() *corev1.Pod {
 					Name: "foo",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							SecretName: p.SecretName,
+							SecretName: c.SecretName,
 						},
 					},
 				},
 			},
 		},
 	}
+}
+
+func (c ClusterFixtures) waitForClusterResources(ctx context.Context, cli client.Client) error {
+	key := client.ObjectKey{
+		Namespace: c.Namespace,
+		Name:      c.Name,
+	}
+
+	resources := []runtime.Object{
+		&v1alpha1.AzureAdApplication{},
+		&corev1.Pod{},
+		&corev1.Secret{},
+	}
+	timeout := time.NewTimer(30 * time.Second)
+	ticker := time.NewTicker(250 * time.Millisecond)
+
+	for {
+		select {
+		case <-timeout.C:
+			return fmt.Errorf("timeout while waiting for cluster fixtures setup synchronization")
+		case <-ticker.C:
+			return getAllOrError(ctx, cli, key, resources)
+		}
+	}
+}
+
+func getAllOrError(ctx context.Context, cli client.Client, key client.ObjectKey, resources []runtime.Object) error {
+	for _, resource := range resources {
+		err := cli.Get(ctx, key, resource)
+		if err == nil {
+			return nil
+		}
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
 }
