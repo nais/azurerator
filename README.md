@@ -29,7 +29,6 @@ i.e. both application and user authentication and authorization.
     - [4.2.1 Credential Rotation](#421-credential-rotation)
   - [4.3 Cluster Resources](#43-cluster-resources)
     - [4.3.1 Secret](#431-secret)
-    - [4.3.2 ConfigMap](#432-configmap)
   - [4.4 Deletion](#44-deletion)
 
 ## 1. Installation
@@ -206,12 +205,12 @@ associate these with the application.
 
 In order to ensure zero downtime when rotating credentials, the following algorithm is used:
 
-1. If the application only has a single set of registered credentials, then these will not be revoked.
-2. The new set of credentials are registered to the application in Azure AD
-3. The previous set of credentials as denoted in `Spec.Status.PasswordKeyId` and `Spec.Status.CertificateKeyId` will not be revoked
-4. Any other key registered in Azure AD not matching either the previous nor new set will be revoked, 
-i.e. any key deemed to be unused. 
-5. The Status subresource is updated with the identifiers for the new set of credentials
+1. If the application only has a single set of registered credentials in Azure, then these will not be revoked.
+2. The previous newest set of credentials will not be revoked.
+3. Additionally, any set of credentials that exist in `corev1.Secret` resources in use by existing pods will not be revoked.
+4. A new set of credentials are registered to the application in Azure AD
+5. Any other key registered in Azure AD not matching the above will be revoked, i.e. any key deemed to be unused. 
+6. The Status subresource is updated with the identifiers for the new set of credentials
 
 ### 4.3 Cluster Resources
 
@@ -220,18 +219,98 @@ and other metadata that the application should use in order to authenticate itse
 
 #### 4.3.1 Secret
 
-A `coreV1.Secret` with the name as defined in `Spec.SecretName` is created, containing:
+A `coreV1.Secret` with the name as defined in `Spec.SecretName` is created, containing the following keys and values:
 
-- client secret (i.e. password)
-- private JWK, i.e. containing the private key
+#### `AZURE_APP_CLIENT_ID`
 
-#### 4.3.2 ConfigMap
+Azure AD client ID. Unique ID for the application in Azure AD.
 
-A `coreV1.Configmap` with the name as defined in `Spec.ConfigMapName` is created, containing:
+Example value:
 
-- client ID
-- public JWK
-- a list of names and client IDs for the valid applications defined in `[]Spec.PreAuthorizedApplication`
+```e89006c5-7193-4ca3-8e26-d0990d9d981f```
+
+#### `AZURE_APP_CLIENT_SECRET`
+
+Azure AD client secret, i.e. password for [authenticating the application to Azure AD].
+
+Example value:
+
+```b5S0Bgg1OF17Ptpy4_uvUg-m.I~KU_.5RR```
+
+#### `AZURE_APP_JWKS_PRIVATE`
+
+Private JWKS, i.e. containing a JWK with the private RSA key for creating signed JWTs when [authenticating to Azure AD with a certificate].
+
+Example value:
+
+```json
+{
+  "keys": [
+    {
+      "use": "sig",
+      "kty": "RSA",
+      "kid": "jXDxKRE6a4jogcc4HgkDq3uVgQ0",
+      "n": "xQ3chFsz...",
+      "e": "AQAB",
+      "d": "C0BVXQFQ...",
+      "p": "9TGEF_Vk...",
+      "q": "zb0yTkgqO...",
+      "dp": "7YcKcCtJ...",
+      "dq": "sXxLHp9A...",
+      "qi": "QCW5VQjO...",
+      "x5c": [
+        "MIID8jCC..."
+      ],
+      "x5t": "jXDxKRE6a4jogcc4HgkDq3uVgQ0",
+      "x5t#S256": "AH2gbUvjZYmSQXZ6-YIRxM2YYrLiZYW8NywowyGcxp0"
+    }
+  ]
+}
+```
+
+#### `AZURE_APP_JWKS_PUBLIC`
+
+Public part of the aforementioned JWKS.
+
+Example value:
+
+```json
+{
+  "keys": [
+    {
+      "use": "sig",
+      "kty": "RSA",
+      "kid": "jXDxKRE6a4jogcc4HgkDq3uVgQ0",
+      "n": "xQ3chFsz...",
+      "e": "AQAB",
+      "x5c": [
+        "MIID8jCC..."
+      ],
+      "x5t": "jXDxKRE6a4jogcc4HgkDq3uVgQ0",
+      "x5t#S256": "AH2gbUvjZYmSQXZ6-YIRxM2YYrLiZYW8NywowyGcxp0"
+    }
+  ]
+}
+```
+
+#### `AZURE_APP_PRE_AUTHORIZED_APPS`
+
+A JSON string. List of names and client IDs for the valid (i.e. those that exist in Azure AD) applications defined in `[]Spec.PreAuthorizedApplication`
+
+Example value:
+
+```
+[
+  {
+    "name": "dev-gcp:othernamespace:app-a",
+    "clientId": "381ce452-1d49-49df-9e7e-990ef0328d6c"
+  },
+  {
+    "name": "dev-gcp:aura:app-b",
+    "clientId": "048eb0e8-e18a-473a-a87d-dfede7c65d84"
+  }
+]
+```
 
 ### 4.4 Deletion
 
@@ -239,3 +318,6 @@ The operator implements a finalizer of type `finalizers.azurerator.nais.io` whic
 whenever the `AzureAdApplication` resource is deleted. 
 
 OwnerReferences for the aforementioned cluster resources are also registered and should accordingly be garbage collected by the cluster.
+
+[authenticating to Azure AD with a certificate]: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#second-case-access-token-request-with-a-certificate
+[authenticating the application to Azure AD]: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#first-case-access-token-request-with-a-shared-secret

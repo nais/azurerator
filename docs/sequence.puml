@@ -13,12 +13,12 @@ participant application as "Application"
 ==Deployment==
 developer -> cluster: apply YAML
 cluster <- naiserator: read YAML
-cluster <- naiserator: apply azurerator CRD
+cluster <- naiserator: apply AzureAdApplication CRD
 naiserator -> cluster: wait for synchronization
 note over naiserator, cluster: mount expected secret and configmap
 
 loop forever
-	azurerator -> cluster: watch azurerator CRD
+	azurerator -> cluster: watch AzureAdApplication CRD
 end
 
 ==Create or update AAD app==
@@ -30,24 +30,25 @@ else app exists in AAD
     note left
         replyUrls
         preAuthorizedApplications
+        - permissions
+        - appRoles
     end note
 end
 
 ==Provision credentials==
 
-azurerator -> azurerator: generate new set of clientSecret and keypair
-note over azurerator, azuread
-    should not invalidate credentials for previous app that's still running
-end note
+azurerator -> azurerator: generate new set of clientSecret and JWKS
 
 azurerator -> azuread: assign the credentials to the AAD app as additional credentials
 
 alt if rotating secrets
-    azurerator -> cluster: check current KeyIds in status subresource
-    azurerator -> azuread: invalidate non-matching KeyIds
+    azurerator -> cluster: check existing pods for mounted Secrets with KeyIDs
+    azurerator -> azuread: invalidate non-matching KeyIDs
     note over azurerator, azuread
-        should ensure that credentials are invalidated on a given condition,
-        and iff new, valid credentials are available and in use by apps
+        rules:
+        - do not invalidate if the app only has _one_ set of valid credentials
+        - do not invalidate if the key ID is in use by an existing pod
+        - do not invalidate the newly assigned credentials
     end note
 else
 
@@ -59,22 +60,18 @@ azurerator -> cluster: update with newly generated KeyIds in AzureAdApplication 
 alt resources do not exist
 	azurerator -> cluster: create secret
 	note right
+	    client ID
         client secret
-        private key
-    end note
-	azurerator -> cluster: create configMap
-	note right
-        client ID
-        public key
+        private JWKS
+        public JWKS
         list of pre-authorized apps
     end note
 else resources exist
     azurerator -> cluster: update secret
-    azurerator -> cluster: update configMap
 end
 
 ==Complete provisioning==
-    azurerator -> cluster: update CR status
+    azurerator -> cluster: update AzureAdApplication status subresource
     azurerator -> cluster: complete reconciliation
     naiserator -> cluster: synchronized
     application -> cluster: deployed with mounted secret
@@ -83,6 +80,5 @@ end
     naiserator -> cluster: delete resources
     azurerator -> azuread: delete application
     azurerator -> cluster: delete secret
-    azurerator -> cluster: delete configMap
 
 @enduml
