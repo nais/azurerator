@@ -6,23 +6,23 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-type azureMockClient struct{}
+type fakeAzureClient struct{}
 
 const (
 	ApplicationNotExistsName = "not-exists-in-azure"
 	ApplicationExists        = "exists-in-azure"
 )
 
-func (a azureMockClient) Create(tx azure.Transaction) (*azure.Application, error) {
+func (a fakeAzureClient) Create(tx azure.Transaction) (*azure.Application, error) {
 	internalApp := InternalAzureApp(tx.Instance)
 	return &internalApp, nil
 }
 
-func (a azureMockClient) Delete(azure.Transaction) error {
+func (a fakeAzureClient) Delete(azure.Transaction) error {
 	return nil
 }
 
-func (a azureMockClient) Exists(tx azure.Transaction) (bool, error) {
+func (a fakeAzureClient) Exists(tx azure.Transaction) (bool, error) {
 	appExists := tx.Instance.Name == ApplicationExists
 	validStatus := len(tx.Instance.Status.ObjectId) > 0 && len(tx.Instance.Status.ClientId) > 0
 	if appExists || validStatus {
@@ -31,24 +31,24 @@ func (a azureMockClient) Exists(tx azure.Transaction) (bool, error) {
 	return false, nil
 }
 
-func (a azureMockClient) Get(tx azure.Transaction) (msgraph.Application, error) {
+func (a fakeAzureClient) Get(tx azure.Transaction) (msgraph.Application, error) {
 	return ExternalAzureApp(tx.Instance), nil
 }
 
-func (a azureMockClient) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePrincipal, error) {
+func (a fakeAzureClient) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePrincipal, error) {
 	return ServicePrincipal(tx.Instance), nil
 }
 
-func (a azureMockClient) Rotate(tx azure.Transaction, _ azure.Application) (*azure.Application, error) {
+func (a fakeAzureClient) Rotate(tx azure.Transaction, _ azure.Application) (*azure.Application, error) {
 	internalApp := InternalAzureApp(tx.Instance)
 	return &internalApp, nil
 }
 
-func (a azureMockClient) Update(tx azure.Transaction) (*azure.Application, error) {
+func (a fakeAzureClient) Update(tx azure.Transaction) (*azure.Application, error) {
 	internalApp := InternalAzureApp(tx.Instance)
 	return &internalApp, nil
 }
 
-func NewAzureClient() azure.Client {
-	return azureMockClient{}
+func NewFakeAzureClient() azure.Client {
+	return fakeAzureClient{}
 }

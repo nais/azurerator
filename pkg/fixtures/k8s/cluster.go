@@ -127,34 +127,46 @@ func (c ClusterFixtures) waitForClusterResources(ctx context.Context, cli client
 		Namespace: c.Namespace,
 		Name:      c.Name,
 	}
-
-	resources := []runtime.Object{
-		&v1alpha1.AzureAdApplication{},
-		&corev1.Pod{},
-		&corev1.Secret{},
+	unusedSecretKey := client.ObjectKey{
+		Namespace: c.Namespace,
+		Name:      c.UnusedSecretName,
 	}
-	timeout := time.NewTimer(30 * time.Second)
-	ticker := time.NewTicker(250 * time.Millisecond)
+
+	resources := map[client.ObjectKey]runtime.Object{
+		key:             &v1alpha1.AzureAdApplication{},
+		key:             &corev1.Pod{},
+		unusedSecretKey: &corev1.Secret{},
+	}
+	timeout := time.NewTimer(5 * time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
 
 	for {
 		select {
 		case <-timeout.C:
 			return fmt.Errorf("timeout while waiting for cluster fixtures setup synchronization")
 		case <-ticker.C:
-			return getAllOrError(ctx, cli, key, resources)
+			exists, err := allExists(ctx, cli, resources)
+			if err != nil {
+				return err
+			}
+			if exists {
+				return nil
+			}
 		}
 	}
 }
 
-func getAllOrError(ctx context.Context, cli client.Client, key client.ObjectKey, resources []runtime.Object) error {
-	for _, resource := range resources {
+func allExists(ctx context.Context, cli client.Client, resources map[client.ObjectKey]runtime.Object) (bool, error) {
+	for key, resource := range resources {
 		err := cli.Get(ctx, key, resource)
 		if err == nil {
-			return nil
+			continue
 		}
-		if !errors.IsNotFound(err) {
-			return err
+		if errors.IsNotFound(err) {
+			return false, nil
+		} else {
+			return false, err
 		}
 	}
-	return nil
+	return true, nil
 }

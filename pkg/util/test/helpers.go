@@ -9,7 +9,7 @@ import (
 
 func AssertContainsKeysWithNonEmptyValues(t *testing.T, a interface{}, keys []string) {
 	for _, key := range keys {
-		assert.Contains(t, a, key)
+		assert.Containsf(t, a, key, "should contain key '%s'", key)
 	}
 	v := reflect.ValueOf(a)
 	if v.Kind() == reflect.Map {
