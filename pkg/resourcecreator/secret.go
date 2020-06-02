@@ -16,13 +16,13 @@ type SecretCreator struct {
 }
 
 const (
-	CertificateIdKey = "certificateKeyId"
-	ClientIdKey      = "clientId"
-	ClientSecretKey  = "clientSecret"
-	JwksPrivateKey   = "jwksPrivate"
-	JwksPublicKey    = "jwksPublic"
-	PasswordIdKey    = "passwordKeyId"
-	PreAuthAppsKey   = "preAuthorizedApps"
+	CertificateIdKey = "AZURE_APP_CERTIFICATE_KEY_ID"
+	ClientIdKey      = "AZURE_APP_CLIENT_ID"
+	ClientSecretKey  = "AZURE_APP_CLIENT_SECRET"
+	JwksPrivateKey   = "AZURE_APP_JWKS_PRIVATE"
+	JwksPublicKey    = "AZURE_APP_JWKS_PUBLIC"
+	PasswordIdKey    = "AZURE_APP_PASSWORD_KEY_ID"
+	PreAuthAppsKey   = "AZURE_APP_PRE_AUTHORIZED_APPS"
 )
 
 var AllKeys = []string{
