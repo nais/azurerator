@@ -35,6 +35,7 @@ var AllKeys = []string{
 	JwksPublicKey,
 	PasswordIdKey,
 	PreAuthAppsKey,
+	WellKnownUrlKey,
 }
 
 func NewSecret(resource v1alpha1.AzureAdApplication, application azure.Application) Creator {
