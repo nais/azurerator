@@ -312,6 +312,16 @@ Example value:
 ]
 ```
 
+#### `AZURE_APP_WELL_KNOWN_URL`
+
+The well-known URL with the tenant for which the application resides in.
+
+Example value:
+
+```
+https://login.microsoftonline.com/77678b69-1daf-47b6-9072-771d270ac800/v2.0/.well-known/openid-configuration
+```
+
 ### 4.4 Deletion
 
 The operator implements a finalizer of type `finalizers.azurerator.nais.io` which will delete the application from Azure Active Directory

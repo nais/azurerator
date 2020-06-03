@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/nais/azureator/api/v1alpha1"
+	azureConfig "github.com/nais/azureator/pkg/azure/config"
 	"github.com/nais/azureator/pkg/fixtures/azure"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -94,6 +95,12 @@ func TestSecretCreator(t *testing.T) {
 			expected, err := json.Marshal(c.Application.Certificate.Jwks.Public)
 			assert.NoError(t, err)
 			assert.Equal(t, string(expected), secret.StringData[JwksPublicKey])
+		})
+
+		t.Run("Secret Data should contain well-known URL", func(t *testing.T) {
+			expected := azureConfig.WellKnownUrl(c.Application.Tenant)
+			assert.NoError(t, err)
+			assert.Equal(t, expected, secret.StringData[WellKnownUrlKey])
 		})
 	})
 }

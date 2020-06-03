@@ -32,6 +32,7 @@ func InternalAzureApp(instance v1alpha1.AzureAdApplication) azure.Application {
 	clientId := getOrGenerate(instance.Status.ClientId)
 	servicePrincipalId := getOrGenerate(instance.Status.ServicePrincipalId)
 
+	tenantId := uuid.New().String()
 	lastPasswordKeyId := uuid.New().String()
 	lastCertificateKeyId := uuid.New().String()
 
@@ -57,6 +58,7 @@ func InternalAzureApp(instance v1alpha1.AzureAdApplication) azure.Application {
 		ObjectId:           objectId,
 		ServicePrincipalId: servicePrincipalId,
 		PreAuthorizedApps:  mapToInternalPreAuthApps(instance.Spec.PreAuthorizedApplications),
+		Tenant:             tenantId,
 	}
 }
 

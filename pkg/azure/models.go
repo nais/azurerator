@@ -33,6 +33,7 @@ type Application struct {
 	ObjectId           string             `json:"objectId"`
 	ServicePrincipalId string             `json:"servicePrincipalId"`
 	PreAuthorizedApps  []PreAuthorizedApp `json:"preAuthorizedApps"`
+	Tenant             string             `json:"tenant"`
 }
 
 type Certificate struct {

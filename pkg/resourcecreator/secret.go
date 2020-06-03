@@ -6,6 +6,7 @@ import (
 
 	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/azure"
+	azureConfig "github.com/nais/azureator/pkg/azure/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -23,6 +24,7 @@ const (
 	JwksPublicKey    = "AZURE_APP_JWKS_PUBLIC"
 	PasswordIdKey    = "AZURE_APP_PASSWORD_KEY_ID"
 	PreAuthAppsKey   = "AZURE_APP_PRE_AUTHORIZED_APPS"
+	WellKnownUrlKey  = "AZURE_APP_WELL_KNOWN_URL"
 )
 
 var AllKeys = []string{
@@ -89,5 +91,6 @@ func (c SecretCreator) toSecretData() (map[string]string, error) {
 		JwksPublicKey:    string(jwkPublicJson),
 		PasswordIdKey:    c.Application.Password.KeyId.Latest,
 		PreAuthAppsKey:   string(preAuthAppsJson),
+		WellKnownUrlKey:  azureConfig.WellKnownUrl(c.Application.Tenant),
 	}, nil
 }

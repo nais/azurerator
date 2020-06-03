@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	flag "github.com/spf13/pflag"
 )
 
@@ -20,6 +22,7 @@ const (
 	ClientSecret              = "azure.auth.client-secret"
 	Tenant                    = "azure.tenant"
 	PermissionGrantResourceId = "azure.permissiongrantresourceid"
+	wellKnownUrlFormat        = "https://login.microsoftonline.com/%s/v2.0/.well-known/openid-configuration"
 )
 
 func SetupFlags() {
@@ -27,4 +30,8 @@ func SetupFlags() {
 	flag.String(ClientSecret, "", "Client secret for Azure AD authentication")
 	flag.String(Tenant, "", "Tenant for Azure AD")
 	flag.String(PermissionGrantResourceId, "", "Resource ID for permissions grant")
+}
+
+func WellKnownUrl(tenant string) string {
+	return fmt.Sprintf(wellKnownUrlFormat, tenant)
 }
