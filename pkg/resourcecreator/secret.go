@@ -20,8 +20,7 @@ const (
 	CertificateIdKey = "AZURE_APP_CERTIFICATE_KEY_ID"
 	ClientIdKey      = "AZURE_APP_CLIENT_ID"
 	ClientSecretKey  = "AZURE_APP_CLIENT_SECRET"
-	JwksPrivateKey   = "AZURE_APP_JWKS_PRIVATE"
-	JwksPublicKey    = "AZURE_APP_JWKS_PUBLIC"
+	JwksKey          = "AZURE_APP_JWKS"
 	PasswordIdKey    = "AZURE_APP_PASSWORD_KEY_ID"
 	PreAuthAppsKey   = "AZURE_APP_PRE_AUTHORIZED_APPS"
 	WellKnownUrlKey  = "AZURE_APP_WELL_KNOWN_URL"
@@ -31,8 +30,7 @@ var AllKeys = []string{
 	CertificateIdKey,
 	ClientIdKey,
 	ClientSecretKey,
-	JwksPrivateKey,
-	JwksPublicKey,
+	JwksKey,
 	PasswordIdKey,
 	PreAuthAppsKey,
 	WellKnownUrlKey,
@@ -75,10 +73,6 @@ func (c SecretCreator) toSecretData() (map[string]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal private JWK: %w", err)
 	}
-	jwkPublicJson, err := json.Marshal(c.Application.Certificate.Jwks.Public)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal public JWK: %w", err)
-	}
 	// TODO - more user friendly format?
 	preAuthAppsJson, err := json.Marshal(c.Application.PreAuthorizedApps)
 	if err != nil {
@@ -88,8 +82,7 @@ func (c SecretCreator) toSecretData() (map[string]string, error) {
 		CertificateIdKey: c.Application.Certificate.KeyId.Latest,
 		ClientIdKey:      c.Application.ClientId,
 		ClientSecretKey:  c.Application.Password.ClientSecret,
-		JwksPrivateKey:   string(jwkPrivateJson),
-		JwksPublicKey:    string(jwkPublicJson),
+		JwksKey:          string(jwkPrivateJson),
 		PasswordIdKey:    c.Application.Password.KeyId.Latest,
 		PreAuthAppsKey:   string(preAuthAppsJson),
 		WellKnownUrlKey:  azureConfig.WellKnownUrl(c.Application.Tenant),

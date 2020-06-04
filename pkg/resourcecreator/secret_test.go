@@ -64,10 +64,10 @@ func TestSecretCreator(t *testing.T) {
 			assert.Equal(t, expected, secret.StringData[ClientSecretKey])
 		})
 
-		t.Run("Secret Data should contain Private JWK", func(t *testing.T) {
+		t.Run("Secret Data should contain Private JWKS", func(t *testing.T) {
 			expected, err := json.Marshal(c.Application.Certificate.Jwks.Private)
 			assert.NoError(t, err)
-			assert.Equal(t, string(expected), secret.StringData[JwksPrivateKey])
+			assert.Equal(t, string(expected), secret.StringData[JwksKey])
 		})
 
 		t.Run("Secret Data should contain Certificate Key ID", func(t *testing.T) {
@@ -89,12 +89,6 @@ func TestSecretCreator(t *testing.T) {
 			expected, err := json.Marshal(c.Application.PreAuthorizedApps)
 			assert.NoError(t, err)
 			assert.Equal(t, string(expected), secret.StringData[PreAuthAppsKey])
-		})
-
-		t.Run("Secret Data should contain Public JWK", func(t *testing.T) {
-			expected, err := json.Marshal(c.Application.Certificate.Jwks.Public)
-			assert.NoError(t, err)
-			assert.Equal(t, string(expected), secret.StringData[JwksPublicKey])
 		})
 
 		t.Run("Secret Data should contain well-known URL", func(t *testing.T) {
