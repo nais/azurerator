@@ -68,7 +68,7 @@ func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServiceP
 		return msgraphbeta.AppRoleAssignment{}, err
 	}
 	if !spExists {
-		tx.Log.Info(fmt.Sprintf("ServicePrincipal for PreAuthorizedApp (clientId '%s', name '%s') does not exist, skipping AppRole assignment...", app.ClientId, app.Name))
+		tx.Log.Debugf("ServicePrincipal for PreAuthorizedApp (clientId '%s', name '%s') does not exist, skipping AppRole assignment...", app.ClientId, app.Name)
 		return msgraphbeta.AppRoleAssignment{}, nil
 	}
 	assignment := a.toAssignment(targetId, *assigneeSp.ID)
@@ -77,15 +77,15 @@ func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServiceP
 		return msgraphbeta.AppRoleAssignment{}, err
 	}
 	if assignmentExists {
-		tx.Log.Info(fmt.Sprintf("AppRole already assigned for PreAuthorizedApp (clientId '%s', name '%s'), skipping assignment...", app.ClientId, app.Name))
+		tx.Log.Infof("AppRole already assigned for PreAuthorizedApp (clientId '%s', name '%s'), skipping assignment...", app.ClientId, app.Name)
 		return *assignment, nil
 	}
-	tx.Log.Info(fmt.Sprintf("AppRole not assigned for PreAuthorizedApp (clientId '%s', name '%s'), assigning...", app.ClientId, app.Name))
+	tx.Log.Debugf("AppRole not assigned for PreAuthorizedApp (clientId '%s', name '%s'), assigning...", app.ClientId, app.Name)
 	_, err = a.graphBetaClient.ServicePrincipals().ID(targetId).AppRoleAssignedTo().Request().Add(tx.Ctx, assignment)
 	if err != nil {
 		return msgraphbeta.AppRoleAssignment{}, fmt.Errorf("failed to add AppRole assignment to target service principal ID '%s': %w", targetId, err)
 	}
-	tx.Log.Info(fmt.Sprintf("successfully assigned AppRole for PreAuthorizedApp (clientId '%s', name '%s')", app.ClientId, app.Name))
+	tx.Log.Infof("successfully assigned AppRole for PreAuthorizedApp (clientId '%s', name '%s')", app.ClientId, app.Name)
 	return *assignment, nil
 }
 
@@ -104,7 +104,7 @@ func (a appRoleAssignments) deleteRevoked(tx azure.Transaction, id azure.Service
 		return err
 	}
 	for _, r := range revoked {
-		tx.Log.Info(fmt.Sprintf("AppRole revoked for PreAuthorizedApp (servicePrincipalId '%s'), deleting assignment...", *r.PrincipalID))
+		tx.Log.Infof("AppRole revoked for PreAuthorizedApp (servicePrincipalId '%s'), deleting assignment...", *r.PrincipalID)
 		if err := a.delete(tx, id, r); err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func (a appRoleAssignments) delete(tx azure.Transaction, id azure.ServicePrincip
 	if err != nil {
 		return fmt.Errorf("failed to delete revoked AppRole assignment: %w", err)
 	}
-	tx.Log.Info(fmt.Sprintf("successfully deleted AppRole assignment for PreAuthorizedApp (servicePrincipalId '%s')", *revoked.PrincipalID))
+	tx.Log.Infof("successfully deleted AppRole assignment for PreAuthorizedApp (servicePrincipalId '%s')", *revoked.PrincipalID)
 	return nil
 }
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/nais/azureator/api/v1alpha1"
 	"github.com/nais/azureator/pkg/resourcecreator"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -36,13 +36,11 @@ type Metrics interface {
 }
 
 type metrics struct {
-	log logr.Logger
 	cli client.Client
 }
 
-func New(cli client.Client, log logr.Logger) Metrics {
+func New(cli client.Client) Metrics {
 	return metrics{
-		log: log,
 		cli: cli,
 	}
 }
@@ -59,7 +57,7 @@ func (m metrics) Refresh(ctx context.Context) error {
 
 	t := time.NewTicker(exp)
 	for range t.C {
-		m.log.Info("Refreshing metrics from cluster")
+		log.Debug("Refreshing metrics from cluster")
 
 		if err = m.cli.List(ctx, &secretList, mLabels); err != nil {
 			return err

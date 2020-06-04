@@ -272,7 +272,6 @@ func setup() (*envtest.Environment, error) {
 
 	err = (&Reconciler{
 		Client:      cli,
-		Log:         ctrl.Log.WithName("controllers").WithName("AzureAdApplication"),
 		Scheme:      mgr.GetScheme(),
 		AzureClient: azureClient,
 		Recorder:    mgr.GetEventRecorderFor("azurerator"),

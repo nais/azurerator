@@ -12,7 +12,7 @@ const FinalizerName string = "finalizer.azurerator.nais.io"
 
 func (r *Reconciler) registerFinalizer(tx transaction) error {
 	if !tx.instance.HasFinalizer(FinalizerName) {
-		log.Info("finalizer for object not found, registering...")
+		logger.Info("finalizer for object not found, registering...")
 		tx.instance.AddFinalizer(FinalizerName)
 		if err := r.Update(tx.ctx, tx.instance); err != nil {
 			return err
@@ -24,7 +24,7 @@ func (r *Reconciler) registerFinalizer(tx transaction) error {
 
 func (r *Reconciler) processFinalizer(tx transaction) error {
 	if tx.instance.HasFinalizer(FinalizerName) {
-		log.Info("finalizer triggered, deleting resources...")
+		logger.Info("finalizer triggered, deleting resources...")
 		if err := r.delete(tx); err != nil {
 			return fmt.Errorf("failed to delete resources: %w", err)
 		}

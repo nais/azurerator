@@ -3,8 +3,8 @@ package azure
 import (
 	"context"
 
-	"github.com/go-logr/logr"
 	"github.com/nais/azureator/api/v1alpha1"
+	log "github.com/sirupsen/logrus"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 	"gopkg.in/square/go-jose.v2"
@@ -23,7 +23,7 @@ type Client interface {
 type Transaction struct {
 	Ctx      context.Context
 	Instance v1alpha1.AzureAdApplication
-	Log      logr.Logger
+	Log      log.Entry
 }
 
 type Application struct {

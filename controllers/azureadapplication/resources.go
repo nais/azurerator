@@ -36,9 +36,9 @@ func (r *Reconciler) createOrUpdateResource(tx transaction, creator resourcecrea
 
 func (r *Reconciler) createOrUpdateSecret(tx transaction, application azure.Application) error {
 	secretCreator := resourcecreator.NewSecret(*tx.instance, application)
-	log.Info(fmt.Sprintf("processing secret with name '%s'...", secretCreator.Name()))
+	logger.Infof("processing secret with name '%s'...", secretCreator.Name())
 	res, err := r.createOrUpdateResource(tx, secretCreator)
-	log.Info(fmt.Sprintf("secret %s", res))
+	logger.Infof("secret %s", res)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (r *Reconciler) getManagedSecrets(tx transaction) (*secret.Lists, error) {
 
 func (r *Reconciler) deleteUnusedSecrets(tx transaction, lists secret.Lists) error {
 	for _, oldSecret := range lists.Unused.Items {
-		log.Info(fmt.Sprintf("deleting unused secret '%s'...", oldSecret.Name))
+		logger.Infof("deleting unused secret '%s'...", oldSecret.Name)
 		if err := r.Delete(tx.ctx, &oldSecret); err != nil {
 			return fmt.Errorf("failed to delete unused secret: %w", err)
 		}

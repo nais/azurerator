@@ -4,17 +4,21 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/go-logr/zapr"
 	"github.com/nais/azureator/controllers/azureadapplication"
 	"github.com/nais/azureator/pkg/azure/client"
 	azureConfig "github.com/nais/azureator/pkg/azure/config"
 	"github.com/nais/azureator/pkg/config"
 	azureMetrics "github.com/nais/azureator/pkg/metrics"
+	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	naisiov1alpha1 "github.com/nais/azureator/api/v1alpha1"
@@ -50,8 +54,18 @@ func main() {
 }
 
 func run() error {
-	log := zap.New()
-	ctrl.SetLogger(log)
+	zapLogger, err := setupZapLogger()
+	if err != nil {
+		return err
+	}
+
+	formatter := log.JSONFormatter{
+		TimestampFormat: time.RFC3339Nano,
+	}
+	log.SetFormatter(&formatter)
+	log.SetLevel(log.DebugLevel)
+
+	ctrl.SetLogger(zapr.NewLogger(zapLogger))
 
 	ctx := context.Background()
 
@@ -80,7 +94,6 @@ func run() error {
 
 	if err = (&azureadapplication.Reconciler{
 		Client:      mgr.GetClient(),
-		Log:         ctrl.Log.WithName("controllers").WithName("AzureAdApplication"),
 		Scheme:      mgr.GetScheme(),
 		AzureClient: azureClient,
 		ClusterName: cfg.ClusterName,
@@ -93,7 +106,7 @@ func run() error {
 	metrics.Registry.MustRegister()
 
 	setupLog.Info("starting metrics refresh goroutine")
-	clusterMetrics := azureMetrics.New(mgr.GetClient(), log)
+	clusterMetrics := azureMetrics.New(mgr.GetClient())
 	go clusterMetrics.Refresh(context.Background())
 
 	setupLog.Info("starting manager")
@@ -102,4 +115,12 @@ func run() error {
 	}
 
 	return nil
+}
+
+func setupZapLogger() (*zap.Logger, error) {
+	loggerConfig := zap.NewProductionConfig()
+	loggerConfig.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+	loggerConfig.EncoderConfig.TimeKey = "timestamp"
+	loggerConfig.EncoderConfig.EncodeTime = zapcore.RFC3339NanoTimeEncoder
+	return loggerConfig.Build()
 }
