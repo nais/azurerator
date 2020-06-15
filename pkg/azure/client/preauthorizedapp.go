@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
@@ -44,7 +44,7 @@ func (p preAuthApps) update(tx azure.Transaction) ([]azure.PreAuthorizedApp, err
 	return p.mapWithNames(tx.Ctx, preAuthApps)
 }
 
-func (p preAuthApps) exists(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (bool, error) {
+func (p preAuthApps) exists(ctx context.Context, app v1.AzureAdPreAuthorizedApplication) (bool, error) {
 	return p.application().existsByFilter(ctx, util.FilterByName(app.GetUniqueName()))
 }
 
@@ -68,7 +68,7 @@ func (p preAuthApps) mapToMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorized
 	return apps, nil
 }
 
-func (p preAuthApps) toMsGraph(tx azure.Transaction, app v1alpha1.AzureAdPreAuthorizedApplication) (msgraph.PreAuthorizedApplication, error) {
+func (p preAuthApps) toMsGraph(tx azure.Transaction, app v1.AzureAdPreAuthorizedApplication) (msgraph.PreAuthorizedApplication, error) {
 	clientId, err := p.getClientIdFor(tx.Ctx, app)
 	if err != nil {
 		return msgraph.PreAuthorizedApplication{}, err
@@ -94,7 +94,7 @@ func (p preAuthApps) mapWithNames(ctx context.Context, preAuthApps []msgraph.Pre
 	return a, nil
 }
 
-func (p preAuthApps) getClientIdFor(ctx context.Context, app v1alpha1.AzureAdPreAuthorizedApplication) (azure.ClientId, error) {
+func (p preAuthApps) getClientIdFor(ctx context.Context, app v1.AzureAdPreAuthorizedApplication) (azure.ClientId, error) {
 	azureApp, err := p.application().getByName(ctx, app.GetUniqueName())
 	if err != nil {
 		return "", fmt.Errorf("failed to get client ID for preauthorized app: %w", err)

@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 )
 
-func GetReplyUrlsStringSlice(resource v1alpha1.AzureAdApplication) []string {
+func GetReplyUrlsStringSlice(resource v1.AzureAdApplication) []string {
 	var replyUrls []string
 	for _, v := range resource.Spec.ReplyUrls {
 		replyUrls = append(replyUrls, v.Url)

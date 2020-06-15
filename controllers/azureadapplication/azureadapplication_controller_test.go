@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	azureFixtures "github.com/nais/azureator/pkg/fixtures/azure"
 	"github.com/nais/azureator/pkg/fixtures/k8s"
 	"github.com/nais/azureator/pkg/resourcecreator"
@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -145,8 +145,8 @@ func TestReconciler_DeleteAzureAdApplication(t *testing.T) {
 }
 
 // asserts that the application exists in the cluster and is valid
-func assertApplicationExists(t *testing.T, testName string, name string) *v1alpha1.AzureAdApplication {
-	instance := &v1alpha1.AzureAdApplication{}
+func assertApplicationExists(t *testing.T, testName string, name string) *v1.AzureAdApplication {
+	instance := &v1.AzureAdApplication{}
 	key := client.ObjectKey{
 		Name:      name,
 		Namespace: namespace,
@@ -187,7 +187,7 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1alph
 	return instance
 }
 
-func assertSecretExists(t *testing.T, name string, instance *v1alpha1.AzureAdApplication) {
+func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplication) {
 	t.Run(fmt.Sprintf("Secret '%s'", name), func(t *testing.T) {
 		key := client.ObjectKey{
 			Namespace: namespace,
@@ -222,8 +222,8 @@ func resourceDoesNotExist(key client.ObjectKey, instance runtime.Object) func() 
 	}
 }
 
-func containsOwnerRef(refs []v1.OwnerReference, owner v1alpha1.AzureAdApplication) bool {
-	expected := v1.OwnerReference{
+func containsOwnerRef(refs []metav1.OwnerReference, owner v1.AzureAdApplication) bool {
+	expected := metav1.OwnerReference{
 		APIVersion: owner.APIVersion,
 		Kind:       owner.Kind,
 		Name:       owner.Name,
@@ -254,7 +254,7 @@ func setup() (*envtest.Environment, error) {
 		return nil, err
 	}
 
-	err = v1alpha1.AddToScheme(scheme.Scheme)
+	err = v1.AddToScheme(scheme.Scheme)
 	if err != nil {
 		return nil, err
 	}

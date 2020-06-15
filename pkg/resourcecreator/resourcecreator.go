@@ -1,7 +1,7 @@
 package resourcecreator
 
 import (
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,7 +21,7 @@ type Creator interface {
 }
 
 type DefaultCreator struct {
-	Resource    v1alpha1.AzureAdApplication
+	Resource    v1.AzureAdApplication
 	Application azure.Application
 }
 

@@ -3,7 +3,7 @@ package azure
 import (
 	"context"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	log "github.com/sirupsen/logrus"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
@@ -22,7 +22,7 @@ type Client interface {
 
 type Transaction struct {
 	Ctx      context.Context
-	Instance v1alpha1.AzureAdApplication
+	Instance v1.AzureAdApplication
 	Log      log.Entry
 }
 

@@ -2,14 +2,14 @@ package azure
 
 import (
 	"github.com/google/uuid"
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/util/crypto"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
-func ExternalAzureApp(instance v1alpha1.AzureAdApplication) msgraph.Application {
+func ExternalAzureApp(instance v1.AzureAdApplication) msgraph.Application {
 	objectId := getOrGenerate(instance.Status.ObjectId)
 	clientId := getOrGenerate(instance.Status.ClientId)
 
@@ -22,7 +22,7 @@ func ExternalAzureApp(instance v1alpha1.AzureAdApplication) msgraph.Application 
 	}
 }
 
-func InternalAzureApp(instance v1alpha1.AzureAdApplication) azure.Application {
+func InternalAzureApp(instance v1.AzureAdApplication) azure.Application {
 	jwk, err := crypto.GenerateJwkPair(instance)
 	if err != nil {
 		panic(err)
@@ -62,7 +62,7 @@ func InternalAzureApp(instance v1alpha1.AzureAdApplication) azure.Application {
 	}
 }
 
-func mapToInternalPreAuthApps(apps []v1alpha1.AzureAdPreAuthorizedApplication) []azure.PreAuthorizedApp {
+func mapToInternalPreAuthApps(apps []v1.AzureAdPreAuthorizedApplication) []azure.PreAuthorizedApp {
 	as := make([]azure.PreAuthorizedApp, 0)
 	for _, app := range apps {
 		as = append(as, mapToInternalPreAuthApp(app))
@@ -70,7 +70,7 @@ func mapToInternalPreAuthApps(apps []v1alpha1.AzureAdPreAuthorizedApplication) [
 	return as
 }
 
-func mapToInternalPreAuthApp(app v1alpha1.AzureAdPreAuthorizedApplication) azure.PreAuthorizedApp {
+func mapToInternalPreAuthApp(app v1.AzureAdPreAuthorizedApplication) azure.PreAuthorizedApp {
 	clientId := uuid.New().String()
 	name := getOrGenerate(app.GetUniqueName())
 	return azure.PreAuthorizedApp{

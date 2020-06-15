@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/secret"
@@ -29,7 +29,7 @@ type Reconciler struct {
 
 type transaction struct {
 	ctx      context.Context
-	instance *v1alpha1.AzureAdApplication
+	instance *v1.AzureAdApplication
 	log      log.Entry
 }
 
@@ -56,7 +56,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	})
 	ctx := context.Background()
 
-	instance := &v1alpha1.AzureAdApplication{}
+	instance := &v1.AzureAdApplication{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -105,7 +105,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.AzureAdApplication{}).
+		For(&v1.AzureAdApplication{}).
 		Complete(r)
 }
 
