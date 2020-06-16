@@ -3,5 +3,5 @@ repo: github.com/nais/azureator
 resources:
 - group: nais.io
   kind: AzureAdApplication
-  version: v1alpha1
+  version: v1
 version: "2"

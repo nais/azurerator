@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/resourcecreator"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -40,18 +40,18 @@ func (c ClusterFixtures) Setup(cli client.Client) error {
 	return c.waitForClusterResources(ctx, cli)
 }
 
-func (c ClusterFixtures) azureAdApplicationFixture() *v1alpha1.AzureAdApplication {
+func (c ClusterFixtures) azureAdApplicationFixture() *v1.AzureAdApplication {
 	key := types.NamespacedName{
 		Namespace: c.Namespace,
 		Name:      c.Name,
 	}
-	spec := v1alpha1.AzureAdApplicationSpec{
-		ReplyUrls: []v1alpha1.AzureAdReplyUrl{
+	spec := v1.AzureAdApplicationSpec{
+		ReplyUrls: []v1.AzureAdReplyUrl{
 			{
 				Url: "http://localhost:3000/auth/callback",
 			},
 		},
-		PreAuthorizedApplications: []v1alpha1.AzureAdPreAuthorizedApplication{
+		PreAuthorizedApplications: []v1.AzureAdPreAuthorizedApplication{
 			{
 				Application: "some-other-app",
 				Namespace:   key.Namespace,
@@ -61,7 +61,7 @@ func (c ClusterFixtures) azureAdApplicationFixture() *v1alpha1.AzureAdApplicatio
 		LogoutUrl:  "",
 		SecretName: c.SecretName,
 	}
-	return &v1alpha1.AzureAdApplication{
+	return &v1.AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        key.Name,
 			Namespace:   key.Namespace,
@@ -133,7 +133,7 @@ func (c ClusterFixtures) waitForClusterResources(ctx context.Context, cli client
 	}
 
 	resources := map[client.ObjectKey]runtime.Object{
-		key:             &v1alpha1.AzureAdApplication{},
+		key:             &v1.AzureAdApplication{},
 		key:             &corev1.Pod{},
 		unusedSecretKey: &corev1.Secret{},
 	}

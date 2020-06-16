@@ -9,7 +9,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 )
 
 func GenerateCertificate(template *x509.Certificate, keyPair KeyPair) (*x509.Certificate, error) {
@@ -25,7 +25,7 @@ func GenerateCertificate(template *x509.Certificate, keyPair KeyPair) (*x509.Cer
 	return cert, nil
 }
 
-func CertificateTemplate(application v1alpha1.AzureAdApplication) *x509.Certificate {
+func CertificateTemplate(application v1.AzureAdApplication) *x509.Certificate {
 	return &x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{

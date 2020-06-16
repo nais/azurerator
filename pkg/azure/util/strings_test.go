@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,14 +20,14 @@ func TestDisplayName(t *testing.T) {
 
 func TestGetReplyUrlsStringSlice(t *testing.T) {
 	t.Run("Empty Application should return empty slice of reply URLs", func(t *testing.T) {
-		p := v1alpha1.AzureAdApplication{}
+		p := v1.AzureAdApplication{}
 		actual := GetReplyUrlsStringSlice(p)
 		assert.Empty(t, actual)
 	})
 
 	t.Run("Application with reply URL should return equivalent string slice of reply URLs", func(t *testing.T) {
 		url := "http://test.host/callback"
-		p := v1alpha1.AzureAdApplication{Spec: v1alpha1.AzureAdApplicationSpec{ReplyUrls: []v1alpha1.AzureAdReplyUrl{{Url: url}}}}
+		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{ReplyUrls: []v1.AzureAdReplyUrl{{Url: url}}}}
 		actual := GetReplyUrlsStringSlice(p)
 		assert.NotEmpty(t, actual)
 		assert.Len(t, actual, 1)

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
@@ -63,7 +63,7 @@ func (k keyCredential) mapToKeyCredentials(tx azure.Transaction, keyIdsInUse []s
 	return append(keyCredentialsInUse, newestCredential), nil
 }
 
-func (k keyCredential) new(resource v1alpha1.AzureAdApplication) (*msgraph.KeyCredential, *crypto.JwkPair, error) {
+func (k keyCredential) new(resource v1.AzureAdApplication) (*msgraph.KeyCredential, *crypto.JwkPair, error) {
 	jwkPair, err := crypto.GenerateJwkPair(resource)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate JWK pair for application: %w", err)

@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/resourcecreator"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -52,8 +52,8 @@ func (m metrics) Refresh(ctx context.Context) error {
 	var mLabels = client.MatchingLabels{}
 	mLabels[resourcecreator.TypeLabelKey] = resourcecreator.TypeLabelValue
 
-	var secretList v1.SecretList
-	var azureAdAppList v1alpha1.AzureAdApplicationList
+	var secretList corev1.SecretList
+	var azureAdAppList v1.AzureAdApplicationList
 
 	t := time.NewTicker(exp)
 	for range t.C {

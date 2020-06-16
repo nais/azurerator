@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
@@ -135,7 +135,7 @@ func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msg
 	return applications, nil
 }
 
-func (a application) defaultTemplate(resource v1alpha1.AzureAdApplication) *msgraph.Application {
+func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Application {
 	return &msgraph.Application{
 		DisplayName:           ptr.String(resource.GetUniqueName()),
 		GroupMembershipClaims: ptr.String("SecurityGroup"),

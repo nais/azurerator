@@ -3,14 +3,14 @@ package resourcecreator
 import (
 	"testing"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestDefaultCreator(t *testing.T) {
-	app := v1alpha1.AzureAdApplication{
+	app := v1.AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-app",
 			Namespace: "test",

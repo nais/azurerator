@@ -51,7 +51,7 @@ kubectl apply -f ./config/samples/AzureAdApplication.yaml
 
 ## 3. CRD
 
-The operator introduces a new Kind `AzureAdApplication` (shortname `azuread`), and acts upon changes to resources of this kind.
+The operator introduces a new Kind `AzureAdApplication` (shortname `azureapp`), and acts upon changes to resources of this kind.
 
 See the spec in [config/crd/bases/nais.io_azureadapplications.yaml](./config/crd/bases/nais.io_azureadapplications.yaml) for details.
 

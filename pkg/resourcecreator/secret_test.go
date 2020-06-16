@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	azureConfig "github.com/nais/azureator/pkg/azure/config"
 	"github.com/nais/azureator/pkg/fixtures/azure"
 	"github.com/stretchr/testify/assert"
@@ -13,12 +13,12 @@ import (
 )
 
 func TestSecretCreator(t *testing.T) {
-	app := v1alpha1.AzureAdApplication{
+	app := v1.AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-app",
 			Namespace: "test",
 		},
-		Spec: v1alpha1.AzureAdApplicationSpec{
+		Spec: v1.AzureAdApplicationSpec{
 			SecretName: "test-secret",
 		},
 	}

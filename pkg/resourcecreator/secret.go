@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	azureConfig "github.com/nais/azureator/pkg/azure/config"
 	corev1 "k8s.io/api/core/v1"
@@ -36,7 +36,7 @@ var AllKeys = []string{
 	WellKnownUrlKey,
 }
 
-func NewSecret(resource v1alpha1.AzureAdApplication, application azure.Application) Creator {
+func NewSecret(resource v1.AzureAdApplication, application azure.Application) Creator {
 	return SecretCreator{
 		DefaultCreator{
 			Resource:    resource,

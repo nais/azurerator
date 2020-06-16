@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 
-	"github.com/nais/azureator/api/v1alpha1"
+	"github.com/nais/azureator/api/v1"
 	"gopkg.in/square/go-jose.v2"
 )
 
@@ -20,7 +20,7 @@ type JwkPair struct {
 	PublicPem []byte             `json:"publicPem"`
 }
 
-func GenerateJwkPair(application v1alpha1.AzureAdApplication) (JwkPair, error) {
+func GenerateJwkPair(application v1.AzureAdApplication) (JwkPair, error) {
 	keyPair, err := NewRSAKeyPair()
 	if err != nil {
 		return JwkPair{}, err
@@ -45,7 +45,7 @@ func JwkToJwkPair(jwk jose.JSONWebKey) JwkPair {
 	}
 }
 
-func mapToJwkPair(keyPair KeyPair, application v1alpha1.AzureAdApplication) (JwkPair, error) {
+func mapToJwkPair(keyPair KeyPair, application v1.AzureAdApplication) (JwkPair, error) {
 	template := CertificateTemplate(application)
 	cert, err := GenerateCertificate(template, keyPair)
 	if err != nil {

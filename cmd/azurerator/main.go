@@ -21,7 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	naisiov1alpha1 "github.com/nais/azureator/api/v1alpha1"
+	naisiov1 "github.com/nais/azureator/api/v1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -38,7 +38,7 @@ func init() {
 	)
 
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = naisiov1alpha1.AddToScheme(scheme)
+	_ = naisiov1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
