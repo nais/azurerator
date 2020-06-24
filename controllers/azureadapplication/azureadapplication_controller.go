@@ -60,16 +60,28 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	shouldSkip, err := r.shouldSkip(tx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if shouldSkip {
+		logger.Info("skipping processing of this resource")
+		if err := r.Client.Update(tx.ctx, tx.instance); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update resource with skip flag: %w", err)
+		}
+		return ctrl.Result{}, nil
+	}
+
 	if tx.instance.IsBeingDeleted() {
 		if err := r.processFinalizer(*tx); err != nil {
-			return ctrl.Result{}, fmt.Errorf("error when processing finalizer: %v", err)
+			return ctrl.Result{}, fmt.Errorf("error when processing finalizer: %w", err)
 		}
 		return ctrl.Result{}, nil
 	}
 
 	if !tx.instance.HasFinalizer(FinalizerName) {
 		if err := r.registerFinalizer(*tx); err != nil {
-			return ctrl.Result{}, fmt.Errorf("error when registering finalizer: %v", err)
+			return ctrl.Result{}, fmt.Errorf("error when registering finalizer: %w", err)
 		}
 		return ctrl.Result{}, nil
 	}

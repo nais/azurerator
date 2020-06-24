@@ -1,6 +1,7 @@
 package azureadapplication
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -96,4 +97,15 @@ func (r *Reconciler) deleteUnusedSecrets(tx transaction, lists secret.Lists) err
 		}
 	}
 	return nil
+}
+
+func (r *Reconciler) getSharedNamespaces(ctx context.Context) (corev1.NamespaceList, error) {
+	var namespaces corev1.NamespaceList
+	mLabels := client.MatchingLabels{
+		"shared": "true",
+	}
+	if err := r.List(ctx, &namespaces, mLabels); err != nil {
+		return namespaces, fmt.Errorf("failed to get list of shared namespaces: %w", err)
+	}
+	return namespaces, nil
 }

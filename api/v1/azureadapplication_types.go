@@ -78,6 +78,11 @@ type AzureAdPreAuthorizedApplication struct {
 	Cluster     string `json:"cluster"`
 }
 
+const (
+	LabelSkipKey   = "skip"
+	LabelSkipValue = "true"
+)
+
 func (in AzureAdPreAuthorizedApplication) GetUniqueName() string {
 	return fmt.Sprintf("%s:%s:%s", in.Cluster, in.Namespace, in.Application)
 }
@@ -144,6 +149,14 @@ func (in *AzureAdApplication) HashUnchanged() (bool, error) {
 		return false, fmt.Errorf("failed to calculate application hash: %w", err)
 	}
 	return in.Status.ProvisionHash == newHash, nil
+}
+
+func (in *AzureAdApplication) SetSkipLabel() {
+	if in.ObjectMeta.Labels == nil {
+		in.ObjectMeta.Labels = map[string]string{LabelSkipKey: LabelSkipValue}
+	} else {
+		in.ObjectMeta.Labels[LabelSkipKey] = LabelSkipValue
+	}
 }
 
 func (in AzureAdApplication) Hash() (string, error) {
