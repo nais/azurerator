@@ -54,33 +54,27 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		"AzureAdApplication": req.NamespacedName,
 		"correlationId":      correlationId,
 	})
-	ctx := context.Background()
 
-	instance := &v1.AzureAdApplication{}
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+	tx, err := r.prepare(req)
+	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	instance.SetClusterName(r.ClusterName)
-	instance.Status.CorrelationId = correlationId
-	logger.Info("processing AzureAdApplication...")
 
-	tx := transaction{ctx, instance, logger}
-
-	if instance.IsBeingDeleted() {
-		if err := r.processFinalizer(tx); err != nil {
+	if tx.instance.IsBeingDeleted() {
+		if err := r.processFinalizer(*tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error when processing finalizer: %v", err)
 		}
 		return ctrl.Result{}, nil
 	}
 
-	if !instance.HasFinalizer(FinalizerName) {
-		if err := r.registerFinalizer(tx); err != nil {
+	if !tx.instance.HasFinalizer(FinalizerName) {
+		if err := r.registerFinalizer(*tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error when registering finalizer: %v", err)
 		}
 		return ctrl.Result{}, nil
 	}
 
-	upToDate, err := instance.IsUpToDate()
+	upToDate, err := tx.instance.IsUpToDate()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -90,9 +84,9 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.process(tx); err != nil {
+	if err := r.process(*tx); err != nil {
 		tx.instance.SetNotSynchronized()
-		if err := r.updateStatusSubresource(tx); err != nil {
+		if err := r.updateStatusSubresource(*tx); err != nil {
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("failed to set synchronized status: %w", err)
 		}
 		logger.Errorf("failed to reconcile: %v", err)
@@ -107,6 +101,19 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.AzureAdApplication{}).
 		Complete(r)
+}
+
+func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
+	ctx := context.Background()
+
+	instance := &v1.AzureAdApplication{}
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+		return nil, err
+	}
+	instance.SetClusterName(r.ClusterName)
+	instance.Status.CorrelationId = correlationId
+	logger.Info("processing AzureAdApplication...")
+	return &transaction{ctx, instance, logger}, nil
 }
 
 func (r *Reconciler) process(tx transaction) error {
