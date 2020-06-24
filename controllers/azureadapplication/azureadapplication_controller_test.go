@@ -69,15 +69,17 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 		secretName := fmt.Sprintf("%s-%s", c.appName, alreadyInUseSecret)
 
 		// set up preconditions for cluster
-		clusterFixtures := k8s.ClusterFixtures{
-			Name:             c.appName,
+		clusterFixtures := k8s.New(cli, k8s.Config{
+			AzureAppName:     c.appName,
 			SecretName:       secretName,
 			UnusedSecretName: unusedSecret,
-			Namespace:        namespace,
-		}
-		if err := clusterFixtures.Setup(cli); err != nil {
+			NamespaceName:    namespace,
+		}).WithMinimalConfig()
+
+		if err := clusterFixtures.Setup(); err != nil {
 			t.Fatalf("failed to set up cluster fixtures: %v", err)
 		}
+
 		t.Run(c.name, func(t *testing.T) {
 			instance := assertApplicationExists(t, "New AzureAdApplication should exist", c.appName)
 
@@ -95,31 +97,18 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 	}
 }
 
-func TestReconciler_CreatAzureAdApplication_ShouldNotProcess(t *testing.T) {
+func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t *testing.T) {
 	appName := "should-not-process"
 	sharedNamespace := "shared"
 	secretName := fmt.Sprintf("%s-%s", appName, alreadyInUseSecret)
-	clusterFixtures := k8s.ClusterFixtures{
-		Name:             appName,
+	clusterFixtures := k8s.New(cli, k8s.Config{
+		AzureAppName:     appName,
 		SecretName:       secretName,
 		UnusedSecretName: unusedSecret,
-		Namespace:        sharedNamespace,
-	}
-	if err := cli.Create(context.Background(), &corev1.Namespace{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Namespace",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: sharedNamespace,
-			Labels: map[string]string{
-				"shared": "true",
-			},
-		},
-	}); err != nil {
-		t.Fatalf("failed to set up namespace: %v", err)
-	}
-	if err := clusterFixtures.Setup(cli); err != nil {
+		NamespaceName:    sharedNamespace,
+	}).WithMinimalConfig().WithSharedNamespace()
+
+	if err := clusterFixtures.Setup(); err != nil {
 		t.Fatalf("failed to set up cluster fixtures: %v", err)
 	}
 	t.Run("AzureAdApplication in shared namespace should not be processed", func(t *testing.T) {

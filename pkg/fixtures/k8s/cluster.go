@@ -16,34 +16,50 @@ import (
 )
 
 type ClusterFixtures struct {
-	Name             string
+	client.Client
+	Config
+	azureAdApplication *v1.AzureAdApplication
+	pod                *corev1.Pod
+	unusedSecret       *corev1.Secret
+	sharedNamespace    *corev1.Namespace
+}
+
+type Config struct {
+	AzureAppName     string
+	NamespaceName    string
 	SecretName       string
 	UnusedSecretName string
-	Namespace        string
 }
 
-func (c ClusterFixtures) Setup(cli client.Client) error {
-	ctx := context.Background()
-	pod := c.podFixture()
-	if err := cli.Create(ctx, pod); err != nil {
-		return err
-	}
-
-	secret := c.unusedSecretFixture()
-	if err := cli.Create(ctx, secret); err != nil {
-		return err
-	}
-	azureAdApplication := c.azureAdApplicationFixture()
-	if err := cli.Create(ctx, azureAdApplication); err != nil {
-		return err
-	}
-	return c.waitForClusterResources(ctx, cli)
+type resource struct {
+	client.ObjectKey
+	runtime.Object
 }
 
-func (c ClusterFixtures) azureAdApplicationFixture() *v1.AzureAdApplication {
+func New(cli client.Client, config Config) ClusterFixtures {
+	return ClusterFixtures{Client: cli, Config: config}
+}
+
+func (c ClusterFixtures) WithSharedNamespace() ClusterFixtures {
+	c.sharedNamespace = &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: c.NamespaceName,
+			Labels: map[string]string{
+				"shared": "true",
+			},
+		},
+	}
+	return c
+}
+
+func (c ClusterFixtures) WithAzureApp() ClusterFixtures {
 	key := types.NamespacedName{
-		Namespace: c.Namespace,
-		Name:      c.Name,
+		Namespace: c.NamespaceName,
+		Name:      c.AzureAppName,
 	}
 	spec := v1.AzureAdApplicationSpec{
 		ReplyUrls: []v1.AzureAdReplyUrl{
@@ -61,7 +77,7 @@ func (c ClusterFixtures) azureAdApplicationFixture() *v1.AzureAdApplication {
 		LogoutUrl:  "",
 		SecretName: c.SecretName,
 	}
-	return &v1.AzureAdApplication{
+	c.azureAdApplication = &v1.AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        key.Name,
 			Namespace:   key.Namespace,
@@ -69,36 +85,38 @@ func (c ClusterFixtures) azureAdApplicationFixture() *v1.AzureAdApplication {
 		},
 		Spec: spec,
 	}
+	return c
 }
 
-func (c ClusterFixtures) unusedSecretFixture() *corev1.Secret {
-	return &corev1.Secret{
+func (c ClusterFixtures) WithUnusedSecret() ClusterFixtures {
+	c.unusedSecret = &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      c.UnusedSecretName,
-			Namespace: c.Namespace,
+			Namespace: c.NamespaceName,
 			Labels: map[string]string{
-				resourcecreator.AppLabelKey:  c.Name,
+				resourcecreator.AppLabelKey:  c.AzureAppName,
 				resourcecreator.TypeLabelKey: resourcecreator.TypeLabelValue,
 			},
 		},
 	}
+	return c
 }
 
-func (c ClusterFixtures) podFixture() *corev1.Pod {
-	return &corev1.Pod{
+func (c ClusterFixtures) WithPod() ClusterFixtures {
+	c.pod = &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      c.Name,
-			Namespace: c.Namespace,
+			Name:      c.AzureAppName,
+			Namespace: c.NamespaceName,
 			Labels: map[string]string{
-				resourcecreator.AppLabelKey: c.Name,
+				resourcecreator.AppLabelKey: c.AzureAppName,
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -120,22 +138,76 @@ func (c ClusterFixtures) podFixture() *corev1.Pod {
 			},
 		},
 	}
+	return c
 }
 
-func (c ClusterFixtures) waitForClusterResources(ctx context.Context, cli client.Client) error {
-	key := client.ObjectKey{
-		Namespace: c.Namespace,
-		Name:      c.Name,
-	}
-	unusedSecretKey := client.ObjectKey{
-		Namespace: c.Namespace,
-		Name:      c.UnusedSecretName,
-	}
+func (c ClusterFixtures) WithMinimalConfig() ClusterFixtures {
+	return c.WithAzureApp().
+		WithPod().
+		WithUnusedSecret()
+}
 
-	resources := map[client.ObjectKey]runtime.Object{
-		key:             &v1.AzureAdApplication{},
-		key:             &corev1.Pod{},
-		unusedSecretKey: &corev1.Secret{},
+func (c ClusterFixtures) Setup() error {
+	ctx := context.Background()
+	if c.sharedNamespace != nil {
+		if err := c.Create(ctx, c.sharedNamespace); err != nil {
+			return err
+		}
+	}
+	if c.pod != nil {
+		if err := c.Create(ctx, c.pod); err != nil {
+			return err
+		}
+	}
+	if c.unusedSecret != nil {
+		if err := c.Create(ctx, c.unusedSecret); err != nil {
+			return err
+		}
+	}
+	if c.azureAdApplication != nil {
+		if err := c.Create(ctx, c.azureAdApplication); err != nil {
+			return err
+		}
+	}
+	return c.waitForClusterResources(ctx)
+}
+
+func (c ClusterFixtures) waitForClusterResources(ctx context.Context) error {
+	resources := make([]resource, 0)
+	if c.sharedNamespace != nil {
+		resources = append(resources, resource{
+			ObjectKey: client.ObjectKey{
+				Name: c.NamespaceName,
+			},
+			Object: &corev1.Namespace{},
+		})
+	}
+	if c.pod != nil {
+		resources = append(resources, resource{
+			ObjectKey: client.ObjectKey{
+				Namespace: c.NamespaceName,
+				Name:      c.AzureAppName,
+			},
+			Object: &corev1.Pod{},
+		})
+	}
+	if c.unusedSecret != nil {
+		resources = append(resources, resource{
+			ObjectKey: client.ObjectKey{
+				Namespace: c.NamespaceName,
+				Name:      c.UnusedSecretName,
+			},
+			Object: &corev1.Secret{},
+		})
+	}
+	if c.azureAdApplication != nil {
+		resources = append(resources, resource{
+			ObjectKey: client.ObjectKey{
+				Namespace: c.NamespaceName,
+				Name:      c.AzureAppName,
+			},
+			Object: &v1.AzureAdApplication{},
+		})
 	}
 	timeout := time.NewTimer(5 * time.Second)
 	ticker := time.NewTicker(100 * time.Millisecond)
@@ -145,7 +217,7 @@ func (c ClusterFixtures) waitForClusterResources(ctx context.Context, cli client
 		case <-timeout.C:
 			return fmt.Errorf("timeout while waiting for cluster fixtures setup synchronization")
 		case <-ticker.C:
-			exists, err := allExists(ctx, cli, resources)
+			exists, err := allExists(ctx, c.Client, resources)
 			if err != nil {
 				return err
 			}
@@ -156,9 +228,9 @@ func (c ClusterFixtures) waitForClusterResources(ctx context.Context, cli client
 	}
 }
 
-func allExists(ctx context.Context, cli client.Client, resources map[client.ObjectKey]runtime.Object) (bool, error) {
-	for key, resource := range resources {
-		err := cli.Get(ctx, key, resource)
+func allExists(ctx context.Context, cli client.Client, resources []resource) (bool, error) {
+	for _, resource := range resources {
+		err := cli.Get(ctx, resource.ObjectKey, resource.Object)
 		if err == nil {
 			continue
 		}
