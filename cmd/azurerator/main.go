@@ -83,7 +83,7 @@ func run() error {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: cfg.MetricsAddr,
-		Port:               9443,
+		LeaderElection:     false,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
