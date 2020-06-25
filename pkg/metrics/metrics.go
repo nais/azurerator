@@ -32,7 +32,7 @@ var (
 )
 
 type Metrics interface {
-	Refresh(ctx context.Context) error
+	Refresh(ctx context.Context)
 }
 
 type metrics struct {
@@ -45,7 +45,7 @@ func New(cli client.Client) Metrics {
 	}
 }
 
-func (m metrics) Refresh(ctx context.Context) error {
+func (m metrics) Refresh(ctx context.Context) {
 	var err error
 	exp := 10 * time.Second
 
@@ -58,16 +58,14 @@ func (m metrics) Refresh(ctx context.Context) error {
 	t := time.NewTicker(exp)
 	for range t.C {
 		log.Debug("Refreshing metrics from cluster")
-
 		if err = m.cli.List(ctx, &secretList, mLabels); err != nil {
-			return err
+			log.Errorf("failed to list secrets: %v", err)
 		}
 		AzureAppSecretsTotal.Set(float64(len(secretList.Items)))
 
 		if err = m.cli.List(ctx, &azureAdAppList); err != nil {
-			return err
+			log.Errorf("failed to list azure apps: %v", err)
 		}
 		AzureAppsTotal.Set(float64(len(azureAdAppList.Items)))
 	}
-	return nil
 }
