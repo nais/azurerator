@@ -1,6 +1,6 @@
 module github.com/nais/azureator
 
-go 1.13
+go 1.14
 
 require (
 	github.com/go-logr/zapr v0.1.0
@@ -20,8 +20,8 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.0
-	k8s.io/api v0.17.2
-	k8s.io/apimachinery v0.17.2
-	k8s.io/client-go v0.17.2
-	sigs.k8s.io/controller-runtime v0.5.0
+	k8s.io/api v0.18.2
+	k8s.io/apimachinery v0.18.2
+	k8s.io/client-go v0.18.2
+	sigs.k8s.io/controller-runtime v0.6.0
 )
