@@ -299,6 +299,7 @@ func setup() (*envtest.Environment, error) {
 
 	err = (&Reconciler{
 		Client:      cli,
+		Reader:      mgr.GetAPIReader(),
 		Scheme:      mgr.GetScheme(),
 		AzureClient: azureClient,
 		Recorder:    mgr.GetEventRecorderFor("azurerator"),

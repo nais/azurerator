@@ -52,7 +52,7 @@ func (r *Reconciler) getApplicationPods(tx transaction) (*corev1.PodList, error)
 	}
 	namespace := client.InNamespace(tx.instance.GetNamespace())
 	podList := &corev1.PodList{}
-	err := r.List(tx.ctx, podList, selector, namespace)
+	err := r.Reader.List(tx.ctx, podList, selector, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (r *Reconciler) getSecrets(tx transaction) (corev1.SecretList, error) {
 
 	mLabels[resourcecreator.AppLabelKey] = tx.instance.GetName()
 	mLabels[resourcecreator.TypeLabelKey] = resourcecreator.TypeLabelValue
-	if err := r.List(tx.ctx, &secrets, client.InNamespace(tx.instance.Namespace), mLabels); err != nil {
+	if err := r.Reader.List(tx.ctx, &secrets, client.InNamespace(tx.instance.Namespace), mLabels); err != nil {
 		return secrets, err
 	}
 	return secrets, nil
@@ -104,7 +104,7 @@ func (r *Reconciler) getSharedNamespaces(ctx context.Context) (corev1.NamespaceL
 	mLabels := client.MatchingLabels{
 		"shared": "true",
 	}
-	if err := r.List(ctx, &namespaces, mLabels); err != nil {
+	if err := r.Reader.List(ctx, &namespaces, mLabels); err != nil {
 		return namespaces, fmt.Errorf("failed to get list of shared namespaces: %w", err)
 	}
 	return namespaces, nil

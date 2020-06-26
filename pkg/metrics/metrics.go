@@ -36,12 +36,12 @@ type Metrics interface {
 }
 
 type metrics struct {
-	cli client.Client
+	reader client.Reader
 }
 
-func New(cli client.Client) Metrics {
+func New(reader client.Reader) Metrics {
 	return metrics{
-		cli: cli,
+		reader: reader,
 	}
 }
 
@@ -58,12 +58,12 @@ func (m metrics) Refresh(ctx context.Context) {
 	t := time.NewTicker(exp)
 	for range t.C {
 		log.Debug("Refreshing metrics from cluster")
-		if err = m.cli.List(ctx, &secretList, mLabels); err != nil {
+		if err = m.reader.List(ctx, &secretList, mLabels); err != nil {
 			log.Errorf("failed to list secrets: %v", err)
 		}
 		AzureAppSecretsTotal.Set(float64(len(secretList.Items)))
 
-		if err = m.cli.List(ctx, &azureAdAppList); err != nil {
+		if err = m.reader.List(ctx, &azureAdAppList); err != nil {
 			log.Errorf("failed to list azure apps: %v", err)
 		}
 		AzureAppsTotal.Set(float64(len(azureAdAppList.Items)))

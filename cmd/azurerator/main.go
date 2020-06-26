@@ -102,6 +102,7 @@ func run() error {
 
 	if err = (&azureadapplication.Reconciler{
 		Client:      mgr.GetClient(),
+		Reader:      mgr.GetAPIReader(),
 		Scheme:      mgr.GetScheme(),
 		AzureClient: azureClient,
 		ClusterName: cfg.ClusterName,
@@ -114,7 +115,7 @@ func run() error {
 	metrics.Registry.MustRegister()
 
 	setupLog.Info("starting metrics refresh goroutine")
-	clusterMetrics := azureMetrics.New(mgr.GetClient())
+	clusterMetrics := azureMetrics.New(mgr.GetAPIReader())
 	go clusterMetrics.Refresh(context.Background())
 
 	setupLog.Info("starting manager")
