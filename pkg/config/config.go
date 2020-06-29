@@ -16,11 +16,13 @@ type Config struct {
 	AzureAd     azure.Config `json:"azure"`
 	MetricsAddr string       `json:"metrics-address"`
 	ClusterName string       `json:"cluster-name"`
+	Debug       bool         `json:"debug"`
 }
 
 const (
 	MetricsAddress = "metrics-address"
 	ClusterName    = "cluster-name"
+	Debug          = "debug"
 )
 
 func init() {
@@ -40,6 +42,7 @@ func init() {
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
 	flag.String(ClusterName, "", "The cluster in which this application should run")
+	flag.Bool(Debug, false, "Debug mode toggle")
 }
 
 // Print out all configuration options except secret stuff.

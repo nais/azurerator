@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"time"
 
@@ -87,6 +89,12 @@ func run() error {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
+	if cfg.Debug {
+		if err := addDebugHandler(mgr); err != nil {
+			return fmt.Errorf("unable to register debug handler: %w", err)
+		}
+	}
+
 	azureClient, err := client.New(ctx, &cfg.AzureAd)
 	if err != nil {
 		return fmt.Errorf("unable to create Azure client: %w", err)
@@ -124,4 +132,19 @@ func setupZapLogger() (*zap.Logger, error) {
 	loggerConfig.EncoderConfig.TimeKey = "timestamp"
 	loggerConfig.EncoderConfig.EncodeTime = zapcore.RFC3339NanoTimeEncoder
 	return loggerConfig.Build()
+}
+
+func addDebugHandler(mgr ctrl.Manager) error {
+	log.Info("registering debug handler")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	if err := mgr.AddMetricsExtraHandler("/debug/pprof/", mux); err != nil {
+		return err
+	}
+	return nil
 }
