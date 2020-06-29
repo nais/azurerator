@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/nais/azureator/api/v1"
-	"github.com/nais/azureator/pkg/resourcecreator"
+	"github.com/nais/azureator/pkg/labels"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -49,8 +49,9 @@ func (m metrics) Refresh(ctx context.Context) {
 	var err error
 	exp := 10 * time.Second
 
-	var mLabels = client.MatchingLabels{}
-	mLabels[resourcecreator.TypeLabelKey] = resourcecreator.TypeLabelValue
+	mLabels := client.MatchingLabels{
+		labels.TypeLabelKey: labels.TypeLabelValue,
+	}
 
 	var secretList corev1.SecretList
 	var azureAdAppList v1.AzureAdApplicationList

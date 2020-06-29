@@ -1,8 +1,7 @@
-package secret
+package secrets
 
 import (
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/resourcecreator"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -11,7 +10,7 @@ type Lists struct {
 	Unused corev1.SecretList
 }
 
-func PodSecretLists(secrets corev1.SecretList, pods corev1.PodList) Lists {
+func podSecretLists(secrets corev1.SecretList, pods corev1.PodList) Lists {
 	lists := Lists{
 		Used: corev1.SecretList{
 			Items: make([]corev1.Secret, 0),
@@ -49,20 +48,20 @@ func secretInPods(secret corev1.Secret, pods corev1.PodList) bool {
 	return false
 }
 
-func WithIdsFromUsedSecrets(app azure.Application, s Lists) (*azure.Application, error) {
+func WithIdsFromUsedSecrets(a azure.Application, s Lists) azure.Application {
 	passwordIds := make([]string, 0)
 	certificateIds := make([]string, 0)
 	for _, sec := range s.Used.Items {
-		certificateId := string(sec.Data[resourcecreator.CertificateIdKey])
+		certificateId := string(sec.Data[CertificateIdKey])
 		if len(certificateId) > 0 {
 			certificateIds = append(certificateIds, certificateId)
 		}
-		passwordId := string(sec.Data[resourcecreator.PasswordIdKey])
+		passwordId := string(sec.Data[PasswordIdKey])
 		if len(passwordId) > 0 {
 			passwordIds = append(passwordIds, passwordId)
 		}
 	}
-	app.Password.KeyId.AllInUse = passwordIds
-	app.Certificate.KeyId.AllInUse = certificateIds
-	return &app, nil
+	a.Password.KeyId.AllInUse = passwordIds
+	a.Certificate.KeyId.AllInUse = certificateIds
+	return a
 }

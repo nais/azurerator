@@ -2,6 +2,8 @@ package azureadapplication
 
 import (
 	"fmt"
+
+	"github.com/nais/azureator/pkg/namespaces"
 )
 
 func (r *Reconciler) updateStatusSubresource(tx transaction) error {
@@ -37,12 +39,12 @@ func (r *Reconciler) shouldSkip(tx *transaction) (bool, error) {
 		return true, nil
 	}
 
-	namespaces, err := r.getSharedNamespaces(tx.ctx)
+	sharedNs, err := namespaces.GetShared(tx.ctx, r.Reader)
 	if err != nil {
 		return false, err
 	}
 
-	for _, ns := range namespaces.Items {
+	for _, ns := range sharedNs.Items {
 		if ns.Name == tx.instance.Namespace {
 			logger.Debugf("resource exists in shared namespace '%s'", tx.instance.Namespace)
 			tx.instance.SetSkipLabel()

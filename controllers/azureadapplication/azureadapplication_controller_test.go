@@ -11,7 +11,8 @@ import (
 	"github.com/nais/azureator/api/v1"
 	azureFixtures "github.com/nais/azureator/pkg/fixtures/azure"
 	"github.com/nais/azureator/pkg/fixtures/k8s"
-	"github.com/nais/azureator/pkg/resourcecreator"
+	"github.com/nais/azureator/pkg/labels"
+	"github.com/nais/azureator/pkg/secrets"
 	"github.com/nais/azureator/pkg/util/test"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -230,7 +231,17 @@ func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplicati
 
 		assert.True(t, containsOwnerRef(a.GetOwnerReferences(), *instance), "Secret should contain ownerReference")
 
-		test.AssertContainsKeysWithNonEmptyValues(t, a.Data, resourcecreator.AllKeys)
+		actualLabels := a.GetLabels()
+		expectedLabels := map[string]string{
+			labels.AppLabelKey:  instance.GetName(),
+			labels.TypeLabelKey: labels.TypeLabelValue,
+		}
+		assert.NotEmpty(t, actualLabels, "Labels should not be empty")
+		assert.Equal(t, expectedLabels, actualLabels, "Labels should be set")
+
+		assert.Equal(t, corev1.SecretTypeOpaque, a.Type, "Secret type should be Opaque")
+
+		test.AssertContainsKeysWithNonEmptyValues(t, a.Data, secrets.AllKeys)
 	})
 }
 

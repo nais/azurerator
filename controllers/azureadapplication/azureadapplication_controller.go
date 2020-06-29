@@ -9,7 +9,7 @@ import (
 	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/metrics"
-	"github.com/nais/azureator/pkg/secret"
+	"github.com/nais/azureator/pkg/secrets"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -130,29 +130,40 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 }
 
 func (r *Reconciler) process(tx transaction) error {
-	managedSecrets, err := r.getManagedSecrets(tx)
+	managedSecrets, err := secrets.GetManaged(tx.ctx, tx.instance, r.Reader)
 	if err != nil {
 		return err
 	}
+
 	application, err := r.createOrUpdateAzureApp(tx, *managedSecrets)
 	if err != nil {
 		return err
 	}
-	if err := r.createOrUpdateSecret(tx, application); err != nil {
+
+	logger.Infof("processing secret with name '%s'...", tx.instance.Spec.SecretName)
+	res, err := secrets.CreateOrUpdate(tx.ctx, tx.instance, application, r.Client, r.Scheme)
+	if err != nil {
 		return fmt.Errorf("failed to create or update secret: %w", err)
 	}
+	logger.Infof("secret %s", res)
+
 	if err := r.updateStatus(tx, application); err != nil {
 		return err
 	}
-	if err := r.deleteUnusedSecrets(tx, *managedSecrets); err != nil {
-		return err
+
+	for _, oldSecret := range managedSecrets.Unused.Items {
+		logger.Infof("deleting unused secret '%s'...", oldSecret.Name)
+		if err := secrets.Delete(tx.ctx, oldSecret, r.Client); err != nil {
+			return err
+		}
 	}
+
 	metrics.AzureAppsProcessedCount.Inc()
 	r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Synchronized", "Azure application is up-to-date")
 	return nil
 }
 
-func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secret.Lists) (azure.Application, error) {
+func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secrets.Lists) (azure.Application, error) {
 	var application *azure.Application
 
 	exists, err := r.AzureClient.Exists(tx.toAzureTx())

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/secret"
+	"github.com/nais/azureator/pkg/secrets"
 )
 
 func (r *Reconciler) create(tx transaction) (*azure.Application, error) {
@@ -20,14 +20,10 @@ func (r *Reconciler) update(tx transaction) (*azure.Application, error) {
 	return r.AzureClient.Update(tx.toAzureTx())
 }
 
-func (r *Reconciler) rotate(tx transaction, app azure.Application, managedSecrets secret.Lists) (*azure.Application, error) {
-	var application *azure.Application
-	appWithActiveKeyIds, err := secret.WithIdsFromUsedSecrets(app, managedSecrets)
-	if err != nil {
-		return nil, err
-	}
+func (r *Reconciler) rotate(tx transaction, app azure.Application, managedSecrets secrets.Lists) (*azure.Application, error) {
+	appWithActiveKeyIds := secrets.WithIdsFromUsedSecrets(app, managedSecrets)
 	logger.Info("rotating credentials for Azure application...")
-	application, err = r.AzureClient.Rotate(tx.toAzureTx(), *appWithActiveKeyIds)
+	application, err := r.AzureClient.Rotate(tx.toAzureTx(), appWithActiveKeyIds)
 	if err != nil {
 		return nil, err
 	}

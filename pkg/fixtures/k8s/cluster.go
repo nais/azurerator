@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/nais/azureator/api/v1"
-	"github.com/nais/azureator/pkg/resourcecreator"
+	"github.com/nais/azureator/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,8 +98,8 @@ func (c ClusterFixtures) WithUnusedSecret() ClusterFixtures {
 			Name:      c.UnusedSecretName,
 			Namespace: c.NamespaceName,
 			Labels: map[string]string{
-				resourcecreator.AppLabelKey:  c.AzureAppName,
-				resourcecreator.TypeLabelKey: resourcecreator.TypeLabelValue,
+				labels.AppLabelKey:  c.AzureAppName,
+				labels.TypeLabelKey: labels.TypeLabelValue,
 			},
 		},
 	}
@@ -116,7 +116,7 @@ func (c ClusterFixtures) WithPod() ClusterFixtures {
 			Name:      c.AzureAppName,
 			Namespace: c.NamespaceName,
 			Labels: map[string]string{
-				resourcecreator.AppLabelKey: c.AzureAppName,
+				labels.AppLabelKey: c.AzureAppName,
 			},
 		},
 		Spec: corev1.PodSpec{
