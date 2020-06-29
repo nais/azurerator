@@ -120,7 +120,7 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 	ctx := context.Background()
 
 	instance := &v1.AzureAdApplication{}
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+	if err := r.Reader.Get(ctx, req.NamespacedName, instance); err != nil {
 		return nil, err
 	}
 	instance.SetClusterName(r.ClusterName)
