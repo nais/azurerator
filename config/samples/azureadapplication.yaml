@@ -17,4 +17,4 @@ spec:
   logoutUrl: "https://localhost:3000/oauth2/logout"
   replyUrls:
     - url: "http://localhost:3000/oauth2/callback"
-  secretName: azuread-myapp
+  secretName: azuread-myapp2
