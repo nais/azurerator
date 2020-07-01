@@ -6,10 +6,15 @@ import (
 
 	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/labels"
+	"github.com/nais/azureator/pkg/namespaces"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	labelNamespace = "namespace"
 )
 
 var (
@@ -23,13 +28,82 @@ var (
 			Help: "Total number of azureadapp secrets",
 		},
 	)
-	AzureAppsProcessedCount = prometheus.NewCounter(
+	AzureAppsCreatedCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_created_count",
+			Help: "Number of azureadapps created successfully",
+		},
+		[]string{labelNamespace},
+	)
+	AzureAppsUpdatedCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_updated_count",
+			Help: "Number of azureadapps updated successfully",
+		},
+		[]string{labelNamespace},
+	)
+	AzureAppsRotatedCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_rotated_count",
+			Help: "Number of azureadapps successfully rotated credentials",
+		},
+		[]string{labelNamespace},
+	)
+	AzureAppsProcessedCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "azureadapp_processed_count",
-			Help: "Number of azureadapps processed",
+			Help: "Number of azureadapps processed successfully",
 		},
+		[]string{labelNamespace},
+	)
+	AzureAppsFailedProcessingCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_failed_processing_count",
+			Help: "Number of azureadapps that failed processing",
+		},
+		[]string{labelNamespace},
+	)
+	AzureAppsDeletedCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_deleted_count",
+			Help: "Number of azureadapps successfully deleted",
+		},
+		[]string{labelNamespace},
+	)
+	AzureAppsSkippedCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_skipped_count",
+			Help: "Number of azureapps skipped due to certain conditions",
+		},
+		[]string{labelNamespace},
 	)
 )
+
+var AllMetrics = []prometheus.Collector{
+	AzureAppsTotal,
+	AzureAppSecretsTotal,
+	AzureAppsProcessedCount,
+	AzureAppsFailedProcessingCount,
+	AzureAppsCreatedCount,
+	AzureAppsUpdatedCount,
+	AzureAppsRotatedCount,
+	AzureAppsDeletedCount,
+	AzureAppsSkippedCount,
+}
+
+var AllCounters = []*prometheus.CounterVec{
+	AzureAppsProcessedCount,
+	AzureAppsFailedProcessingCount,
+	AzureAppsCreatedCount,
+	AzureAppsUpdatedCount,
+	AzureAppsRotatedCount,
+	AzureAppsDeletedCount,
+	AzureAppsSkippedCount,
+}
+
+func IncWithNamespaceLabel(metric *prometheus.CounterVec, namespace string) {
+	metric.WithLabelValues(namespace).Inc()
+}
 
 type Metrics interface {
 	Refresh(ctx context.Context)
@@ -45,6 +119,18 @@ func New(reader client.Reader) Metrics {
 	}
 }
 
+func (m metrics) InitWithNamespaceLabels() {
+	ns, err := namespaces.GetAll(context.Background(), m.reader)
+	if err != nil {
+		log.Errorf("failed to list namespaces: %v", err)
+	}
+	for _, n := range ns.Items {
+		for _, c := range AllCounters {
+			c.WithLabelValues(n.Name).Add(0)
+		}
+	}
+}
+
 func (m metrics) Refresh(ctx context.Context) {
 	var err error
 	exp := 10 * time.Second
@@ -55,6 +141,8 @@ func (m metrics) Refresh(ctx context.Context) {
 
 	var secretList corev1.SecretList
 	var azureAdAppList v1.AzureAdApplicationList
+
+	m.InitWithNamespaceLabels()
 
 	t := time.NewTicker(exp)
 	for range t.C {

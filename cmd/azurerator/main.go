@@ -33,11 +33,7 @@ var (
 )
 
 func init() {
-	metrics.Registry.MustRegister(
-		azureMetrics.AzureAppSecretsTotal,
-		azureMetrics.AzureAppsTotal,
-		azureMetrics.AzureAppsProcessedCount,
-	)
+	metrics.Registry.MustRegister(azureMetrics.AllMetrics...)
 
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = naisiov1.AddToScheme(scheme)

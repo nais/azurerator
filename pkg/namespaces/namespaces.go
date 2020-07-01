@@ -18,3 +18,11 @@ func GetShared(ctx context.Context, reader client.Reader) (corev1.NamespaceList,
 	}
 	return namespaces, nil
 }
+
+func GetAll(ctx context.Context, reader client.Reader) (corev1.NamespaceList, error) {
+	var namespaces corev1.NamespaceList
+	if err := reader.List(ctx, &namespaces); err != nil {
+		return namespaces, fmt.Errorf("failed to get list namespaces: %w", err)
+	}
+	return namespaces, nil
+}

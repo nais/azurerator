@@ -3,6 +3,7 @@ package azureadapplication
 import (
 	"fmt"
 
+	"github.com/nais/azureator/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -35,5 +36,6 @@ func (r *Reconciler) processFinalizer(tx transaction) error {
 		}
 	}
 	r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Deleted", "Object finalizer is deleted")
+	metrics.IncWithNamespaceLabel(metrics.AzureAppsDeletedCount, tx.instance.Namespace)
 	return nil
 }

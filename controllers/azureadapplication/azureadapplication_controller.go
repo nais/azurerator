@@ -70,6 +70,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if err := r.Client.Update(tx.ctx, tx.instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update resource with skip flag: %w", err)
 		}
+		metrics.IncWithNamespaceLabel(metrics.AzureAppsSkippedCount, tx.instance.Namespace)
 		return ctrl.Result{}, nil
 	}
 
@@ -99,11 +100,12 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if err := r.process(*tx); err != nil {
 		tx.instance.SetNotSynchronized()
+		logger.Errorf("failed to reconcile: %v", err)
+		r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", "Failed to synchronize Azure application, retrying")
+		metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.instance.Namespace)
 		if err := r.updateStatusSubresource(*tx); err != nil {
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("failed to set synchronized status: %w", err)
 		}
-		logger.Errorf("failed to reconcile: %v", err)
-		r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", "Failed to synchronize Azure application, retrying")
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("failed to process Azure application: %w", err)
 	}
 	logger.Info("successfully reconciled")
@@ -161,7 +163,7 @@ func (r *Reconciler) process(tx transaction) error {
 		}
 	}
 
-	metrics.AzureAppsProcessedCount.Inc()
+	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.instance.Namespace)
 	r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Synchronized", "Azure application is up-to-date")
 	return nil
 }
@@ -179,18 +181,21 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secre
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to create azure application: %w", err)
 		}
+		metrics.IncWithNamespaceLabel(metrics.AzureAppsCreatedCount, tx.instance.Namespace)
 		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Created", "Azure application is created")
 	} else {
 		application, err = r.update(tx)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to update azure application: %w", err)
 		}
+		metrics.IncWithNamespaceLabel(metrics.AzureAppsUpdatedCount, tx.instance.Namespace)
 		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Updated", "Azure application is updated")
 
 		application, err = r.rotate(tx, *application, managedSecrets)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to rotate azure credentials: %w", err)
 		}
+		metrics.IncWithNamespaceLabel(metrics.AzureAppsRotatedCount, tx.instance.Namespace)
 		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Rotated", "Azure credentials is rotated")
 	}
 

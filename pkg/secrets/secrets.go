@@ -42,11 +42,11 @@ var AllKeys = []string{
 func CreateOrUpdate(ctx context.Context, instance *v1.AzureAdApplication, application azure.Application, cli client.Client, scheme *runtime.Scheme) (controllerutil.OperationResult, error) {
 	spec, err := spec(instance, application)
 	if err != nil {
-		return controllerutil.OperationResultNone, fmt.Errorf("unable to create secretSpec object: %s", err)
+		return controllerutil.OperationResultNone, fmt.Errorf("unable to create secretSpec object: %w", err)
 	}
 
 	if err := ctrl.SetControllerReference(instance, spec, scheme); err != nil {
-		return controllerutil.OperationResultNone, fmt.Errorf("failed to set controller reference %w", err)
+		return controllerutil.OperationResultNone, fmt.Errorf("failed to set controller reference: %w", err)
 	}
 
 	err = cli.Create(ctx, spec)
@@ -58,7 +58,7 @@ func CreateOrUpdate(ctx context.Context, instance *v1.AzureAdApplication, applic
 	}
 
 	if err != nil {
-		return controllerutil.OperationResultNone, fmt.Errorf("unable to apply secretSpec: %s", err)
+		return controllerutil.OperationResultNone, fmt.Errorf("unable to apply secretSpec: %w", err)
 	}
 	return res, nil
 }
