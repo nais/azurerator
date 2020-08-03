@@ -47,7 +47,12 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 		Oauth2PermissionScopes:      a.oAuth2PermissionScopes().defaultScopes(),
 		PreAuthorizedApplications:   preAuthApps,
 	}
-	req := util.Application(a.defaultTemplate(tx.Instance)).Key(*key).Api(api).Build()
+	webApp := a.web().app(tx)
+	req := util.Application(a.defaultTemplate(tx.Instance)).
+		Key(*key).
+		Api(api).
+		Web(webApp).
+		Build()
 	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
 		return applicationResponse{}, fmt.Errorf("failed to register application: %w", err)
@@ -139,15 +144,7 @@ func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 	return &msgraph.Application{
 		DisplayName:           ptr.String(resource.GetUniqueName()),
 		GroupMembershipClaims: ptr.String("SecurityGroup"),
-		Web: &msgraph.WebApplication{
-			LogoutURL:    ptr.String(resource.Spec.LogoutUrl),
-			RedirectUris: util.GetReplyUrlsStringSlice(resource),
-			ImplicitGrantSettings: &msgraph.ImplicitGrantSettings{
-				EnableIDTokenIssuance:     ptr.Bool(false),
-				EnableAccessTokenIssuance: ptr.Bool(false),
-			},
-		},
-		SignInAudience: ptr.String("AzureADMyOrg"),
+		SignInAudience:        ptr.String("AzureADMyOrg"),
 		Tags: []string{
 			IaCAppTag,
 			IntegratedAppTag,

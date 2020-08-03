@@ -189,6 +189,9 @@ func (c client) Update(tx azure.Transaction) (*azure.Application, error) {
 	if err := c.application().identifierUri().update(tx); err != nil {
 		return nil, err
 	}
+	if err := c.application().web().update(tx); err != nil {
+		return nil, err
+	}
 	if err := c.oAuth2PermissionGrant().upsert(tx); err != nil {
 		return nil, err
 	}

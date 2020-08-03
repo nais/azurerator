@@ -42,6 +42,11 @@ func (a ApplicationBuilder) AppRoles(appRoles []msgraph.AppRole) ApplicationBuil
 	return a
 }
 
+func (a ApplicationBuilder) Web(web *msgraph.WebApplication) ApplicationBuilder {
+	a.Application.Web = web
+	return a
+}
+
 func (a ApplicationBuilder) Build() *msgraph.Application {
 	return a.Application
 }
