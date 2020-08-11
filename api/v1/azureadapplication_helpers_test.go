@@ -3,6 +3,7 @@ package v1
 import (
 	"testing"
 
+	"github.com/nais/azureator/pkg/annotations"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -126,6 +127,21 @@ func TestAzureAdApplication_SetStatuses(t *testing.T) {
 		app.SetSynchronized()
 		assert.NotEmpty(t, app.Status.Timestamp)
 		assert.True(t, app.Status.Synchronized)
+	})
+}
+
+func TestAzureAdApplication_SetSkipAnnotation(t *testing.T) {
+	app := minimalApplication()
+
+	t.Run("Minimal Application should not have skip annotation", func(t *testing.T) {
+		_, exists := app.Annotations[annotations.SkipKey]
+		assert.False(t, exists)
+	})
+	t.Run("Application should have skip annotation after add", func(t *testing.T) {
+		app.SetSkipAnnotation()
+		value, exists := app.Annotations[annotations.SkipKey]
+		assert.True(t, exists)
+		assert.Equal(t, value, annotations.SkipValue)
 	})
 }
 

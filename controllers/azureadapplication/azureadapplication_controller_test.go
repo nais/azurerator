@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/nais/azureator/api/v1"
+	"github.com/nais/azureator/pkg/annotations"
 	azureFixtures "github.com/nais/azureator/pkg/fixtures/azure"
 	"github.com/nais/azureator/pkg/fixtures/k8s"
 	"github.com/nais/azureator/pkg/labels"
@@ -121,12 +122,12 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 		assert.Eventually(t, resourceExists(key, instance), timeout, interval, "AzureAdApplication should exist")
 
 		assert.Eventually(t, func() bool {
-			_, key := instance.Labels[v1.LabelSkipKey]
+			_, key := instance.Annotations[annotations.SkipKey]
 			return key
-		}, timeout, interval, fmt.Sprintf("Label '%s' should exist on resource", v1.LabelSkipKey))
+		}, timeout, interval, fmt.Sprintf("Annotation '%s' should exist on resource", annotations.SkipKey))
 
 		assert.False(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should not contain a finalizer")
-
+		assert.Equal(t, instance.Annotations[annotations.SkipKey], annotations.SkipValue, "AzureAdApplication should contain skip annotation")
 		assert.Empty(t, instance.Status.CertificateKeyIds)
 		assert.Empty(t, instance.Status.ClientId)
 		assert.Empty(t, instance.Status.CorrelationId)

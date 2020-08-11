@@ -3,6 +3,7 @@ package azureadapplication
 import (
 	"fmt"
 
+	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/namespaces"
 )
 
@@ -33,7 +34,7 @@ func (r *Reconciler) ensureStatusIsValid(tx transaction) error {
 }
 
 func (r *Reconciler) shouldSkip(tx *transaction) (bool, error) {
-	_, found := tx.instance.ObjectMeta.Labels["skip"]
+	_, found := tx.instance.ObjectMeta.Annotations[annotations.SkipKey]
 	if found {
 		logger.Debugf("skip flag found on resource")
 		return true, nil
@@ -47,7 +48,7 @@ func (r *Reconciler) shouldSkip(tx *transaction) (bool, error) {
 	for _, ns := range sharedNs.Items {
 		if ns.Name == tx.instance.Namespace {
 			logger.Debugf("resource exists in shared namespace '%s'", tx.instance.Namespace)
-			tx.instance.SetSkipLabel()
+			tx.instance.SetSkipAnnotation()
 			return true, nil
 		}
 	}

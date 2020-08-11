@@ -73,11 +73,6 @@ type AzureAdPreAuthorizedApplication struct {
 	Cluster     string `json:"cluster"`
 }
 
-const (
-	LabelSkipKey   = "skip"
-	LabelSkipValue = "true"
-)
-
 func init() {
 	SchemeBuilder.Register(&AzureAdApplication{}, &AzureAdApplicationList{})
 }

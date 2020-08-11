@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	hash "github.com/mitchellh/hashstructure"
+	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -73,11 +74,11 @@ func (in *AzureAdApplication) HashUnchanged() (bool, error) {
 	return in.Status.ProvisionHash == newHash, nil
 }
 
-func (in *AzureAdApplication) SetSkipLabel() {
-	if in.ObjectMeta.Labels == nil {
-		in.ObjectMeta.Labels = map[string]string{LabelSkipKey: LabelSkipValue}
+func (in *AzureAdApplication) SetSkipAnnotation() {
+	if in.ObjectMeta.Annotations == nil {
+		in.ObjectMeta.Annotations = map[string]string{annotations.SkipKey: annotations.SkipValue}
 	} else {
-		in.ObjectMeta.Labels[LabelSkipKey] = LabelSkipValue
+		in.ObjectMeta.Annotations[annotations.SkipKey] = annotations.SkipValue
 	}
 }
 
