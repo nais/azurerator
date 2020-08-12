@@ -44,7 +44,7 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 	api := &msgraph.APIApplication{
 		AcceptMappedClaims:          ptr.Bool(true),
 		RequestedAccessTokenVersion: ptr.Int(2),
-		Oauth2PermissionScopes:      a.oAuth2PermissionScopes().defaultScopes(),
+		OAuth2PermissionScopes:      a.oAuth2PermissionScopes().defaultScopes(),
 		PreAuthorizedApplications:   preAuthApps,
 	}
 	webApp := a.web().app(tx)

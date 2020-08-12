@@ -20,7 +20,7 @@ func (c client) oAuth2PermissionGrant() oAuth2PermissionGrant {
 }
 
 func (o oAuth2PermissionGrant) add(ctx context.Context, id azure.ServicePrincipalId) error {
-	_, err := o.graphBetaClient.Oauth2PermissionGrants().Request().Add(ctx, o.toGrant(id, o.config.PermissionGrantResourceId))
+	_, err := o.graphBetaClient.OAuth2PermissionGrants().Request().Add(ctx, o.toGrant(id, o.config.PermissionGrantResourceId))
 	if err != nil {
 		return fmt.Errorf("failed to register oauth2 permission grants: %w", err)
 	}
@@ -31,7 +31,7 @@ func (o oAuth2PermissionGrant) exists(tx azure.Transaction) (bool, error) {
 	// For some odd reason Graph has defined 'clientId' in the oAuth2PermissionGrant resource to be the _objectId_
 	// for the ServicePrincipal when referring to the id of the ServicePrincipal granted consent...
 	clientId := tx.Instance.Status.ServicePrincipalId
-	r := o.graphBetaClient.Oauth2PermissionGrants().Request()
+	r := o.graphBetaClient.OAuth2PermissionGrants().Request()
 	r.Filter(util.FilterByClientId(clientId))
 	grants, err := r.GetN(tx.Ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
