@@ -35,6 +35,12 @@ var (
 func init() {
 	metrics.Registry.MustRegister(azureMetrics.AllMetrics...)
 
+	formatter := log.JSONFormatter{
+		TimestampFormat: time.RFC3339Nano,
+	}
+	log.SetFormatter(&formatter)
+	log.SetLevel(log.DebugLevel)
+
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = naisiov1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
@@ -56,13 +62,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-
-	formatter := log.JSONFormatter{
-		TimestampFormat: time.RFC3339Nano,
-	}
-	log.SetFormatter(&formatter)
-	log.SetLevel(log.DebugLevel)
-
 	ctrl.SetLogger(zapr.NewLogger(zapLogger))
 
 	ctx := context.Background()
