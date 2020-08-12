@@ -39,6 +39,8 @@ var AllKeys = []string{
 	WellKnownUrlKey,
 }
 
+// +kubebuilder:rbac:groups=*,resources=secrets,verbs=get;list;watch;create;delete;update;patch
+
 func CreateOrUpdate(ctx context.Context, instance *v1.AzureAdApplication, application azure.Application, cli client.Client, scheme *runtime.Scheme) (controllerutil.OperationResult, error) {
 	spec, err := spec(instance, application)
 	if err != nil {

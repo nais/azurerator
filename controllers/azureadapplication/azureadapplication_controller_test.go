@@ -285,7 +285,7 @@ func setup() (*envtest.Environment, error) {
 	log.SetLevel(log.DebugLevel)
 
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd", "bases")},
+		CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd")},
 	}
 
 	cfg, err := testEnv.Start()

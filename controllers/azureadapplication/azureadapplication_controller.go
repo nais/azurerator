@@ -46,7 +46,8 @@ var logger log.Entry
 var correlationId string
 
 // +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications/status,verbs=get;update;patch;create
+// +kubebuilder:rbac:groups=*,resources=events,verbs=get;list;watch;create;update
 
 func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	correlationId = uuid.New().String()

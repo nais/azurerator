@@ -8,6 +8,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// +kubebuilder:rbac:groups=*,resources=namespaces,verbs=get;list;watch
+
 func GetShared(ctx context.Context, reader client.Reader) (corev1.NamespaceList, error) {
 	var namespaces corev1.NamespaceList
 	mLabels := client.MatchingLabels{
