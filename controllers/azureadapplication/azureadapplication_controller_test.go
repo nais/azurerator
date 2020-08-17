@@ -126,7 +126,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 			return key
 		}, timeout, interval, fmt.Sprintf("Annotation '%s' should exist on resource", annotations.SkipKey))
 
-		assert.False(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should not contain a finalizer")
+		assert.True(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should contain a finalizer")
 		assert.Equal(t, instance.Annotations[annotations.SkipKey], annotations.SkipValue, "AzureAdApplication should contain skip annotation")
 		assert.Empty(t, instance.Status.CertificateKeyIds)
 		assert.Empty(t, instance.Status.ClientId)
