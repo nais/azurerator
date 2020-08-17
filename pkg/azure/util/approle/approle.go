@@ -1,4 +1,4 @@
-package util
+package approle
 
 import (
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"

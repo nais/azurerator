@@ -7,9 +7,10 @@ import (
 )
 
 type Config struct {
-	Auth                      Auth   `json:"auth"`
-	Tenant                    string `json:"tenant"`
-	PermissionGrantResourceId string `json:"permissionGrantResourceId"`
+	Auth                      Auth            `json:"auth"`
+	Tenant                    string          `json:"tenant"`
+	PermissionGrantResourceId string          `json:"permissionGrantResourceId"`
+	TeamsManagement           TeamsManagement `json:"teamsManagement"`
 }
 
 type Auth struct {
@@ -17,12 +18,17 @@ type Auth struct {
 	ClientSecret string `json:"client-secret"`
 }
 
+type TeamsManagement struct {
+	ServicePrincipalId string `json:"service-principal-id"`
+}
+
 const (
-	ClientId                  = "azure.auth.client-id"
-	ClientSecret              = "azure.auth.client-secret"
-	Tenant                    = "azure.tenant"
-	PermissionGrantResourceId = "azure.permissiongrantresourceid"
-	wellKnownUrlFormat        = "https://login.microsoftonline.com/%s/v2.0/.well-known/openid-configuration"
+	ClientId                          = "azure.auth.client-id"
+	ClientSecret                      = "azure.auth.client-secret"
+	Tenant                            = "azure.tenant"
+	PermissionGrantResourceId         = "azure.permissiongrantresourceid"
+	TeamsManagementServicePrincipalId = "azure.teamsmanagement.service-principal-id"
+	wellKnownUrlFormat                = "https://login.microsoftonline.com/%s/v2.0/.well-known/openid-configuration"
 )
 
 func SetupFlags() {
@@ -30,6 +36,7 @@ func SetupFlags() {
 	flag.String(ClientSecret, "", "Client secret for Azure AD authentication")
 	flag.String(Tenant, "", "Tenant for Azure AD")
 	flag.String(PermissionGrantResourceId, "", "Resource ID for permissions grant")
+	flag.String(TeamsManagementServicePrincipalId, "", "Service Principal ID for teams management application containing team groups")
 }
 
 func WellKnownUrl(tenant string) string {

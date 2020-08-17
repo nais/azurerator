@@ -5,15 +5,16 @@ import (
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/azure/util/approle"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
 const (
-	DefaultAppRole   string = "access_as_application"
-	DefaultAppRoleId string = "00000001-abcd-9001-0000-000000000000"
+	DefaultAppRole     string = "access_as_application"
+	DefaultAppRoleId   string = "00000001-abcd-9001-0000-000000000000"
+	PrincipalTypeGroup string = "Group"
 )
 
 type appRoleAssignments struct {
@@ -81,7 +82,7 @@ func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServiceP
 		return *assignment, nil
 	}
 	tx.Log.Debugf("AppRole not assigned for PreAuthorizedApp (clientId '%s', name '%s'), assigning...", app.ClientId, app.Name)
-	_, err = a.graphBetaClient.ServicePrincipals().ID(targetId).AppRoleAssignedTo().Request().Add(tx.Ctx, assignment)
+	_, err = a.request(targetId).Add(tx.Ctx, assignment)
 	if err != nil {
 		return msgraphbeta.AppRoleAssignment{}, fmt.Errorf("failed to add AppRole assignment to target service principal ID '%s': %w", targetId, err)
 	}
@@ -94,7 +95,7 @@ func (a appRoleAssignments) getRevoked(tx azure.Transaction, id azure.ServicePri
 	if err != nil {
 		return nil, err
 	}
-	revoked := util.Difference(existing, desired)
+	revoked := approle.Difference(existing, desired)
 	return revoked, nil
 }
 
@@ -122,11 +123,30 @@ func (a appRoleAssignments) delete(tx azure.Transaction, id azure.ServicePrincip
 }
 
 func (a appRoleAssignments) getAllFor(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
-	assignments, err := a.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().Request().GetN(ctx, MaxNumberOfPagesToFetch)
+	assignments, err := a.request(id).GetN(ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup AppRoleAssignments for service principal: %w", err)
 	}
 	return assignments, nil
+}
+
+func (a appRoleAssignments) getAssignedGroups(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
+	assignments, err := a.getAllFor(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	groups := make([]msgraphbeta.AppRoleAssignment, 0)
+	for _, assignment := range assignments {
+		principalType := *assignment.PrincipalType
+		if principalType == PrincipalTypeGroup {
+			groups = append(groups, assignment)
+		}
+	}
+	return groups, nil
+}
+
+func (a appRoleAssignments) request(id azure.ServicePrincipalId) *msgraphbeta.ServicePrincipalAppRoleAssignedToCollectionRequest {
+	return a.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().Request()
 }
 
 func (a appRoleAssignments) toAssignment(target azure.ObjectId, assignee azure.ObjectId) *msgraphbeta.AppRoleAssignment {

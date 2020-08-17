@@ -68,6 +68,9 @@ func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to add app role assignments: %w", err)
 	}
+	if err = c.owners().register(tx, *res.Application.ID, *servicePrincipal.ID); err != nil {
+		return nil, fmt.Errorf("failed to register owners: %w", err)
+	}
 
 	lastPasswordKeyId := string(*passwordCredential.KeyID)
 	lastCertificateKeyId := string(*res.KeyCredential.KeyID)
@@ -201,6 +204,9 @@ func (c client) Update(tx azure.Transaction) (*azure.Application, error) {
 	}
 	if err := c.appRoles().update(tx, spId, preAuthApps); err != nil {
 		return nil, fmt.Errorf("failed to update app roles: %w", err)
+	}
+	if err := c.owners().update(tx); err != nil {
+		return nil, fmt.Errorf("failed to update owners: %w", err)
 	}
 	return &azure.Application{
 		ClientId:           clientId,
