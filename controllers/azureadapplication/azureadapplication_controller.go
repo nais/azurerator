@@ -105,9 +105,9 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", "Failed to synchronize Azure application, retrying")
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.instance.Namespace)
 		if err := r.updateStatusSubresource(*tx); err != nil {
-			return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("failed to set synchronized status: %w", err)
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("(%s) failed to set synchronized status: %w", correlationId, err)
 		}
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("failed to process Azure application: %w", err)
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("(%s) failed to process Azure application: %w", correlationId, err)
 	}
 	logger.Info("successfully reconciled")
 	return ctrl.Result{}, nil
