@@ -66,6 +66,6 @@ func (o oAuth2PermissionGrant) toGrant(servicePrincipalId azure.ServicePrincipal
 		ConsentType: ptr.String("AllPrincipals"),
 		ExpiryTime:  &expiryTime,
 		ResourceID:  ptr.String(permissionGrantResourceId),
-		Scope:       ptr.String("openid User.Read"),
+		Scope:       ptr.String("openid User.Read GroupMember.Read.All"),
 	}
 }

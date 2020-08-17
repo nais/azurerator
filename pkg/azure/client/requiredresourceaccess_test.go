@@ -22,6 +22,10 @@ func TestRequiredResourceAccess_microsoftGraph(t *testing.T) {
       {
          "id": "37f7f235-527c-4136-accd-4a02d197296e",
          "type": "Scope"
+      },
+      {
+         "id": "bc024368-1153-4739-b217-4326f2e966d0",
+         "type": "Scope"
       }
    ]
 }
