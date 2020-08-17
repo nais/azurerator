@@ -33,12 +33,16 @@ func (p preAuthApps) update(tx azure.Transaction) ([]azure.PreAuthorizedApp, err
 	if err != nil {
 		return nil, err
 	}
+
 	app := &struct {
 		msgraph.DirectoryObject
 		API preAuthAppApi `json:"api"`
-	}{API: preAuthAppApi{PreAuthorizedApplications: preAuthApps}}
-	appReq := p.graphClient.Applications().ID(objectId).Request()
-	if err := appReq.JSONRequest(tx.Ctx, "PATCH", "", app, nil); err != nil {
+	}{
+		API: preAuthAppApi{
+			PreAuthorizedApplications: preAuthApps,
+		},
+	}
+	if err := p.application().patch(tx.Ctx, objectId, app); err != nil {
 		return nil, fmt.Errorf("failed to update PreAuthorizedApps in azure: %w", err)
 	}
 	return p.mapWithNames(tx.Ctx, preAuthApps)

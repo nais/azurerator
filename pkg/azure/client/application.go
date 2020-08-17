@@ -42,17 +42,9 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 	if err != nil {
 		return applicationResponse{}, err
 	}
-	api := &msgraph.APIApplication{
-		AcceptMappedClaims:          ptr.Bool(true),
-		RequestedAccessTokenVersion: ptr.Int(2),
-		OAuth2PermissionScopes:      a.oAuth2PermissionScopes().defaultScopes(),
-		PreAuthorizedApplications:   preAuthApps,
-	}
-	webApp := a.web().app(tx)
 	req := util.Application(a.defaultTemplate(tx.Instance)).
 		Key(*key).
-		Api(api).
-		Web(webApp).
+		PreAuthorizedApps(preAuthApps).
 		Build()
 	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
@@ -72,9 +64,22 @@ func (a application) delete(tx azure.Transaction) error {
 	return nil
 }
 
-func (a application) update(ctx context.Context, id string, application *msgraph.Application) error {
-	if err := a.graphClient.Applications().ID(id).Request().Update(ctx, application); err != nil {
-		return fmt.Errorf("failed to update application: %w", err)
+func (a application) update(tx azure.Transaction) error {
+	clientId := tx.Instance.Status.ClientId
+	objectId := tx.Instance.Status.ObjectId
+
+	identifierUri := util.IdentifierUri(clientId)
+	app := util.Application(a.defaultTemplate(tx.Instance)).
+		IdentifierUri(identifierUri).
+		Build()
+
+	return a.patch(tx.Ctx, objectId, app)
+}
+
+func (a application) patch(ctx context.Context, id azure.ObjectId, application interface{}) error {
+	req := a.graphClient.Applications().ID(id).Request()
+	if err := req.JSONRequest(ctx, "PATCH", "", application, nil); err != nil {
+		return fmt.Errorf("failed to update web application: %w", err)
 	}
 	return nil
 }
@@ -220,6 +225,19 @@ func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 		},
 		AppRoles: []msgraph.AppRole{
 			a.appRoles().defaultRole(),
+		},
+		API: &msgraph.APIApplication{
+			AcceptMappedClaims:          ptr.Bool(true),
+			RequestedAccessTokenVersion: ptr.Int(2),
+			OAuth2PermissionScopes:      a.oAuth2PermissionScopes().defaultScopes(),
+		},
+		Web: &msgraph.WebApplication{
+			LogoutURL:    ptr.String(resource.Spec.LogoutUrl),
+			RedirectUris: util.GetReplyUrlsStringSlice(resource),
+			ImplicitGrantSettings: &msgraph.ImplicitGrantSettings{
+				EnableIDTokenIssuance:     ptr.Bool(false),
+				EnableAccessTokenIssuance: ptr.Bool(false),
+			},
 		},
 	}
 }

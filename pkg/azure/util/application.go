@@ -27,23 +27,13 @@ func (a ApplicationBuilder) Keys(keyCredentials []msgraph.KeyCredential) Applica
 	return a
 }
 
-func (a ApplicationBuilder) Api(apiApplication *msgraph.APIApplication) ApplicationBuilder {
-	a.API = apiApplication
-	return a
-}
-
 func (a ApplicationBuilder) IdentifierUri(uri azure.IdentifierUri) ApplicationBuilder {
 	a.IdentifierUris = []string{uri}
 	return a
 }
 
-func (a ApplicationBuilder) AppRoles(appRoles []msgraph.AppRole) ApplicationBuilder {
-	a.Application.AppRoles = appRoles
-	return a
-}
-
-func (a ApplicationBuilder) Web(web *msgraph.WebApplication) ApplicationBuilder {
-	a.Application.Web = web
+func (a ApplicationBuilder) PreAuthorizedApps(preAuthApps []msgraph.PreAuthorizedApplication) ApplicationBuilder {
+	a.API.PreAuthorizedApplications = preAuthApps
 	return a
 }
 

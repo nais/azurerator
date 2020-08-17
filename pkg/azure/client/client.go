@@ -189,10 +189,10 @@ func (c client) Update(tx azure.Transaction) (*azure.Application, error) {
 	objectId := tx.Instance.Status.ObjectId
 	spId := tx.Instance.Status.ServicePrincipalId
 
-	if err := c.application().identifierUri().update(tx); err != nil {
+	if err := c.application().update(tx); err != nil {
 		return nil, err
 	}
-	if err := c.application().web().update(tx); err != nil {
+	if err := c.application().redirectUri().update(tx); err != nil {
 		return nil, err
 	}
 	if err := c.oAuth2PermissionGrant().upsert(tx); err != nil {
