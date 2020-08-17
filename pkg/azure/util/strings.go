@@ -10,7 +10,7 @@ import (
 )
 
 func GetReplyUrlsStringSlice(resource v1.AzureAdApplication) []string {
-	var replyUrls []string
+	replyUrls := make([]string, 0)
 	for _, v := range resource.Spec.ReplyUrls {
 		replyUrls = append(replyUrls, v.Url)
 	}
