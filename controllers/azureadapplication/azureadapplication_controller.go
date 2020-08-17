@@ -143,25 +143,16 @@ func (r *Reconciler) process(tx transaction) error {
 		return err
 	}
 
-	logger.Infof("processing secret with name '%s'...", tx.instance.Spec.SecretName)
-	res, err := secrets.CreateOrUpdate(tx.ctx, tx.instance, application, r.Client, r.Scheme)
-	if err != nil {
-		return fmt.Errorf("failed to create or update secret: %w", err)
+	if err := r.createOrUpdateSecrets(tx, application); err != nil {
+		return err
 	}
-	logger.Infof("secret '%s' %s", tx.instance.Spec.SecretName, res)
 
 	if err := r.updateStatus(tx, application); err != nil {
 		return err
 	}
 
-	for _, oldSecret := range managedSecrets.Unused.Items {
-		if oldSecret.Name == tx.instance.Spec.SecretName {
-			continue
-		}
-		logger.Infof("deleting unused secret '%s'...", oldSecret.Name)
-		if err := secrets.Delete(tx.ctx, oldSecret, r.Client); err != nil {
-			return err
-		}
+	if err := r.deleteUnusedSecrets(tx, managedSecrets.Unused); err != nil {
+		return err
 	}
 
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.instance.Namespace)

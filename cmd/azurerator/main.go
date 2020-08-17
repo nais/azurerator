@@ -107,8 +107,6 @@ func run() error {
 	}
 	// +kubebuilder:scaffold:builder
 
-	metrics.Registry.MustRegister()
-
 	setupLog.Info("starting metrics refresh goroutine")
 	clusterMetrics := azureMetrics.New(mgr.GetAPIReader())
 	go clusterMetrics.Refresh(context.Background())
