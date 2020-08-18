@@ -8,6 +8,16 @@ metadata:
   creationTimestamp: null
   name: azureadapplications.nais.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.secretName
+    name: Secret
+    type: string
+  - JSONPath: .status.clientId
+    name: ClientId
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: nais.io
   names:
     kind: AzureAdApplication
