@@ -60,7 +60,7 @@ func (p preAuthApps) mapToMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorized
 			return nil, fmt.Errorf("failed to lookup existence of PreAuthorizedApp '%s': %w", app.GetUniqueName(), err)
 		}
 		if !exists {
-			tx.Log.Debugf("PreAuthorizedApp '%s' does not exist, skipping assignment...", app.GetUniqueName())
+			tx.Log.Debugf("skipping PreAuthorizedApp assignment: '%s' does not exist", app.GetUniqueName())
 			continue
 		}
 		a, err := p.toMsGraph(tx, app)

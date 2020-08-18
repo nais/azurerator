@@ -29,6 +29,7 @@ func (r *Reconciler) rotate(tx transaction, app azure.Application, managedSecret
 	}
 	application.Password.KeyId.AllInUse = append(appWithActiveKeyIds.Password.KeyId.AllInUse, application.Password.KeyId.Latest)
 	application.Certificate.KeyId.AllInUse = append(appWithActiveKeyIds.Certificate.KeyId.AllInUse, application.Certificate.KeyId.Latest)
+	logger.Info("successfully rotated credentials for Azure application")
 	return application, nil
 }
 

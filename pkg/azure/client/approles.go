@@ -69,7 +69,7 @@ func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServiceP
 		return msgraphbeta.AppRoleAssignment{}, err
 	}
 	if !spExists {
-		tx.Log.Debugf("ServicePrincipal for PreAuthorizedApp (clientId '%s', name '%s') does not exist, skipping AppRole assignment...", app.ClientId, app.Name)
+		tx.Log.Debugf("skipping AppRole assignment: ServicePrincipal for PreAuthorizedApp (clientId '%s', name '%s') does not exist", app.ClientId, app.Name)
 		return msgraphbeta.AppRoleAssignment{}, nil
 	}
 	assignment := a.toAssignment(targetId, *assigneeSp.ID)
@@ -78,10 +78,10 @@ func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServiceP
 		return msgraphbeta.AppRoleAssignment{}, err
 	}
 	if assignmentExists {
-		tx.Log.Infof("AppRole already assigned for PreAuthorizedApp (clientId '%s', name '%s'), skipping assignment...", app.ClientId, app.Name)
+		tx.Log.Infof("skipping AppRole assignment: already assigned for PreAuthorizedApp (clientId '%s', name '%s')", app.ClientId, app.Name)
 		return *assignment, nil
 	}
-	tx.Log.Debugf("AppRole not assigned for PreAuthorizedApp (clientId '%s', name '%s'), assigning...", app.ClientId, app.Name)
+	tx.Log.Debugf("assigning AppRole for PreAuthorizedApp (clientId '%s', name '%s')...", app.ClientId, app.Name)
 	_, err = a.request(targetId).Add(tx.Ctx, assignment)
 	if err != nil {
 		return msgraphbeta.AppRoleAssignment{}, fmt.Errorf("failed to add AppRole assignment to target service principal ID '%s': %w", targetId, err)
@@ -105,7 +105,7 @@ func (a appRoleAssignments) deleteRevoked(tx azure.Transaction, id azure.Service
 		return err
 	}
 	for _, r := range revoked {
-		tx.Log.Infof("AppRole revoked for PreAuthorizedApp (servicePrincipalId '%s'), deleting assignment...", *r.PrincipalID)
+		tx.Log.Debugf("deleting AppRole assignment: revoked for PreAuthorizedApp (servicePrincipalId '%s')", *r.PrincipalID)
 		if err := a.delete(tx, id, r); err != nil {
 			return err
 		}
