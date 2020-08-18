@@ -6,7 +6,6 @@ import (
 
 const (
 	AppLabelKey    string = "app"
-	TeamLabelKey   string = "team"
 	TypeLabelKey   string = "type"
 	TypeLabelValue string = "azurerator.nais.io"
 )

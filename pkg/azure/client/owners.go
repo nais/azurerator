@@ -1,8 +1,9 @@
 package client
 
 import (
+	"strings"
+
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/labels"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
@@ -80,9 +81,10 @@ func (to teamowners) getTeamGroup(tx azure.Transaction) (*msgraphbeta.AppRoleAss
 	if err != nil {
 		return group, err
 	}
-	teamName := tx.Instance.Labels[labels.TeamLabelKey]
+	teamName := strings.ToLower(tx.Instance.Namespace)
 	for _, g := range groups {
-		if *g.PrincipalDisplayName == teamName {
+		groupName := strings.ToLower(*g.PrincipalDisplayName)
+		if groupName == teamName {
 			return &g, nil
 		}
 	}
