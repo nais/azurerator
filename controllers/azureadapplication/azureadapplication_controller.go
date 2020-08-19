@@ -63,14 +63,14 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	if tx.instance.IsBeingDeleted() {
-		if err := r.processFinalizer(*tx); err != nil {
+		if err := r.finalizer().process(*tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error when processing finalizer: %w", err)
 		}
 		return ctrl.Result{}, nil
 	}
 
 	if !tx.instance.HasFinalizer(FinalizerName) {
-		if err := r.registerFinalizer(*tx); err != nil {
+		if err := r.finalizer().register(*tx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error when registering finalizer: %w", err)
 		}
 		return ctrl.Result{}, nil
@@ -169,21 +169,21 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secre
 	}
 
 	if !exists {
-		application, err = r.create(tx)
+		application, err = r.azure().create(tx)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to create azure application: %w", err)
 		}
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsCreatedCount, tx.instance.Namespace)
 		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Created", "Azure application is created")
 	} else {
-		application, err = r.update(tx)
+		application, err = r.azure().update(tx)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to update azure application: %w", err)
 		}
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsUpdatedCount, tx.instance.Namespace)
 		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Updated", "Azure application is updated")
 
-		application, err = r.rotate(tx, *application, managedSecrets)
+		application, err = r.azure().rotate(tx, *application, managedSecrets)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to rotate azure credentials: %w", err)
 		}

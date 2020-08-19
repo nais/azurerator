@@ -7,23 +7,31 @@ import (
 	"github.com/nais/azureator/pkg/secrets"
 )
 
-func (r *Reconciler) create(tx transaction) (*azure.Application, error) {
-	logger.Info("Azure application not found, registering...")
-	return r.AzureClient.Create(tx.toAzureTx())
+type azureReconciler struct {
+	*Reconciler
 }
 
-func (r *Reconciler) update(tx transaction) (*azure.Application, error) {
-	if err := r.ensureStatusIsValid(tx); err != nil {
+func (r *Reconciler) azure() azureReconciler {
+	return azureReconciler{r}
+}
+
+func (a azureReconciler) create(tx transaction) (*azure.Application, error) {
+	logger.Info("Azure application not found, registering...")
+	return a.AzureClient.Create(tx.toAzureTx())
+}
+
+func (a azureReconciler) update(tx transaction) (*azure.Application, error) {
+	if err := a.ensureStatusIsValid(tx); err != nil {
 		return nil, err
 	}
 	logger.Info("Azure application already exists, updating...")
-	return r.AzureClient.Update(tx.toAzureTx())
+	return a.AzureClient.Update(tx.toAzureTx())
 }
 
-func (r *Reconciler) rotate(tx transaction, app azure.Application, managedSecrets secrets.Lists) (*azure.Application, error) {
+func (a azureReconciler) rotate(tx transaction, app azure.Application, managedSecrets secrets.Lists) (*azure.Application, error) {
 	appWithActiveKeyIds := secrets.WithIdsFromUsedSecrets(app, managedSecrets)
 	logger.Info("rotating credentials for Azure application...")
-	application, err := r.AzureClient.Rotate(tx.toAzureTx(), appWithActiveKeyIds)
+	application, err := a.AzureClient.Rotate(tx.toAzureTx(), appWithActiveKeyIds)
 	if err != nil {
 		return nil, err
 	}
@@ -33,9 +41,9 @@ func (r *Reconciler) rotate(tx transaction, app azure.Application, managedSecret
 	return application, nil
 }
 
-func (r *Reconciler) delete(tx transaction) error {
+func (a azureReconciler) delete(tx transaction) error {
 	logger.Info("deleting Azure application...")
-	exists, err := r.AzureClient.Exists(tx.toAzureTx())
+	exists, err := a.AzureClient.Exists(tx.toAzureTx())
 	if err != nil {
 		return err
 	}
@@ -43,10 +51,10 @@ func (r *Reconciler) delete(tx transaction) error {
 		logger.Info("Azure application does not exist - skipping deletion")
 		return nil
 	}
-	if err := r.ensureStatusIsValid(tx); err != nil {
+	if err := a.ensureStatusIsValid(tx); err != nil {
 		return err
 	}
-	if err := r.AzureClient.Delete(tx.toAzureTx()); err != nil {
+	if err := a.AzureClient.Delete(tx.toAzureTx()); err != nil {
 		return fmt.Errorf("failed to delete Azure application: %w", err)
 	}
 	logger.Info("Azure application successfully deleted")
