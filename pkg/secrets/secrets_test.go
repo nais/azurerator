@@ -6,7 +6,7 @@ import (
 
 	v1 "github.com/nais/azureator/api/v1"
 	azureConfig "github.com/nais/azureator/pkg/azure/config"
-	"github.com/nais/azureator/pkg/fixtures/azure"
+	"github.com/nais/azureator/pkg/azure/fake"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -23,7 +23,7 @@ func TestCreateSecretSpec(t *testing.T) {
 			SecretName: "test-secret",
 		},
 	}
-	azureApp := azure.InternalAzureApp(*app)
+	azureApp := fake.InternalAzureApp(*app)
 
 	spec, err := spec(app, azureApp)
 	assert.NoError(t, err, "should not error")

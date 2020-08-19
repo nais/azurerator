@@ -10,8 +10,8 @@ import (
 
 	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/annotations"
-	azureFixtures "github.com/nais/azureator/pkg/fixtures/azure"
-	"github.com/nais/azureator/pkg/fixtures/k8s"
+	"github.com/nais/azureator/pkg/azure/fake"
+	"github.com/nais/azureator/pkg/fixtures"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/secrets"
 	"github.com/nais/azureator/pkg/util/test"
@@ -40,7 +40,7 @@ const (
 )
 
 var cli client.Client
-var azureClient = azureFixtures.NewFakeAzureClient()
+var azureClient = fake.NewFakeAzureClient()
 
 func TestMain(m *testing.M) {
 	testEnv, err := setup()
@@ -59,11 +59,11 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 	}{
 		{
 			"Application already exists in Azure AD",
-			azureFixtures.ApplicationExists,
+			fake.ApplicationExists,
 		},
 		{
 			"Application does not exist in Azure AD",
-			azureFixtures.ApplicationNotExistsName,
+			fake.ApplicationNotExistsName,
 		},
 	}
 	for _, c := range cases {
@@ -71,7 +71,7 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 		secretName := fmt.Sprintf("%s-%s", c.appName, alreadyInUseSecret)
 
 		// set up preconditions for cluster
-		clusterFixtures := k8s.New(cli, k8s.Config{
+		clusterFixtures := fixtures.New(cli, fixtures.Config{
 			AzureAppName:     c.appName,
 			SecretName:       secretName,
 			UnusedSecretName: unusedSecret,
@@ -103,7 +103,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 	appName := "should-not-process"
 	sharedNamespace := "shared"
 	secretName := fmt.Sprintf("%s-%s", appName, alreadyInUseSecret)
-	clusterFixtures := k8s.New(cli, k8s.Config{
+	clusterFixtures := fixtures.New(cli, fixtures.Config{
 		AzureAppName:     appName,
 		SecretName:       secretName,
 		UnusedSecretName: unusedSecret,
@@ -141,7 +141,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 }
 
 func TestReconciler_UpdateAzureAdApplication(t *testing.T) {
-	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", azureFixtures.ApplicationExists)
+	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", fake.ApplicationExists)
 
 	// fetch secret name referenced by previous generation
 	previousSecretName := instance.Spec.SecretName
@@ -171,14 +171,14 @@ func TestReconciler_UpdateAzureAdApplication(t *testing.T) {
 }
 
 func TestReconciler_DeleteAzureAdApplication(t *testing.T) {
-	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", azureFixtures.ApplicationExists)
+	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", fake.ApplicationExists)
 
 	t.Run("Delete existing AzureAdApplication", func(t *testing.T) {
 		err := cli.Delete(context.Background(), instance)
 		assert.NoError(t, err, "deleting existing AzureAdApplication should not return error")
 
 		key := client.ObjectKey{
-			Name:      azureFixtures.ApplicationExists,
+			Name:      fake.ApplicationExists,
 			Namespace: namespace,
 		}
 		assert.Eventually(t, resourceDoesNotExist(key, instance), timeout, interval)

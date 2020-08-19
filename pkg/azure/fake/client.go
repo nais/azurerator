@@ -1,4 +1,4 @@
-package azure
+package fake
 
 import (
 	"github.com/nais/azureator/pkg/azure"
