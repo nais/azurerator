@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/nais/azureator/api/v1"
+	"github.com/nais/azureator/pkg/util/crypto"
 	log "github.com/sirupsen/logrus"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
-	"gopkg.in/square/go-jose.v2"
 )
 
 type Client interface {
@@ -37,18 +37,13 @@ type Application struct {
 }
 
 type Certificate struct {
-	KeyId KeyId `json:"keyId"`
-	Jwks  Jwks  `json:"jwks"`
+	KeyId KeyId      `json:"keyId"`
+	Jwk   crypto.Jwk `json:"jwks"`
 }
 
 type Password struct {
 	KeyId        KeyId  `json:"keyId"`
 	ClientSecret string `json:"clientSecret"`
-}
-
-type Jwks struct {
-	Public  jose.JSONWebKeySet `json:"public"`
-	Private jose.JSONWebKeySet `json:"private"`
 }
 
 type KeyId struct {

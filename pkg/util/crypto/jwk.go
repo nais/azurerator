@@ -14,42 +14,21 @@ const (
 	KeyUseSignature string = "sig"
 )
 
-type JwkPair struct {
-	Private   jose.JSONWebKeySet `json:"private"`
-	Public    jose.JSONWebKeySet `json:"public"`
-	PublicPem []byte             `json:"publicPem"`
+type Jwk struct {
+	Private   jose.JSONWebKey `json:"private"`
+	PublicPem []byte          `json:"publicPem"`
 }
 
-func GenerateJwkPair(application v1.AzureAdApplication) (JwkPair, error) {
+func GenerateJwk(application v1.AzureAdApplication) (Jwk, error) {
 	keyPair, err := NewRSAKeyPair()
 	if err != nil {
-		return JwkPair{}, err
+		return Jwk{}, err
 	}
-	return mapToJwkPair(keyPair, application)
-}
 
-func JwkToJwkPair(jwk jose.JSONWebKey) JwkPair {
-	jwkPublic := jwk.Public()
-	return JwkPair{
-		Private: jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{
-				jwk,
-			},
-		},
-		Public: jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{
-				jwkPublic,
-			},
-		},
-		PublicPem: ConvertToPem(jwkPublic.Certificates[0]),
-	}
-}
-
-func mapToJwkPair(keyPair KeyPair, application v1.AzureAdApplication) (JwkPair, error) {
 	template := CertificateTemplate(application)
 	cert, err := GenerateCertificate(template, keyPair)
 	if err != nil {
-		return JwkPair{}, err
+		return Jwk{}, err
 	}
 	certificates := []*x509.Certificate{cert}
 	x5tSHA1 := sha1.Sum(certificates[0].Raw)
@@ -64,5 +43,17 @@ func mapToJwkPair(keyPair KeyPair, application v1.AzureAdApplication) (JwkPair, 
 		CertificateThumbprintSHA1:   x5tSHA1[:],
 		CertificateThumbprintSHA256: x5tSHA256[:],
 	}
-	return JwkToJwkPair(jwk), nil
+	jwkPublic := jwk.Public()
+	return Jwk{
+		Private:   jwk,
+		PublicPem: ConvertToPem(jwkPublic.Certificates[0]),
+	}, nil
+}
+
+func (j Jwk) ToPrivateJwks() jose.JSONWebKeySet {
+	return jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{
+			j.Private,
+		},
+	}
 }

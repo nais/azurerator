@@ -23,7 +23,7 @@ func (c client) keyCredential() keyCredential {
 
 // Generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
 // With the exception of new applications, there should always be two active keys available at any given time so that running applications are not interfered with.
-func (k keyCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (*msgraph.KeyCredential, *crypto.JwkPair, error) {
+func (k keyCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (*msgraph.KeyCredential, *crypto.Jwk, error) {
 	keysInUse, err := k.mapToKeyCredentials(tx, keyIdsInUse)
 	if err != nil {
 		return nil, nil, err
@@ -63,8 +63,8 @@ func (k keyCredential) mapToKeyCredentials(tx azure.Transaction, keyIdsInUse []s
 	return append(keyCredentialsInUse, newestCredential), nil
 }
 
-func (k keyCredential) new(resource v1.AzureAdApplication) (*msgraph.KeyCredential, *crypto.JwkPair, error) {
-	jwkPair, err := crypto.GenerateJwkPair(resource)
+func (k keyCredential) new(resource v1.AzureAdApplication) (*msgraph.KeyCredential, *crypto.Jwk, error) {
+	jwkPair, err := crypto.GenerateJwk(resource)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate JWK pair for application: %w", err)
 	}
@@ -72,7 +72,7 @@ func (k keyCredential) new(resource v1.AzureAdApplication) (*msgraph.KeyCredenti
 	return &newKeyCredential, &jwkPair, nil
 }
 
-func (k keyCredential) toKeyCredential(jwkPair crypto.JwkPair) msgraph.KeyCredential {
+func (k keyCredential) toKeyCredential(jwkPair crypto.Jwk) msgraph.KeyCredential {
 	keyId := msgraph.UUID(uuid.New().String())
 	keyBase64 := msgraph.Binary(jwkPair.PublicPem)
 	return msgraph.KeyCredential{

@@ -24,6 +24,7 @@ const (
 	ClientIdKey      = "AZURE_APP_CLIENT_ID"
 	ClientSecretKey  = "AZURE_APP_CLIENT_SECRET"
 	JwksKey          = "AZURE_APP_JWKS"
+	JwkKey           = "AZURE_APP_JWK"
 	PasswordIdKey    = "AZURE_APP_PASSWORD_KEY_ID"
 	PreAuthAppsKey   = "AZURE_APP_PRE_AUTHORIZED_APPS"
 	WellKnownUrlKey  = "AZURE_APP_WELL_KNOWN_URL"
@@ -34,6 +35,7 @@ var AllKeys = []string{
 	ClientIdKey,
 	ClientSecretKey,
 	JwksKey,
+	JwkKey,
 	PasswordIdKey,
 	PreAuthAppsKey,
 	WellKnownUrlKey,
@@ -127,9 +129,13 @@ func objectMeta(instance *v1.AzureAdApplication) metav1.ObjectMeta {
 }
 
 func stringData(app azure.Application) (map[string]string, error) {
-	jwkPrivateJson, err := json.Marshal(app.Certificate.Jwks.Private)
+	jwkJson, err := json.Marshal(app.Certificate.Jwk.Private)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal private JWK: %w", err)
+		return nil, fmt.Errorf("failed to marshal private JWK: %w", err)
+	}
+	jwksJson, err := json.Marshal(app.Certificate.Jwk.ToPrivateJwks())
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal private JWKS: %w", err)
 	}
 	preAuthAppsJson, err := json.Marshal(app.PreAuthorizedApps)
 	if err != nil {
@@ -139,7 +145,8 @@ func stringData(app azure.Application) (map[string]string, error) {
 		CertificateIdKey: app.Certificate.KeyId.Latest,
 		ClientIdKey:      app.ClientId,
 		ClientSecretKey:  app.Password.ClientSecret,
-		JwksKey:          string(jwkPrivateJson),
+		JwksKey:          string(jwksJson),
+		JwkKey:           string(jwkJson),
 		PasswordIdKey:    app.Password.KeyId.Latest,
 		PreAuthAppsKey:   string(preAuthAppsJson),
 		WellKnownUrlKey:  azureConfig.WellKnownUrl(app.Tenant),

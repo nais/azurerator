@@ -81,10 +81,7 @@ func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 				Latest:   lastCertificateKeyId,
 				AllInUse: []string{lastCertificateKeyId},
 			},
-			Jwks: azure.Jwks{
-				Public:  res.JwkPair.Public,
-				Private: res.JwkPair.Private,
-			},
+			Jwk: res.Jwk,
 		},
 		Password: azure.Password{
 			KeyId: azure.KeyId{
@@ -157,7 +154,7 @@ func (c client) Rotate(tx azure.Transaction, app azure.Application) (*azure.Appl
 	newPasswordKeyId := string(*newPasswordCredential.KeyID)
 
 	existingCertificateKeyIdsInUse := app.Certificate.KeyId.AllInUse
-	NewCertificateKeyCredential, jwkPair, err := c.keyCredential().rotate(tx, existingCertificateKeyIdsInUse)
+	NewCertificateKeyCredential, jwk, err := c.keyCredential().rotate(tx, existingCertificateKeyIdsInUse)
 	if err != nil {
 		return nil, err
 	}
@@ -175,10 +172,7 @@ func (c client) Rotate(tx azure.Transaction, app azure.Application) (*azure.Appl
 			Latest:   newCertificateKeyId,
 			AllInUse: append(existingCertificateKeyIdsInUse, newCertificateKeyId),
 		},
-		Jwks: azure.Jwks{
-			Public:  jwkPair.Public,
-			Private: jwkPair.Private,
-		},
+		Jwk: *jwk,
 	}
 	return &app, nil
 }

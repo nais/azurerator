@@ -2,6 +2,7 @@ package secrets
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	v1 "github.com/nais/azureator/api/v1"
@@ -9,6 +10,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/fake"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/square/go-jose.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -55,15 +57,33 @@ func TestCreateSecretSpec(t *testing.T) {
 	})
 
 	t.Run("StringData should contain expected fields and values", func(t *testing.T) {
+		t.Run(fmt.Sprintf("Length of StringData should be equal to %v", len(AllKeys)), func(t *testing.T) {
+			expected := len(AllKeys)
+			assert.Len(t, spec.StringData, expected)
+		})
+
 		t.Run("Secret Data should contain Client Secret", func(t *testing.T) {
 			expected := azureApp.Password.ClientSecret
 			assert.Equal(t, expected, spec.StringData[ClientSecretKey])
 		})
 
 		t.Run("Secret Data should contain Private JWKS", func(t *testing.T) {
-			expected, err := json.Marshal(azureApp.Certificate.Jwks.Private)
+			expectedJwks := azureApp.Certificate.Jwk.ToPrivateJwks()
+
+			expected, err := json.Marshal(expectedJwks)
 			assert.NoError(t, err)
 			assert.Equal(t, string(expected), spec.StringData[JwksKey])
+
+			var jwks jose.JSONWebKeySet
+			err = json.Unmarshal([]byte(spec.StringData[JwksKey]), &jwks)
+			assert.NoError(t, err)
+			assert.Len(t, jwks.Keys, len(expectedJwks.Keys))
+		})
+
+		t.Run("Secret Data should contain Private JWK", func(t *testing.T) {
+			expected, err := json.Marshal(azureApp.Certificate.Jwk.Private)
+			assert.NoError(t, err)
+			assert.Equal(t, string(expected), spec.StringData[JwkKey])
 		})
 
 		t.Run("Secret Data should contain Certificate Key ID", func(t *testing.T) {

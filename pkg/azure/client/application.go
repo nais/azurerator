@@ -25,7 +25,7 @@ type application struct {
 type applicationResponse struct {
 	Application   msgraph.Application
 	KeyCredential msgraph.KeyCredential
-	JwkPair       crypto.JwkPair
+	Jwk           crypto.Jwk
 }
 
 func (c client) application() application {
@@ -33,7 +33,7 @@ func (c client) application() application {
 }
 
 func (a application) register(tx azure.Transaction) (applicationResponse, error) {
-	key, jwkPair, err := a.keyCredential().new(tx.Instance)
+	key, jwk, err := a.keyCredential().new(tx.Instance)
 	if err != nil {
 		return applicationResponse{}, err
 	}
@@ -52,7 +52,7 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 	return applicationResponse{
 		Application:   *app,
 		KeyCredential: *key,
-		JwkPair:       *jwkPair,
+		Jwk:           *jwk,
 	}, nil
 }
 

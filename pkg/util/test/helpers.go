@@ -17,6 +17,7 @@ func AssertContainsKeysWithNonEmptyValues(t *testing.T, a interface{}, keys []st
 			assert.NotEmpty(t, v.MapIndex(val).String())
 		}
 	}
+	assert.Lenf(t, a, len(keys), "should contain %v keys", len(keys))
 }
 
 func AssertAllNotEmpty(t *testing.T, values []interface{}) {

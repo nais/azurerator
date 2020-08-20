@@ -23,7 +23,7 @@ func ExternalAzureApp(instance v1.AzureAdApplication) msgraph.Application {
 }
 
 func InternalAzureApp(instance v1.AzureAdApplication) azure.Application {
-	jwk, err := crypto.GenerateJwkPair(instance)
+	jwk, err := crypto.GenerateJwk(instance)
 	if err != nil {
 		panic(err)
 	}
@@ -42,10 +42,7 @@ func InternalAzureApp(instance v1.AzureAdApplication) azure.Application {
 				Latest:   lastCertificateKeyId,
 				AllInUse: []string{lastCertificateKeyId},
 			},
-			Jwks: azure.Jwks{
-				Public:  jwk.Public,
-				Private: jwk.Private,
-			},
+			Jwk: jwk,
 		},
 		Password: azure.Password{
 			KeyId: azure.KeyId{
