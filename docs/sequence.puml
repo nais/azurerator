@@ -4,81 +4,38 @@ skinparam maxMessageSize 300
 autonumber
 
 actor developer as "Developer"
-participant cluster as "Cluster"
-participant naiserator as "Naiserator"
-participant azurerator as "Azurerator"
-participant azuread as "Azure AD (AAD)"
-participant application as "Application"
+control azurerator as "Azurerator"
 
-==Deployment==
-developer -> cluster: apply YAML
-cluster <- naiserator: read YAML
-cluster <- naiserator: apply AzureAdApplication CRD
-naiserator -> cluster: wait for synchronization
-note over naiserator, cluster: mount expected secret and configmap
+box "Cluster resources"
+participant AzureAdApplication
+participant Secret
+end box
+
+participant azuread as "Azure AD"
+
+==On create / update==
+developer -> AzureAdApplication: Apply config
 
 loop forever
-	azurerator -> cluster: watch AzureAdApplication CRD
+	azurerator -> AzureAdApplication: watch for updates
 end
 
-==Create or update AAD app==
-azurerator -> azuread: check if app exists
-alt app does not exist in AAD
-	azurerator -> azuread: register new application
-else app exists in AAD
-    azurerator -> azuread: update application
-    note left
-        replyUrls
-        preAuthorizedApplications
-        - permissions
-        - appRoles
-    end note
+azurerator -> azuread: check if application exists
+azurerator -> azuread: register / update application
+azurerator -> azurerator: generate new set of credentials
+azurerator -> azuread: register new credentials
+
+group application already exists in AAD
+    azurerator -> Secret: fetch existing credentials
+    azurerator -> azuread: invalidate older, non-used credentials
 end
 
-==Provision credentials==
-
-azurerator -> azurerator: generate new set of clientSecret and JWKS
-
-azurerator -> azuread: assign the credentials to the AAD app as additional credentials
-
-alt if rotating secrets
-    azurerator -> cluster: check existing pods for mounted Secrets with KeyIDs
-    azurerator -> azuread: invalidate non-matching KeyIDs
-    note over azurerator, azuread
-        rules:
-        - do not invalidate if the app only has _one_ set of valid credentials
-        - do not invalidate if the key ID is in use by an existing pod
-        - do not invalidate the newly assigned credentials
-    end note
-else
-
-end
-
-==Create or update cluster resources==
-azurerator -> cluster: update with newly generated KeyIds in AzureAdApplication status subresource
-
-alt resources do not exist
-	azurerator -> cluster: create secret
-	note right
-	    client ID
-        client secret
-        private JWKS
-        public JWKS
-        list of pre-authorized apps
-    end note
-else resources exist
-    azurerator -> cluster: update secret
-end
-
-==Complete provisioning==
-    azurerator -> cluster: update AzureAdApplication status subresource
-    azurerator -> cluster: complete reconciliation
-    naiserator -> cluster: synchronized
-    application -> cluster: deployed with mounted secret
+azurerator -> AzureAdApplication: update status subresource
+azurerator -> Secret: inject credentials and metadata
 
 ==On deletion==
-    naiserator -> cluster: delete resources
-    azurerator -> azuread: delete application
-    azurerator -> cluster: delete secret
+    developer -> AzureAdApplication: delete
+    azurerator -> Secret: delete
+    azurerator -> azuread: delete
 
 @enduml
