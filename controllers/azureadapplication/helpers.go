@@ -2,7 +2,6 @@ package azureadapplication
 
 import (
 	"fmt"
-
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/namespaces"
@@ -36,26 +35,21 @@ func (r *Reconciler) ensureStatusIsValid(tx transaction) error {
 	return nil
 }
 
-func (r *Reconciler) shouldSkip(tx *transaction) (bool, error) {
-	_, found := tx.instance.ObjectMeta.Annotations[annotations.SkipKey]
-	if found {
-		logger.Debugf("skip flag found on resource")
-		return true, nil
+func (r *Reconciler) shouldSkip(tx *transaction) bool {
+	if hasSkipFlag(tx) {
+		msg := fmt.Sprintf("Resource contains '%s' annotation. Skipping processing...", annotations.SkipKey)
+		logger.Debug(msg)
+		r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Skipped", msg)
+		return true
 	}
 
-	sharedNs, err := namespaces.GetShared(tx.ctx, r.Reader)
-	if err != nil {
-		return false, err
+	if r.shouldSkipForTenant(tx) {
+		logger.Debugf("resource is not addressed to tenant '%s', ignoring...", r.Config.AzureAd.Tenant)
+		return true
+	} else {
+		logger.Debugf("resource is addressed to tenant '%s', processing...", r.Config.AzureAd.Tenant)
+		return false
 	}
-
-	for _, ns := range sharedNs.Items {
-		if ns.Name == tx.instance.Namespace {
-			logger.Debugf("resource exists in shared namespace '%s'", tx.instance.Namespace)
-			tx.instance.SetSkipAnnotation()
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func (r *Reconciler) createOrUpdateSecrets(tx transaction, application azure.Application) error {
@@ -79,4 +73,43 @@ func (r *Reconciler) deleteUnusedSecrets(tx transaction, unused corev1.SecretLis
 		}
 	}
 	return nil
+}
+
+func (r *Reconciler) shouldSkipForTenant(tx *transaction) bool {
+	tenant := r.Config.AzureAd.Tenant
+	annotationRequired := r.Config.Annotations.Tenant.Required
+
+	value, found := annotations.HasAnnotation(tx.instance, annotations.TenantKey)
+
+	if found {
+		logger.Debugf("found annotation '%s: %s', comparing with configured value '%s'", annotations.TenantKey, value, tenant)
+		return tenant != value
+	}
+
+	if annotationRequired {
+		logger.Debugf("required annotation '%s' not found, skipping...", annotations.TenantKey)
+	}
+	return annotationRequired
+}
+
+func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
+	sharedNs, err := namespaces.GetShared(tx.ctx, r.Reader)
+	if err != nil {
+		return false, err
+	}
+	for _, ns := range sharedNs.Items {
+		if ns.Name == tx.instance.Namespace {
+			msg := fmt.Sprintf("Resource should not exist in shared namespace '%s'. Skipping...", tx.instance.Namespace)
+			logger.Debug(msg)
+			tx.instance.SetSkipAnnotation()
+			r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Skipped", msg)
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func hasSkipFlag(tx *transaction) bool {
+	_, found := annotations.HasAnnotation(tx.instance, annotations.SkipKey)
+	return found
 }

@@ -66,14 +66,10 @@ func run() error {
 
 	ctx := context.Background()
 
-	cfg, err := config.New()
+	cfg, err := setupConfig()
 	if err != nil {
 		return err
 	}
-
-	config.Print([]string{
-		azureConfig.ClientSecret,
-	})
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
@@ -100,7 +96,7 @@ func run() error {
 		Reader:      mgr.GetAPIReader(),
 		Scheme:      mgr.GetScheme(),
 		AzureClient: azureClient,
-		ClusterName: cfg.ClusterName,
+		Config:      cfg,
 		Recorder:    mgr.GetEventRecorderFor("azurerator"),
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller: %w", err)
@@ -125,6 +121,28 @@ func setupZapLogger() (*zap.Logger, error) {
 	loggerConfig.EncoderConfig.TimeKey = "timestamp"
 	loggerConfig.EncoderConfig.EncodeTime = zapcore.RFC3339NanoTimeEncoder
 	return loggerConfig.Build()
+}
+
+func setupConfig() (*config.Config, error) {
+	cfg, err := config.New()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.Print([]string{
+		azureConfig.ClientSecret,
+	})
+
+	if err = cfg.Validate([]string{
+		azureConfig.Tenant,
+		azureConfig.ClientId,
+		azureConfig.ClientSecret,
+		azureConfig.PermissionGrantResourceId,
+		config.ClusterName,
+	}); err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 func addDebugHandler(mgr ctrl.Manager) error {

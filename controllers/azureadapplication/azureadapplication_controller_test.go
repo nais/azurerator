@@ -3,13 +3,14 @@ package azureadapplication
 import (
 	"context"
 	"fmt"
+	"github.com/nais/azureator/pkg/annotations"
+	"github.com/nais/azureator/pkg/config"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/nais/azureator/api/v1"
-	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/azure/fake"
 	"github.com/nais/azureator/pkg/fixtures"
 	"github.com/nais/azureator/pkg/labels"
@@ -100,7 +101,7 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 }
 
 func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t *testing.T) {
-	appName := "should-not-process"
+	appName := "should-not-process-shared-namespace"
 	sharedNamespace := "shared"
 	secretName := fmt.Sprintf("%s-%s", appName, alreadyInUseSecret)
 	clusterFixtures := fixtures.New(cli, fixtures.Config{
@@ -113,31 +114,36 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 	if err := clusterFixtures.Setup(); err != nil {
 		t.Fatalf("failed to set up cluster fixtures: %v", err)
 	}
-	t.Run("AzureAdApplication in shared namespace should not be processed", func(t *testing.T) {
-		instance := &v1.AzureAdApplication{}
-		key := client.ObjectKey{
-			Name:      appName,
-			Namespace: sharedNamespace,
-		}
-		assert.Eventually(t, resourceExists(key, instance), timeout, interval, "AzureAdApplication should exist")
+	key := client.ObjectKey{
+		Name:      appName,
+		Namespace: sharedNamespace,
+	}
+	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication in shared namespace should not be processed", key)
+	assert.True(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should contain a finalizer")
+	assertAnnotationExists(t, instance, annotations.SkipKey, annotations.SkipValue)
+}
 
-		assert.Eventually(t, func() bool {
-			_, key := instance.Annotations[annotations.SkipKey]
-			return key
-		}, timeout, interval, fmt.Sprintf("Annotation '%s' should exist on resource", annotations.SkipKey))
+func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAnnotation(t *testing.T) {
+	appName := "should-not-process-non-matching-tenant-annotation"
+	secretName := fmt.Sprintf("%s-%s", appName, alreadyInUseSecret)
+	tenant := "some-tenant"
+	clusterFixtures := fixtures.New(cli, fixtures.Config{
+		AzureAppName:     appName,
+		SecretName:       secretName,
+		UnusedSecretName: unusedSecret,
+		NamespaceName:    namespace,
+	}).WithMinimalConfig().WithTenantAnnotation(tenant)
 
-		assert.True(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should contain a finalizer")
-		assert.Equal(t, instance.Annotations[annotations.SkipKey], annotations.SkipValue, "AzureAdApplication should contain skip annotation")
-		assert.Empty(t, instance.Status.CertificateKeyIds)
-		assert.Empty(t, instance.Status.ClientId)
-		assert.Empty(t, instance.Status.CorrelationId)
-		assert.Empty(t, instance.Status.ObjectId)
-		assert.Empty(t, instance.Status.PasswordKeyIds)
-		assert.Empty(t, instance.Status.ProvisionHash)
-		assert.Empty(t, instance.Status.ServicePrincipalId)
-		assert.Empty(t, instance.Status.Timestamp)
-		assert.False(t, instance.Status.Synchronized, "AzureAdApplication should not be synchronized")
-	})
+	if err := clusterFixtures.Setup(); err != nil {
+		t.Fatalf("failed to set up cluster fixtures: %v", err)
+	}
+	key := client.ObjectKey{
+		Name:      appName,
+		Namespace: namespace,
+	}
+	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication with tenant annotation should not be processed", key)
+	assert.False(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should not contain a finalizer")
+	assertAnnotationExists(t, instance, annotations.TenantKey, tenant)
 }
 
 func TestReconciler_UpdateAzureAdApplication(t *testing.T) {
@@ -205,6 +211,8 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1.Azu
 
 		assert.True(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should contain a finalizer")
 
+		assert.Empty(t, instance.Annotations[annotations.SkipKey], "AzureAdApplication should not contain skip annotation")
+
 		test.AssertAllNotEmpty(t, []interface{}{
 			instance.Status.CertificateKeyIds,
 			instance.Status.ClientId,
@@ -218,6 +226,31 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1.Azu
 		assert.True(t, instance.Status.Synchronized, "AzureAdApplication should be synchronized")
 	})
 	return instance
+}
+
+func assertApplicationShouldNotProcess(t *testing.T, testName string, key client.ObjectKey) *v1.AzureAdApplication {
+	instance := &v1.AzureAdApplication{}
+	t.Run(testName, func(t *testing.T) {
+		assert.Eventually(t, resourceExists(key, instance), timeout, interval, "AzureAdApplication should exist")
+		assert.Empty(t, instance.Status.CertificateKeyIds)
+		assert.Empty(t, instance.Status.ClientId)
+		assert.Empty(t, instance.Status.CorrelationId)
+		assert.Empty(t, instance.Status.ObjectId)
+		assert.Empty(t, instance.Status.PasswordKeyIds)
+		assert.Empty(t, instance.Status.ProvisionHash)
+		assert.Empty(t, instance.Status.ServicePrincipalId)
+		assert.Empty(t, instance.Status.Timestamp)
+		assert.False(t, instance.Status.Synchronized, "AzureAdApplication should not be synchronized")
+	})
+	return instance
+}
+
+func assertAnnotationExists(t *testing.T, instance *v1.AzureAdApplication, annotationKey, annotationValue string) {
+	assert.Eventually(t, func() bool {
+		_, key := instance.Annotations[annotationKey]
+		return key
+	}, timeout, interval, fmt.Sprintf("Annotation '%s' should exist on resource", annotationKey))
+	assert.Equal(t, instance.Annotations[annotationKey], annotationValue, fmt.Sprintf("AzureAdApplication should contain annotation %s", annotationKey))
 }
 
 func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplication) {
@@ -309,13 +342,18 @@ func setup() (*envtest.Environment, error) {
 
 	cli = mgr.GetClient()
 
+	azureratorCfg, err := config.New()
+	if err != nil {
+		return nil, err
+	}
+
 	err = (&Reconciler{
 		Client:      cli,
 		Reader:      mgr.GetAPIReader(),
 		Scheme:      mgr.GetScheme(),
 		AzureClient: azureClient,
 		Recorder:    mgr.GetEventRecorderFor("azurerator"),
-		ClusterName: "local",
+		Config:      azureratorCfg,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return nil, err

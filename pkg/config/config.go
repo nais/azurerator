@@ -17,12 +17,22 @@ type Config struct {
 	MetricsAddr string       `json:"metrics-address"`
 	ClusterName string       `json:"cluster-name"`
 	Debug       bool         `json:"debug"`
+	Annotations Annotations  `json:"annotations"`
+}
+
+type Annotations struct {
+	Tenant Annotation `json:"tenant"`
+}
+
+type Annotation struct {
+	Required bool `json:"required"`
 }
 
 const (
-	MetricsAddress = "metrics-address"
-	ClusterName    = "cluster-name"
-	Debug          = "debug"
+	MetricsAddress            = "metrics-address"
+	ClusterName               = "cluster-name"
+	Debug                     = "debug"
+	AnnotationsTenantRequired = "annotations.tenant.required"
 )
 
 func init() {
@@ -43,10 +53,11 @@ func init() {
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
 	flag.String(ClusterName, "", "The cluster in which this application should run")
 	flag.Bool(Debug, false, "Debug mode toggle")
+	flag.Bool(AnnotationsTenantRequired, false, "If true, will only process resources that have a tenant annotation")
 }
 
 // Print out all configuration options except secret stuff.
-func Print(redacted []string) {
+func (c Config) Print(redacted []string) {
 	ok := func(key string) bool {
 		for _, forbiddenKey := range redacted {
 			if forbiddenKey == key {
@@ -68,7 +79,7 @@ func Print(redacted []string) {
 	}
 }
 
-func (c Config) validate(required []string) error {
+func (c Config) Validate(required []string) error {
 	present := func(key string) bool {
 		for _, requiredKey := range required {
 			if requiredKey == key {
@@ -119,17 +130,6 @@ func New() (*Config, error) {
 	}
 
 	err = viper.Unmarshal(&cfg, decoderHook)
-	if err != nil {
-		return nil, err
-	}
-
-	err = cfg.validate([]string{
-		azure.Tenant,
-		azure.ClientId,
-		azure.ClientSecret,
-		azure.PermissionGrantResourceId,
-		ClusterName,
-	})
 	if err != nil {
 		return nil, err
 	}

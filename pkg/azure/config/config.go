@@ -35,7 +35,7 @@ func SetupFlags() {
 	flag.String(ClientId, "", "Client ID for Azure AD authentication")
 	flag.String(ClientSecret, "", "Client secret for Azure AD authentication")
 	flag.String(Tenant, "", "Tenant for Azure AD")
-	flag.String(PermissionGrantResourceId, "", "Resource ID for permissions grant")
+	flag.String(PermissionGrantResourceId, "", "Object ID for Graph API permissions grant ('GraphAggregatorService' in Enterprise Applications)")
 	flag.String(TeamsManagementServicePrincipalId, "", "Service Principal ID for teams management application containing team groups")
 }
 

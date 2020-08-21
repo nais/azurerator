@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"fmt"
+	"github.com/nais/azureator/pkg/annotations"
 	"time"
 
 	"github.com/nais/azureator/api/v1"
@@ -138,6 +139,11 @@ func (c ClusterFixtures) WithPod() ClusterFixtures {
 			},
 		},
 	}
+	return c
+}
+
+func (c ClusterFixtures) WithTenantAnnotation(tenant string) ClusterFixtures {
+	annotations.SetAnnotation(c.azureAdApplication, annotations.TenantKey, tenant)
 	return c
 }
 

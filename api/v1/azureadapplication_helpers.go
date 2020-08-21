@@ -75,11 +75,7 @@ func (in *AzureAdApplication) HashUnchanged() (bool, error) {
 }
 
 func (in *AzureAdApplication) SetSkipAnnotation() {
-	if in.ObjectMeta.Annotations == nil {
-		in.ObjectMeta.Annotations = map[string]string{annotations.SkipKey: annotations.SkipValue}
-	} else {
-		in.ObjectMeta.Annotations[annotations.SkipKey] = annotations.SkipValue
-	}
+	annotations.SetAnnotation(in, annotations.SkipKey, annotations.SkipValue)
 }
 
 func (in AzureAdApplication) Hash() (string, error) {
