@@ -13,6 +13,7 @@ import (
 // AzureAdApplication is the Schema for the AzureAdApplications API
 // +kubebuilder:printcolumn:name="Secret",type=string,JSONPath=`.spec.secretName`
 // +kubebuilder:printcolumn:name="ClientId",type=string,JSONPath=`.status.clientId`
+// +kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.spec.tenant`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type AzureAdApplication struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -40,6 +41,9 @@ type AzureAdApplicationSpec struct {
 	LogoutUrl string `json:"logoutUrl,omitempty"`
 	// SecretName is the name of the resulting Secret resource to be created
 	SecretName string `json:"secretName"`
+	// Tenant is an optional alias for targeting a tenant that an instance of Azurerator that processes resources for said tenant.
+	// Can be omitted if only running a single instance or targeting the default tenant.
+	Tenant string `json:"tenant,omitempty"`
 }
 
 // AzureAdApplicationStatus defines the observed state of AzureAdApplication

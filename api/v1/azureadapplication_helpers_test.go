@@ -10,6 +10,8 @@ import (
 
 var finalizerName = "test-finalizer"
 
+const expectedHash = "39b173d62bd3f1e3"
+
 func TestAzureAdApplication_GetUniqueName(t *testing.T) {
 	expected := "test-cluster:test-namespace:test-app"
 	assert.Equal(t, expected, minimalApplication().GetUniqueName())
@@ -65,7 +67,7 @@ func TestAzureAdApplication_IsBeingDeleted(t *testing.T) {
 func TestAzureAdApplication_Hash(t *testing.T) {
 	actual, err := minimalApplication().Hash()
 	assert.NoError(t, err)
-	assert.Equal(t, "39b173d62bd3f1e3", actual)
+	assert.Equal(t, expectedHash, actual)
 }
 
 func TestAzureAdApplication_HashUnchanged(t *testing.T) {
@@ -164,7 +166,7 @@ func minimalApplication() *AzureAdApplication {
 			ClientId:           "test",
 			ObjectId:           "test",
 			ServicePrincipalId: "test",
-			ProvisionHash:      "39b173d62bd3f1e3",
+			ProvisionHash:      expectedHash,
 		},
 	}
 }

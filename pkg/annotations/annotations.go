@@ -5,7 +5,6 @@ import v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 const (
 	SkipKey   = "azurerator.nais.io/skip"
 	SkipValue = "true"
-	TenantKey = "azurerator.nais.io/tenant"
 )
 
 func SetAnnotation(resource v1.ObjectMetaAccessor, key, value string) {

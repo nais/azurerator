@@ -132,7 +132,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 		SecretName:       secretName,
 		UnusedSecretName: unusedSecret,
 		NamespaceName:    namespace,
-	}).WithMinimalConfig().WithTenantAnnotation(tenant)
+	}).WithMinimalConfig().WithTenant(tenant)
 
 	if err := clusterFixtures.Setup(); err != nil {
 		t.Fatalf("failed to set up cluster fixtures: %v", err)
@@ -141,9 +141,8 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 		Name:      appName,
 		Namespace: namespace,
 	}
-	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication with tenant annotation should not be processed", key)
+	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication with tenant should not be processed", key)
 	assert.False(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should not contain a finalizer")
-	assertAnnotationExists(t, instance, annotations.TenantKey, tenant)
 }
 
 func TestReconciler_UpdateAzureAdApplication(t *testing.T) {

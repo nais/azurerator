@@ -76,20 +76,21 @@ func (r *Reconciler) deleteUnusedSecrets(tx transaction, unused corev1.SecretLis
 }
 
 func (r *Reconciler) shouldSkipForTenant(tx *transaction) bool {
-	tenantName := r.Config.AzureAd.TenantName
-	annotationRequired := r.Config.Annotations.Tenant.Required
+	config := r.Config.AzureAd.TenantName
+	tenant := tx.instance.Spec.Tenant
 
-	value, found := annotations.HasAnnotation(tx.instance, annotations.TenantKey)
-
-	if found {
-		logger.Debugf("found annotation '%s: %s', comparing with configured value '%s'...", annotations.TenantKey, value, tenantName)
-		return tenantName != value
+	if len(tenant) > 0 {
+		logger.Debugf("found tenant in spec '%s', comparing with configured value '%s'...", tenant, config)
+		return tenant != config
 	}
 
-	if annotationRequired {
-		logger.Debugf("required annotation '%s' not found, skipping...", annotations.TenantKey)
+	tenantRequired := r.Config.Validations.Tenant.Required
+
+	if tenantRequired {
+		logger.Debugf("required tenant not found in spec, skipping...")
 	}
-	return annotationRequired
+
+	return tenantRequired
 }
 
 func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {

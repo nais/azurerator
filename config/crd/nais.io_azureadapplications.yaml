@@ -15,6 +15,9 @@ spec:
   - JSONPath: .status.clientId
     name: ClientId
     type: string
+  - JSONPath: .spec.tenant
+    name: Tenant
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
@@ -82,6 +85,12 @@ spec:
             secretName:
               description: SecretName is the name of the resulting Secret resource
                 to be created
+              type: string
+            tenant:
+              description: Tenant is an optional alias for targeting a tenant that
+                an instance of Azurerator that processes resources for said tenant.
+                Can be omitted if only running a single instance or targeting the
+                default tenant.
               type: string
           required:
           - secretName
