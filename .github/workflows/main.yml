@@ -51,6 +51,7 @@ jobs:
         git config user.email "aura@nav.no"
         git config user.name "NAIS deploy pipeline"
         sed -E -i "s#image: .+#image: ${IMAGE}#" vars/azurerator.yaml
+        sed -E -i "s#image: .+#image: ${IMAGE}#" vars/azurerator-trygdeetaten.yaml
         git add .
         git --no-pager diff --cached
         git commit -a -m "Bump azurerator to version ${version}"
