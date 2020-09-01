@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -85,8 +86,14 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.Jwk) msgraph.KeyCredential
 }
 
 func keyCredentialInUse(key msgraph.KeyCredential, keyIdsInUse []string) bool {
+	keyId := string(*key.KeyID)
+	keyDisplayName := *key.DisplayName
+
 	for _, id := range keyIdsInUse {
-		if string(*key.KeyID) == id {
+		keyIdMatches := keyId == id
+		keyCreatedByAzurerator := strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix)
+
+		if keyIdMatches || !keyCreatedByAzurerator {
 			return true
 		}
 	}

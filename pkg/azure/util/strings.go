@@ -42,5 +42,5 @@ func FilterByClientId(clientId azure.ClientId) azure.Filter {
 }
 
 func DisplayName(t time.Time) azure.DisplayName {
-	return fmt.Sprintf("azurerator-%s", t.UTC().Format(time.RFC3339))
+	return fmt.Sprintf("%s-%s", azure.AzureratorPrefix, t.UTC().Format(time.RFC3339))
 }

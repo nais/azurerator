@@ -10,6 +10,8 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
+const AzureratorPrefix = "azurerator"
+
 type Client interface {
 	Create(tx Transaction) (*Application, error)
 	Delete(tx Transaction) error
