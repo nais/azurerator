@@ -19,6 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const requeueInterval = 10 * time.Second
+
 // AzureAdApplicationReconciler reconciles a AzureAdApplication object
 type Reconciler struct {
 	client.Client
@@ -95,18 +97,12 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.process(*tx); err != nil {
-		tx.instance.SetNotSynchronized()
-		logger.Errorf("failed to reconcile: %v", err)
-		r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", "Failed to synchronize Azure application, retrying")
-		metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.instance.Namespace)
-		if err := r.updateStatusSubresource(*tx); err != nil {
-			return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("(%s) failed to set synchronized status: %w", correlationId, err)
-		}
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, fmt.Errorf("(%s) failed to process Azure application: %w", correlationId, err)
+	application, err := r.process(*tx)
+	if err != nil {
+		return r.handleError(*tx, err)
 	}
-	logger.Info("successfully reconciled")
-	return ctrl.Result{}, nil
+
+	return r.complete(*tx, *application)
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -128,32 +124,48 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 	return &transaction{ctx, instance, logger}, nil
 }
 
-func (r *Reconciler) process(tx transaction) error {
+func (r *Reconciler) process(tx transaction) (*azure.Application, error) {
+	tx.instance.SetNotSynchronized()
+
 	managedSecrets, err := secrets.GetManaged(tx.ctx, tx.instance, r.Reader)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	application, err := r.createOrUpdateAzureApp(tx, *managedSecrets)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := r.createOrUpdateSecrets(tx, application); err != nil {
-		return err
-	}
-
-	if err := r.updateStatus(tx, application); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := r.deleteUnusedSecrets(tx, managedSecrets.Unused); err != nil {
-		return err
+		return nil, err
+	}
+
+	return &application, nil
+}
+
+func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error) {
+	logger.Error(fmt.Errorf("failed to process Azure application: %w", err))
+	r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", fmt.Sprintf("Failed to synchronize Azure application, retrying in %s", requeueInterval))
+	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.instance.Namespace)
+
+	return ctrl.Result{RequeueAfter: requeueInterval}, nil
+}
+
+func (r *Reconciler) complete(tx transaction, application azure.Application) (ctrl.Result, error) {
+	if err := r.updateStatus(tx, application); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.instance.Namespace)
 	r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Synchronized", "Azure application is up-to-date")
-	return nil
+	logger.Info("successfully reconciled")
+
+	return ctrl.Result{}, nil
 }
 
 func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secrets.Lists) (azure.Application, error) {
