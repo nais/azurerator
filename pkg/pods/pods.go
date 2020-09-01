@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// +kubebuilder:rbac:groups=*,resources=namespaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups=*,resources=pod,verbs=get;list;watch
 
 func GetForApplication(ctx context.Context, instance *v1.AzureAdApplication, reader client.Reader) (*corev1.PodList, error) {
 	selector := client.MatchingLabels{
