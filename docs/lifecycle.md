@@ -278,6 +278,17 @@ Example value:
 ]
 ```
 
+
+#### `AZURE_APP_TENANT_ID`
+
+The tenant ID for which the application resides in.
+
+Example value:
+
+```
+77678b69-1daf-47b6-9072-771d270ac800
+```
+
 #### `AZURE_APP_WELL_KNOWN_URL`
 
 The well-known URL with the tenant for which the application resides in.

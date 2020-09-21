@@ -27,6 +27,7 @@ const (
 	JwkKey           = "AZURE_APP_JWK"
 	PasswordIdKey    = "AZURE_APP_PASSWORD_KEY_ID"
 	PreAuthAppsKey   = "AZURE_APP_PRE_AUTHORIZED_APPS"
+	TenantId         = "AZURE_APP_TENANT_ID"
 	WellKnownUrlKey  = "AZURE_APP_WELL_KNOWN_URL"
 )
 
@@ -38,6 +39,7 @@ var AllKeys = []string{
 	JwkKey,
 	PasswordIdKey,
 	PreAuthAppsKey,
+	TenantId,
 	WellKnownUrlKey,
 }
 
@@ -149,6 +151,7 @@ func stringData(app azure.Application) (map[string]string, error) {
 		JwkKey:           string(jwkJson),
 		PasswordIdKey:    app.Password.KeyId.Latest,
 		PreAuthAppsKey:   string(preAuthAppsJson),
+		TenantId:         app.Tenant,
 		WellKnownUrlKey:  azureConfig.WellKnownUrl(app.Tenant),
 	}, nil
 }

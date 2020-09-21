@@ -107,6 +107,12 @@ func TestCreateSecretSpec(t *testing.T) {
 			assert.Equal(t, string(expected), spec.StringData[PreAuthAppsKey])
 		})
 
+		t.Run("Secret Data should contain tenant ID", func(t *testing.T) {
+			expected := azureApp.Tenant
+			assert.NoError(t, err)
+			assert.Equal(t, expected, spec.StringData[TenantId])
+		})
+
 		t.Run("Secret Data should contain well-known URL", func(t *testing.T) {
 			expected := azureConfig.WellKnownUrl(azureApp.Tenant)
 			assert.NoError(t, err)
