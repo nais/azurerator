@@ -19,7 +19,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const requeueInterval = 10 * time.Second
+const (
+	requeueInterval = 10 * time.Second
+	contextTimeout  = 1 * time.Minute
+)
 
 // AzureAdApplicationReconciler reconciles a AzureAdApplication object
 type Reconciler struct {
@@ -64,6 +67,10 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
+	tx.ctx = ctx
+	defer cancel()
 
 	if r.shouldSkip(tx) {
 		logger.Info("skipping processing of this resource")
