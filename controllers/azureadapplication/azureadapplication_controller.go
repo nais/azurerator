@@ -78,10 +78,12 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return r.finalizer().register(*tx)
 	}
 
-	if inSharedNamespace, err := r.inSharedNamespace(tx); inSharedNamespace {
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	inSharedNamespace, err := r.inSharedNamespace(tx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if inSharedNamespace {
 		if err := r.Client.Update(tx.ctx, tx.instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update resource with skip flag: %w", err)
 		}
