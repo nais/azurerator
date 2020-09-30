@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/azureator/pkg/config"
+	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,8 +22,9 @@ import (
 )
 
 const (
-	requeueInterval = 10 * time.Second
-	contextTimeout  = 1 * time.Minute
+	contextTimeout       = 1 * time.Minute
+	reconcilerMinTimeout = 15 * time.Second
+	reconcilerMaxTimeout = 1 * time.Minute
 )
 
 // AzureAdApplicationReconciler reconciles a AzureAdApplication object
@@ -117,6 +120,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.AzureAdApplication{}).
+		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(reconcilerMinTimeout, reconcilerMaxTimeout)}).
 		Complete(r)
 }
 
@@ -159,10 +163,10 @@ func (r *Reconciler) process(tx transaction) (*azure.Application, error) {
 
 func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error) {
 	logger.Error(fmt.Errorf("failed to process Azure application: %w", err))
-	r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", fmt.Sprintf("Failed to synchronize Azure application, retrying in %s", requeueInterval))
+	r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", "Failed to synchronize Azure application")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.instance.Namespace)
 
-	return ctrl.Result{RequeueAfter: requeueInterval}, nil
+	return ctrl.Result{Requeue: true}, nil
 }
 
 func (r *Reconciler) complete(tx transaction, application azure.Application) (ctrl.Result, error) {
