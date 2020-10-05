@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	contextTimeout       = 1 * time.Minute
-	reconcilerMinTimeout = 15 * time.Second
-	reconcilerMaxTimeout = 1 * time.Minute
+	contextTimeout   = 1 * time.Minute
+	retryMinInterval = 15 * time.Second
+	retryMaxInterval = 1 * time.Minute
 )
 
 // AzureAdApplicationReconciler reconciles a AzureAdApplication object
@@ -120,7 +120,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.AzureAdApplication{}).
-		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(reconcilerMinTimeout, reconcilerMaxTimeout)}).
+		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(retryMinInterval, retryMaxInterval)}).
 		Complete(r)
 }
 
