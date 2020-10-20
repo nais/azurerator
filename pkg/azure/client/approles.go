@@ -12,9 +12,15 @@ import (
 )
 
 const (
-	DefaultAppRole     string = "access_as_application"
-	DefaultAppRoleId   string = "00000001-abcd-9001-0000-000000000000"
-	PrincipalTypeGroup string = "Group"
+	DefaultAppRole   string = "access_as_application"
+	DefaultAppRoleId string = "00000001-abcd-9001-0000-000000000000"
+)
+
+type PrincipalType = string
+
+const (
+	Group            PrincipalType = "Group"
+	ServicePrincipal PrincipalType = "ServicePrincipal"
 )
 
 type appRoleAssignments struct {
@@ -91,7 +97,7 @@ func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServiceP
 }
 
 func (a appRoleAssignments) getRevoked(tx azure.Transaction, id azure.ServicePrincipalId, desired []msgraphbeta.AppRoleAssignment) ([]msgraphbeta.AppRoleAssignment, error) {
-	existing, err := a.getAllFor(tx.Ctx, id)
+	existing, err := a.getAssignedServicePrincipals(tx.Ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -130,18 +136,21 @@ func (a appRoleAssignments) getAllFor(ctx context.Context, id azure.ServicePrinc
 	return assignments, nil
 }
 
+func (a appRoleAssignments) getAssignedServicePrincipals(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
+	assignments, err := a.getAllFor(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	groups := filterByType(assignments, ServicePrincipal)
+	return groups, nil
+}
+
 func (a appRoleAssignments) getAssignedGroups(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
 	assignments, err := a.getAllFor(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	groups := make([]msgraphbeta.AppRoleAssignment, 0)
-	for _, assignment := range assignments {
-		principalType := *assignment.PrincipalType
-		if principalType == PrincipalTypeGroup {
-			groups = append(groups, assignment)
-		}
-	}
+	groups := filterByType(assignments, Group)
 	return groups, nil
 }
 
@@ -171,4 +180,14 @@ func (a appRoleAssignments) defaultRole() msgraph.AppRole {
 		IsEnabled:          ptr.Bool(true),
 		Value:              ptr.String(DefaultAppRole),
 	}
+}
+
+func filterByType(assignments []msgraphbeta.AppRoleAssignment, principalType PrincipalType) []msgraphbeta.AppRoleAssignment {
+	filtered := make([]msgraphbeta.AppRoleAssignment, 0)
+	for _, assignment := range assignments {
+		if *assignment.PrincipalType == principalType {
+			filtered = append(filtered, assignment)
+		}
+	}
+	return filtered
 }
