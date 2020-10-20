@@ -37,6 +37,11 @@ func (a ApplicationBuilder) PreAuthorizedApps(preAuthApps []msgraph.PreAuthorize
 	return a
 }
 
+func (a ApplicationBuilder) ResourceAccess(access []msgraph.RequiredResourceAccess) ApplicationBuilder {
+	a.RequiredResourceAccess = access
+	return a
+}
+
 func (a ApplicationBuilder) Build() *msgraph.Application {
 	return a.Application
 }

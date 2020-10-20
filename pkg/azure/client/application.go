@@ -41,9 +41,13 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 	if err != nil {
 		return applicationResponse{}, err
 	}
+	access := []msgraph.RequiredResourceAccess{
+		a.requiredResourceAccess().microsoftGraph(),
+	}
 	req := util.Application(a.defaultTemplate(tx.Instance)).
 		Key(*key).
 		PreAuthorizedApps(preAuthApps).
+		ResourceAccess(access).
 		Build()
 	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
@@ -157,9 +161,6 @@ func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 		Tags: []string{
 			IaCAppTag,
 			IntegratedAppTag,
-		},
-		RequiredResourceAccess: []msgraph.RequiredResourceAccess{
-			a.requiredResourceAccess().microsoftGraph(),
 		},
 		AppRoles: []msgraph.AppRole{
 			a.appRoles().defaultRole(),
