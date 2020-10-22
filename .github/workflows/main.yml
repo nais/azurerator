@@ -14,8 +14,8 @@ jobs:
       - name: Generate image environment variable
         run: |
           version=$(./version.sh)
-          echo ::set-env name=version::${version}
-          echo ::set-env name=IMAGE::${image}:${version}
+          echo "version=${version}" >> $GITHUB_ENV
+          echo "IMAGE=${image}:${version}" >> $GITHUB_ENV
       - name: Build docker image
         run: docker build . --tag $IMAGE
       - name: Login to Github package registry
@@ -34,9 +34,9 @@ jobs:
     - name: Generate image environment variable
       run: |
         version=$(./version.sh)
-        echo ::set-env name=version::${version}
-        echo ::set-env name=IMAGE::${image}:${version}
-        echo ::set-env name=NAIS_YAML::${GITHUB_WORKSPACE}/nais-yaml
+        echo "version=${version}" >> $GITHUB_ENV
+        echo "IMAGE=${image}:${version}" >> $GITHUB_ENV
+        echo "NAIS_YAML=${GITHUB_WORKSPACE}/nais-yaml" >> $GITHUB_ENV
         pwd
     - name: Bump version in nais-yaml
       env:
