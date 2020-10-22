@@ -53,7 +53,7 @@ func (p passwordCredential) remove(tx azure.Transaction, id azure.ClientId, keyI
 	req := p.toRemoveRequest(keyId)
 	if err := p.graphClient.Applications().ID(id).RemovePassword(req).Request().Post(tx.Ctx); err != nil {
 		// Microsoft returns HTTP 500 sometimes after adding new credentials due to concurrent modifications; we'll ignore this on our end for now
-		tx.Log.Errorf("removing password credential with id '%s': '%v'; ignoring", keyId, err)
+		tx.Log.Errorf("removing password credential with id '%s': '%v'; ignoring", string(*keyId), err)
 	}
 	return nil
 }
