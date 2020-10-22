@@ -32,7 +32,7 @@ func (p passwordCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (
 	}
 	revocationCandidates := p.revocationCandidates(app, append(keyIdsInUse, string(*newCred.KeyID)))
 	for _, cred := range revocationCandidates {
-		if err := p.remove(tx.Ctx, *app.ID, cred.KeyID); err != nil {
+		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
 			return msgraph.PasswordCredential{}, err
 		}
 	}
@@ -49,10 +49,11 @@ func (p passwordCredential) add(ctx context.Context, id azure.ObjectId) (msgraph
 	return *response, nil
 }
 
-func (p passwordCredential) remove(ctx context.Context, id azure.ClientId, keyId *msgraph.UUID) error {
+func (p passwordCredential) remove(tx azure.Transaction, id azure.ClientId, keyId *msgraph.UUID) error {
 	req := p.toRemoveRequest(keyId)
-	if err := p.graphClient.Applications().ID(id).RemovePassword(req).Request().Post(ctx); err != nil {
-		return fmt.Errorf("failed to remove password credential: %w", err)
+	if err := p.graphClient.Applications().ID(id).RemovePassword(req).Request().Post(tx.Ctx); err != nil {
+		// Microsoft returns HTTP 500 sometimes after adding new credentials due to concurrent modifications; we'll ignore this on our end for now
+		tx.Log.Errorf("removing password credential with id '%s': '%v'; ignoring", keyId, err)
 	}
 	return nil
 }
