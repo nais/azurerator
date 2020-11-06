@@ -8,7 +8,6 @@ import (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=azureapp
-// +kubebuilder:subresource:status
 
 // AzureAdApplication is the Schema for the AzureAdApplications API
 // +kubebuilder:printcolumn:name="Secret",type=string,JSONPath=`.spec.secretName`

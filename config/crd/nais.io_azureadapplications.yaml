@@ -30,8 +30,7 @@ spec:
     - azureapp
     singular: azureadapplication
   scope: Namespaced
-  subresources:
-    status: {}
+  subresources: {}
   validation:
     openAPIV3Schema:
       description: AzureAdApplication is the Schema for the AzureAdApplications API
