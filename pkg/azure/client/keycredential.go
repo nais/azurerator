@@ -47,12 +47,25 @@ func (k keyCredential) mapToKeyCredentials(tx azure.Transaction, keyIdsInUse []s
 	if err != nil {
 		return nil, err
 	}
-	keyCredentialsInUse := make([]msgraph.KeyCredential, 0)
 
 	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
 	// This case assumes the possibility of the Azure application being used in applications external to the cluster.
 	// There should always be at least one keycredential registered for an application.
 	var newestCredential msgraph.KeyCredential
+	var keyCreatedByAzureratorFound = false
+	for _, keyCredential := range application.KeyCredentials {
+		keyDisplayName := *keyCredential.DisplayName
+		if strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix) {
+			keyCreatedByAzureratorFound = true
+		}
+	}
+
+	// Return early to prevent revoking keys for a pre-existing application that has been managed outside of azurerator
+	if !keyCreatedByAzureratorFound {
+		return application.KeyCredentials, nil
+	}
+
+	keyCredentialsInUse := make([]msgraph.KeyCredential, 0)
 	for _, keyCredential := range application.KeyCredentials {
 		if keyCredentialInUse(keyCredential, keyIdsInUse) {
 			keyCredentialsInUse = append(keyCredentialsInUse, keyCredential)
@@ -87,13 +100,8 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.Jwk) msgraph.KeyCredential
 
 func keyCredentialInUse(key msgraph.KeyCredential, keyIdsInUse []string) bool {
 	keyId := string(*key.KeyID)
-	keyDisplayName := *key.DisplayName
-
 	for _, id := range keyIdsInUse {
-		keyIdMatches := keyId == id
-		keyCreatedByAzurerator := strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix)
-
-		if keyIdMatches || !keyCreatedByAzurerator {
+		if keyId == id {
 			return true
 		}
 	}

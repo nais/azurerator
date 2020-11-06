@@ -79,19 +79,30 @@ func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.Applic
 }
 
 func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIdsInUse []string) []msgraph.PasswordCredential {
-	revoked := make([]msgraph.PasswordCredential, 0)
-
 	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
 	// This case assumes the possibility of the Azure application being used in applications external to the cluster.
 	// There should always be at least one passwordcredential registered for an application.
 	var newestCredential msgraph.PasswordCredential
 	var newestCredentialIndex int
+	var keyCreatedByAzureratorFound = false
+
 	for i, passwordCredential := range app.PasswordCredentials {
 		if newestCredential.StartDateTime == nil || passwordCredential.StartDateTime.After(*newestCredential.StartDateTime) {
 			newestCredential = passwordCredential
 			newestCredentialIndex = i
 		}
+		keyDisplayName := *passwordCredential.DisplayName
+		if strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix) {
+			keyCreatedByAzureratorFound = true
+		}
 	}
+
+	// Return early to prevent revoking keys for a pre-existing application that has been managed outside of azurerator
+	if !keyCreatedByAzureratorFound {
+		return make([]msgraph.PasswordCredential, 0)
+	}
+
+	revoked := make([]msgraph.PasswordCredential, 0)
 	for i, passwordCredential := range app.PasswordCredentials {
 		if isPasswordInUse(passwordCredential, keyIdsInUse) || i == newestCredentialIndex {
 			continue
@@ -103,13 +114,8 @@ func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIds
 
 func isPasswordInUse(cred msgraph.PasswordCredential, idsInUse []string) bool {
 	keyId := string(*cred.KeyID)
-	keyDisplayName := *cred.DisplayName
-
 	for _, idInUse := range idsInUse {
-		keyIdMatches := keyId == idInUse
-		keyCreatedByAzurerator := strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix)
-
-		if keyIdMatches || !keyCreatedByAzurerator {
+		if keyId == idInUse {
 			return true
 		}
 	}
