@@ -3,7 +3,6 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-
 	hash "github.com/mitchellh/hashstructure"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/util"
@@ -14,20 +13,10 @@ func (in AzureAdPreAuthorizedApplication) GetUniqueName() string {
 	return fmt.Sprintf("%s:%s:%s", in.Cluster, in.Namespace, in.Application)
 }
 
-func (in *AzureAdApplication) SetNotSynchronized() {
-	in.Status.Synchronized = false
-	in.Status.Timestamp = metav1.Now()
-	if in.Status.PasswordKeyIds == nil {
-		in.Status.PasswordKeyIds = make([]string, 0)
-	}
-	if in.Status.CertificateKeyIds == nil {
-		in.Status.CertificateKeyIds = make([]string, 0)
-	}
-}
-
 func (in *AzureAdApplication) SetSynchronized() {
-	in.Status.Synchronized = true
-	in.Status.Timestamp = metav1.Now()
+	in.Status.SynchronizationState = EventSynchronized
+	now := metav1.Now()
+	in.Status.SynchronizationTime = &now
 }
 
 func (in *AzureAdApplication) IsBeingDeleted() bool {
@@ -51,7 +40,7 @@ func (in *AzureAdApplication) IsUpToDate() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if hashUnchanged && in.Status.Synchronized {
+	if hashUnchanged && (in.Status.SynchronizationState == EventSynchronized) {
 		return true, nil
 	}
 	return false, nil
@@ -62,7 +51,7 @@ func (in *AzureAdApplication) UpdateHash() error {
 	if err != nil {
 		return fmt.Errorf("failed to calculate application hash: %w", err)
 	}
-	in.Status.ProvisionHash = newHash
+	in.Status.SynchronizationHash = newHash
 	return nil
 }
 
@@ -71,7 +60,7 @@ func (in *AzureAdApplication) HashUnchanged() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to calculate application hash: %w", err)
 	}
-	return in.Status.ProvisionHash == newHash, nil
+	return in.Status.SynchronizationHash == newHash, nil
 }
 
 func (in *AzureAdApplication) SetSkipAnnotation() {
@@ -79,25 +68,7 @@ func (in *AzureAdApplication) SetSkipAnnotation() {
 }
 
 func (in AzureAdApplication) Hash() (string, error) {
-	// struct including the relevant fields for
-	// creating a hash of an AzureAdApplication object
-	relevantValues := struct {
-		AzureAdApplicationSpec AzureAdApplicationSpec
-		CertificateKeyIds      []string
-		SecretKeyIds           []string
-		ClientId               string
-		ObjectId               string
-		ServicePrincipalId     string
-	}{
-		in.Spec,
-		in.Status.CertificateKeyIds,
-		in.Status.PasswordKeyIds,
-		in.Status.ClientId,
-		in.Status.ObjectId,
-		in.Status.ServicePrincipalId,
-	}
-
-	marshalled, err := json.Marshal(relevantValues)
+	marshalled, err := json.Marshal(in.Spec)
 	if err != nil {
 		return "", err
 	}

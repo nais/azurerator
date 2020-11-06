@@ -10,7 +10,7 @@ import (
 
 var finalizerName = "test-finalizer"
 
-const expectedHash = "39b173d62bd3f1e3"
+const expectedHash = "3b810bb8df7a4bf1"
 
 func TestAzureAdApplication_GetUniqueName(t *testing.T) {
 	expected := "test-cluster:test-namespace:test-app"
@@ -91,7 +91,7 @@ func TestAzureAdApplication_UpdateHash(t *testing.T) {
 
 	err := app.UpdateHash()
 	assert.NoError(t, err)
-	assert.Equal(t, "8993bcc81d12b0bb", app.Status.ProvisionHash)
+	assert.Equal(t, "9f11b10559a0c2ac", app.Status.SynchronizationHash)
 }
 
 func TestAzureAdApplication_IsUpToDate(t *testing.T) {
@@ -102,14 +102,13 @@ func TestAzureAdApplication_IsUpToDate(t *testing.T) {
 	})
 	t.Run("Application should not synchronized", func(t *testing.T) {
 		app := minimalApplication()
-		app.Status.Synchronized = false
 		actual, err := app.IsUpToDate()
 		assert.NoError(t, err)
-		assert.False(t, actual)
+		assert.Empty(t, actual)
 	})
 	t.Run("Application should be synchronized", func(t *testing.T) {
 		app := minimalApplication()
-		app.Status.Synchronized = true
+		app.Status.SynchronizationState = EventSynchronized
 		actual, err := app.IsUpToDate()
 		assert.NoError(t, err)
 		assert.True(t, actual)
@@ -119,16 +118,10 @@ func TestAzureAdApplication_IsUpToDate(t *testing.T) {
 func TestAzureAdApplication_SetStatuses(t *testing.T) {
 	app := minimalApplication()
 
-	t.Run("Set Synchronized Status to false", func(t *testing.T) {
-		app.SetNotSynchronized()
-		assert.NotEmpty(t, app.Status.Timestamp)
-		assert.False(t, app.Status.Synchronized)
-	})
-
-	t.Run("Set Synchronized Status to true", func(t *testing.T) {
+	t.Run("Set SynchronizationState Status to true", func(t *testing.T) {
 		app.SetSynchronized()
-		assert.NotEmpty(t, app.Status.Timestamp)
-		assert.True(t, app.Status.Synchronized)
+		assert.NotEmpty(t, app.Status.SynchronizationTime)
+		assert.Equal(t, EventSynchronized, app.Status.SynchronizationState)
 	})
 }
 
@@ -161,12 +154,12 @@ func minimalApplication() *AzureAdApplication {
 			SecretName:                "test",
 		},
 		Status: AzureAdApplicationStatus{
-			PasswordKeyIds:     []string{"test"},
-			CertificateKeyIds:  []string{"test"},
-			ClientId:           "test",
-			ObjectId:           "test",
-			ServicePrincipalId: "test",
-			ProvisionHash:      expectedHash,
+			PasswordKeyIds:      []string{"test"},
+			CertificateKeyIds:   []string{"test"},
+			ClientId:            "test",
+			ObjectId:            "test",
+			ServicePrincipalId:  "test",
+			SynchronizationHash: expectedHash,
 		},
 	}
 }

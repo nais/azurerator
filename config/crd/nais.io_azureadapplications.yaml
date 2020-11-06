@@ -119,29 +119,23 @@ spec:
               items:
                 type: string
               type: array
-            provisionHash:
-              description: ProvisionHash is the hash of the AzureAdApplication object
-              type: string
             servicePrincipalId:
               description: ServicePrincipalId is the Azure applications service principal
                 object ID
               type: string
-            synchronized:
-              description: Synchronized denotes whether the provisioning of the AzureAdApplication
-                has been successfully completed or not
-              type: boolean
-            timestamp:
-              description: Timestamp is the last time the Status subresource was updated
+            synchronizationHash:
+              description: SynchronizationHash is the hash of the AzureAdApplication
+                object
+              type: string
+            synchronizationState:
+              description: SynchronizationState denotes whether the provisioning of
+                the AzureAdApplication has been successfully completed or not
+              type: string
+            synchronizationTime:
+              description: SynchronizationTime is the last time the Status subresource
+                was updated
               format: date-time
               type: string
-          required:
-          - certificateKeyIds
-          - clientId
-          - correlationId
-          - objectId
-          - passwordKeyIds
-          - servicePrincipalId
-          - synchronized
           type: object
       type: object
   version: v1

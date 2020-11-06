@@ -2,6 +2,7 @@ package azureadapplication
 
 import (
 	"fmt"
+	v1 "github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/namespaces"
@@ -13,7 +14,7 @@ func (r *Reconciler) shouldSkip(tx *transaction) bool {
 	if hasSkipFlag(tx) {
 		msg := fmt.Sprintf("Resource contains '%s' annotation. Skipping processing...", annotations.SkipKey)
 		logger.Debug(msg)
-		r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Skipped", msg)
+		r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventSkipped, msg)
 		return true
 	}
 
@@ -77,7 +78,8 @@ func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
 			msg := fmt.Sprintf("Resource should not exist in shared namespace '%s'. Skipping...", tx.instance.Namespace)
 			logger.Debug(msg)
 			tx.instance.SetSkipAnnotation()
-			r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Skipped", msg)
+			r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventNotInTeamNamespace, msg)
+			r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventSkipped, msg)
 			return true, nil
 		}
 	}

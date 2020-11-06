@@ -138,8 +138,6 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 }
 
 func (r *Reconciler) process(tx transaction) (*azure.Application, error) {
-	tx.instance.SetNotSynchronized()
-
 	managedSecrets, err := secrets.GetManaged(tx.ctx, tx.instance, r.Reader)
 	if err != nil {
 		return nil, err
@@ -163,19 +161,21 @@ func (r *Reconciler) process(tx transaction) (*azure.Application, error) {
 
 func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error) {
 	logger.Error(fmt.Errorf("failed to process Azure application: %w", err))
-	r.Recorder.Event(tx.instance, corev1.EventTypeWarning, "Failed", "Failed to synchronize Azure application")
+	r.reportEvent(tx, corev1.EventTypeWarning, v1.EventFailedSynchronization, "Failed to synchronize Azure application")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.instance.Namespace)
 
+	r.reportEvent(tx, corev1.EventTypeNormal, v1.EventRetrying, "Retrying synchronization")
 	return ctrl.Result{Requeue: true}, nil
 }
 
 func (r *Reconciler) complete(tx transaction, application azure.Application) (ctrl.Result, error) {
 	if err := r.updateStatus(tx, application); err != nil {
+		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventFailedStatusUpdate, "Failed to update status")
 		return ctrl.Result{}, err
 	}
 
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.instance.Namespace)
-	r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Synchronized", "Azure application is up-to-date")
+	r.reportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
 	logger.Info("successfully reconciled")
 
 	return ctrl.Result{}, nil
@@ -195,21 +195,21 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secre
 			return azure.Application{}, fmt.Errorf("failed to create azure application: %w", err)
 		}
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsCreatedCount, tx.instance.Namespace)
-		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Created", "Azure application is created")
+		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventCreatedInAzure, "Azure application is created")
 	} else {
 		application, err = r.azure().update(tx)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to update azure application: %w", err)
 		}
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsUpdatedCount, tx.instance.Namespace)
-		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Updated", "Azure application is updated")
+		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventUpdatedInAzure, "Azure application is updated")
 
 		application, err = r.azure().rotate(tx, *application, managedSecrets)
 		if err != nil {
 			return azure.Application{}, fmt.Errorf("failed to rotate azure credentials: %w", err)
 		}
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsRotatedCount, tx.instance.Namespace)
-		r.Recorder.Event(tx.instance, corev1.EventTypeNormal, "Rotated", "Azure credentials is rotated")
+		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventRotatedInAzure, "Azure credentials is rotated")
 	}
 
 	logger.Info("successfully synchronized AzureAdApplication with Azure")
@@ -240,4 +240,9 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.Application)
 			"ServicePrincipalID": tx.instance.Status.ServicePrincipalId,
 		}).Info("status subresource successfully updated")
 	return nil
+}
+
+func (r *Reconciler) reportEvent(tx transaction, eventType, event, message string) {
+	tx.instance.Status.SynchronizationState = event
+	r.Recorder.Event(tx.instance, eventType, event, message)
 }

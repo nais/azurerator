@@ -120,6 +120,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication in shared namespace should not be processed", key)
 	assert.True(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should contain a finalizer")
+	assert.Equal(t, v1.EventSkipped, instance.Status.SynchronizationState, "AzureAdApplication should be skipped")
 	assertAnnotationExists(t, instance, annotations.SkipKey, annotations.SkipValue)
 }
 
@@ -142,6 +143,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 		Namespace: namespace,
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication with tenant should not be processed", key)
+	assert.Empty(t, instance.Status.SynchronizationState, "AzureAdApplication should not be processed")
 	assert.False(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should not contain a finalizer")
 }
 
@@ -218,11 +220,11 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1.Azu
 			instance.Status.CorrelationId,
 			instance.Status.ObjectId,
 			instance.Status.PasswordKeyIds,
-			instance.Status.ProvisionHash,
+			instance.Status.SynchronizationHash,
 			instance.Status.ServicePrincipalId,
-			instance.Status.Timestamp,
+			instance.Status.SynchronizationTime,
 		})
-		assert.True(t, instance.Status.Synchronized, "AzureAdApplication should be synchronized")
+		assert.Equal(t, v1.EventSynchronized, instance.Status.SynchronizationState, "AzureAdApplication should be synchronized")
 	})
 	return instance
 }
@@ -233,13 +235,11 @@ func assertApplicationShouldNotProcess(t *testing.T, testName string, key client
 		assert.Eventually(t, resourceExists(key, instance), timeout, interval, "AzureAdApplication should exist")
 		assert.Empty(t, instance.Status.CertificateKeyIds)
 		assert.Empty(t, instance.Status.ClientId)
-		assert.Empty(t, instance.Status.CorrelationId)
 		assert.Empty(t, instance.Status.ObjectId)
 		assert.Empty(t, instance.Status.PasswordKeyIds)
-		assert.Empty(t, instance.Status.ProvisionHash)
+		assert.Empty(t, instance.Status.SynchronizationHash)
 		assert.Empty(t, instance.Status.ServicePrincipalId)
-		assert.Empty(t, instance.Status.Timestamp)
-		assert.False(t, instance.Status.Synchronized, "AzureAdApplication should not be synchronized")
+		assert.Empty(t, instance.Status.SynchronizationTime)
 	})
 	return instance
 }
