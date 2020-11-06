@@ -56,6 +56,8 @@ type AzureAdApplicationSpec struct {
 	// Tenant is an optional alias for targeting a tenant that an instance of Azurerator that processes resources for said tenant.
 	// Can be omitted if only running a single instance or targeting the default tenant.
 	Tenant string `json:"tenant,omitempty"`
+	// AdditionalClaims is a list of additional claims to be mapped from an associated claim-mapping policy.
+	AdditionalClaims []AzureAdAdditionalClaim `json:"additionalClaims,omitempty"`
 }
 
 // AzureAdApplicationStatus defines the observed state of AzureAdApplication
@@ -91,6 +93,9 @@ type AzureAdPreAuthorizedApplication struct {
 	Namespace   string `json:"namespace"`
 	Cluster     string `json:"cluster"`
 }
+
+// +kubebuilder:validation:Enum=navident
+type AzureAdAdditionalClaim string
 
 func init() {
 	SchemeBuilder.Register(&AzureAdApplication{}, &AzureAdApplicationList{})
