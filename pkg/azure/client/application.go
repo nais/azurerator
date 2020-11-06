@@ -100,43 +100,20 @@ func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (b
 	return len(applications) > 0, nil
 }
 
-func (a application) getById(tx azure.Transaction) (msgraph.Application, error) {
-	objectId := tx.Instance.Status.ObjectId
-	application, err := a.graphClient.Applications().ID(objectId).Request().Get(tx.Ctx)
+func (a application) getByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
+	application, err := a.getSingleByFilterOrError(ctx, util.FilterByName(name))
 	if err != nil {
-		return msgraph.Application{}, fmt.Errorf("failed to lookup azure application with ID '%s'", objectId)
+		return msgraph.Application{}, fmt.Errorf("fetching application with name '%s'", name)
 	}
 	return *application, nil
 }
 
-func (a application) getByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
-	applications, err := a.getAll(ctx, util.FilterByName(name))
-	if err != nil {
-		return msgraph.Application{}, err
-	}
-	switch {
-	case len(applications) == 0:
-		return msgraph.Application{}, fmt.Errorf("could not find azure application with name '%s'", name)
-	case len(applications) > 1:
-		return msgraph.Application{}, fmt.Errorf("found more than one azure application with name '%s'", name)
-	default:
-		return applications[0], nil
-	}
-}
-
 func (a application) getByClientId(ctx context.Context, id azure.ClientId) (msgraph.Application, error) {
-	applications, err := a.getAll(ctx, util.FilterByAppId(id))
+	application, err := a.getSingleByFilterOrError(ctx, util.FilterByAppId(id))
 	if err != nil {
-		return msgraph.Application{}, err
+		return msgraph.Application{}, fmt.Errorf("fetching application with clientId '%s'", id)
 	}
-	switch {
-	case len(applications) == 0:
-		return msgraph.Application{}, fmt.Errorf("could not find azure application with clientId '%s'", id)
-	case len(applications) > 1:
-		return msgraph.Application{}, fmt.Errorf("found more than one azure application with clientId '%s'", id)
-	default:
-		return applications[0], nil
-	}
+	return *application, nil
 }
 
 func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msgraph.Application, error) {
@@ -174,5 +151,20 @@ func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 				EnableAccessTokenIssuance: ptr.Bool(false),
 			},
 		},
+	}
+}
+
+func (a application) getSingleByFilterOrError(ctx context.Context, filter azure.Filter) (*msgraph.Application, error) {
+	applications, err := a.getAll(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case len(applications) == 0:
+		return nil, fmt.Errorf("no matching azure applications found")
+	case len(applications) > 1:
+		return nil, fmt.Errorf("found more than one matching azure application")
+	default:
+		return &applications[0], nil
 	}
 }
