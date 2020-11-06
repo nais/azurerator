@@ -121,10 +121,7 @@ func (c client) Exists(tx azure.Transaction) (bool, error) {
 
 // Get returns a Graph API Application entity, which represents an Application in AAD
 func (c client) Get(tx azure.Transaction) (msgraph.Application, error) {
-	if len(tx.Instance.Status.ObjectId) == 0 {
-		return c.application().getByName(tx.Ctx, tx.Instance.GetUniqueName())
-	}
-	return c.application().getById(tx)
+	return c.application().getByName(tx.Ctx, tx.Instance.GetUniqueName())
 }
 
 // GetServicePrincipal returns the application's associated Graph ServicePrincipal entity, or registers and returns one if none exist for the application.

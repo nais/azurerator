@@ -88,12 +88,8 @@ func (a application) patch(ctx context.Context, id azure.ObjectId, application i
 }
 
 func (a application) exists(tx azure.Transaction) (bool, error) {
-	clientId := tx.Instance.Status.ClientId
-	if len(clientId) == 0 {
-		name := tx.Instance.GetUniqueName()
-		return a.existsByFilter(tx.Ctx, util.FilterByName(name))
-	}
-	return a.existsByFilter(tx.Ctx, util.FilterByAppId(clientId))
+	name := tx.Instance.GetUniqueName()
+	return a.existsByFilter(tx.Ctx, util.FilterByName(name))
 }
 
 func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (bool, error) {

@@ -184,7 +184,7 @@ func (r *Reconciler) complete(tx transaction, application azure.Application) (ct
 func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secrets.Lists) (azure.Application, error) {
 	var application *azure.Application
 
-	exists, err := r.AzureClient.Exists(tx.toAzureTx())
+	exists, err := r.azure().exists(tx)
 	if err != nil {
 		return azure.Application{}, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
@@ -228,8 +228,8 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.Application)
 	if err := tx.instance.UpdateHash(); err != nil {
 		return err
 	}
-	if err := r.updateStatusSubresource(tx); err != nil {
-		return err
+	if err := r.Update(tx.ctx, tx.instance); err != nil {
+		return fmt.Errorf("updating status fields: %w", err)
 	}
 	logger.WithFields(
 		log.Fields{
