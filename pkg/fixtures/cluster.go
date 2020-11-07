@@ -20,6 +20,7 @@ type ClusterFixtures struct {
 	Config
 	azureAdApplication *v1.AzureAdApplication
 	pod                *corev1.Pod
+	podEnvFrom         *corev1.Pod
 	unusedSecret       *corev1.Secret
 	sharedNamespace    *corev1.Namespace
 }
@@ -106,7 +107,7 @@ func (c ClusterFixtures) WithUnusedSecret() ClusterFixtures {
 	return c
 }
 
-func (c ClusterFixtures) WithPod() ClusterFixtures {
+func (c ClusterFixtures) WithPods() ClusterFixtures {
 	c.pod = &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -138,6 +139,36 @@ func (c ClusterFixtures) WithPod() ClusterFixtures {
 			},
 		},
 	}
+	c.podEnvFrom = &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-envfrom", c.AzureAppName),
+			Namespace: c.NamespaceName,
+			Labels: map[string]string{
+				labels.AppLabelKey: c.AzureAppName,
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "main",
+					Image: "foo",
+					EnvFrom: []corev1.EnvFromSource{
+						{
+							SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: c.SecretName,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 	return c
 }
 
@@ -148,7 +179,7 @@ func (c ClusterFixtures) WithTenant(tenant string) ClusterFixtures {
 
 func (c ClusterFixtures) WithMinimalConfig() ClusterFixtures {
 	return c.WithAzureApp().
-		WithPod().
+		WithPods().
 		WithUnusedSecret()
 }
 
@@ -161,6 +192,11 @@ func (c ClusterFixtures) Setup() error {
 	}
 	if c.pod != nil {
 		if err := c.Create(ctx, c.pod); err != nil {
+			return err
+		}
+	}
+	if c.podEnvFrom != nil {
+		if err := c.Create(ctx, c.podEnvFrom); err != nil {
 			return err
 		}
 	}
@@ -192,6 +228,15 @@ func (c ClusterFixtures) waitForClusterResources(ctx context.Context) error {
 			ObjectKey: client.ObjectKey{
 				Namespace: c.NamespaceName,
 				Name:      c.AzureAppName,
+			},
+			Object: &corev1.Pod{},
+		})
+	}
+	if c.podEnvFrom != nil {
+		resources = append(resources, resource{
+			ObjectKey: client.ObjectKey{
+				Namespace: c.NamespaceName,
+				Name:      fmt.Sprintf("%s-envfrom", c.AzureAppName),
 			},
 			Object: &corev1.Pod{},
 		})

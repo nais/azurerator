@@ -36,6 +36,13 @@ func secretInPod(secret corev1.Secret, pod corev1.Pod) bool {
 			return true
 		}
 	}
+	for _, container := range pod.Spec.Containers {
+		for _, envFrom := range container.EnvFrom {
+			if envFrom.SecretRef != nil && envFrom.SecretRef.Name == secret.Name {
+				return true
+			}
+		}
+	}
 	return false
 }
 
