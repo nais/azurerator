@@ -54,6 +54,6 @@ func (sp servicePrincipalPolicies) assignForPolicy(tx azure.Transaction, policyI
 	if err != nil {
 		tx.Log.Error(fmt.Errorf("assigning claims-mapping policy with ID '%s' to service principal '%s': %w", policyID, servicePrincipalId, err))
 	}
-	tx.Log.Info("successfully assigned claims-mapping policy with ID '%s' to service principal '%s'", policyID, servicePrincipalId)
+	tx.Log.Infof("successfully assigned claims-mapping policy with ID '%s' to service principal '%s'", policyID, servicePrincipalId)
 	return nil
 }
