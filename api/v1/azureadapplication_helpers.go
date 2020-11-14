@@ -40,10 +40,7 @@ func (in *AzureAdApplication) IsUpToDate() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if hashUnchanged && (in.Status.SynchronizationState == EventSynchronized) {
-		return true, nil
-	}
-	return false, nil
+	return hashUnchanged, nil
 }
 
 func (in *AzureAdApplication) UpdateHash() error {

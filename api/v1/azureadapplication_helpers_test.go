@@ -95,23 +95,18 @@ func TestAzureAdApplication_UpdateHash(t *testing.T) {
 }
 
 func TestAzureAdApplication_IsUpToDate(t *testing.T) {
-	t.Run("Minimal Application should not be synchronized", func(t *testing.T) {
-		actual, err := minimalApplication().IsUpToDate()
-		assert.NoError(t, err)
-		assert.False(t, actual)
-	})
-	t.Run("Application should not synchronized", func(t *testing.T) {
+	t.Run("Application with unchanged spec should be synchronized", func(t *testing.T) {
 		app := minimalApplication()
-		actual, err := app.IsUpToDate()
-		assert.NoError(t, err)
-		assert.Empty(t, actual)
-	})
-	t.Run("Application should be synchronized", func(t *testing.T) {
-		app := minimalApplication()
-		app.Status.SynchronizationState = EventSynchronized
 		actual, err := app.IsUpToDate()
 		assert.NoError(t, err)
 		assert.True(t, actual)
+	})
+	t.Run("Application with changed spec should not be synchronized", func(t *testing.T) {
+		app := minimalApplication()
+		app.Spec.SecretName = "yolo"
+		actual, err := app.IsUpToDate()
+		assert.NoError(t, err)
+		assert.False(t, actual)
 	})
 }
 
