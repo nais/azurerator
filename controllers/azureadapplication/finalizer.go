@@ -45,7 +45,7 @@ func (f finalizer) process(tx transaction) (ctrl.Result, error) {
 			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer from list: %w", err)
 		}
 	}
-	f.reportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedFinalizer, "Object finalizer is added")
+	f.reportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedFinalizer, "Object finalizer is deleted")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsDeletedCount, tx.instance.Namespace)
 	return ctrl.Result{}, nil
 }
