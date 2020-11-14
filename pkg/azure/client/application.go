@@ -103,7 +103,7 @@ func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (b
 func (a application) getByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
 	application, err := a.getSingleByFilterOrError(ctx, util.FilterByName(name))
 	if err != nil {
-		return msgraph.Application{}, fmt.Errorf("fetching application with name '%s'", name)
+		return msgraph.Application{}, fmt.Errorf("fetching application with name '%s': %w", name, err)
 	}
 	return *application, nil
 }
@@ -111,7 +111,7 @@ func (a application) getByName(ctx context.Context, name azure.DisplayName) (msg
 func (a application) getByClientId(ctx context.Context, id azure.ClientId) (msgraph.Application, error) {
 	application, err := a.getSingleByFilterOrError(ctx, util.FilterByAppId(id))
 	if err != nil {
-		return msgraph.Application{}, fmt.Errorf("fetching application with clientId '%s'", id)
+		return msgraph.Application{}, fmt.Errorf("fetching application with clientId '%s': %w", id, err)
 	}
 	return *application, nil
 }
