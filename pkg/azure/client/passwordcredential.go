@@ -114,8 +114,13 @@ func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIds
 
 func isPasswordInUse(cred msgraph.PasswordCredential, idsInUse []string) bool {
 	keyId := string(*cred.KeyID)
+	keyDisplayName := *cred.DisplayName
+
 	for _, idInUse := range idsInUse {
-		if keyId == idInUse {
+		keyIdInuse := keyId == idInUse
+		keyNotCreatedByAzurerator := !strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix)
+
+		if keyIdInuse || !keyNotCreatedByAzurerator {
 			return true
 		}
 	}
