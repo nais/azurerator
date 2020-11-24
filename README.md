@@ -7,7 +7,7 @@ i.e. both application and user authentication and authorization.
 
 ## For [NAIS](https://nais.io) end-users
 
-See <https://doc.nais.io/addons/azure-ad>
+See <https://doc.nais.io/security/auth/azure-ad>
 
 ## CRD
 

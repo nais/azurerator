@@ -1,6 +1,9 @@
 name: Build and deploy azurerator
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
 
 env:
   image: docker.pkg.github.com/${{ github.repository }}/azurerator
