@@ -118,9 +118,9 @@ func isPasswordInUse(cred msgraph.PasswordCredential, idsInUse []string) bool {
 
 	for _, idInUse := range idsInUse {
 		keyIdInuse := keyId == idInUse
-		keyNotCreatedByAzurerator := !strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix)
+		keyCreatedByAzurerator := strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix)
 
-		if keyIdInuse || !keyNotCreatedByAzurerator {
+		if keyIdInuse || !keyCreatedByAzurerator {
 			return true
 		}
 	}
