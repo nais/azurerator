@@ -71,7 +71,7 @@ func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 	if err = c.teamowners().register(tx, *res.Application.ID, *servicePrincipal.ID); err != nil {
 		return nil, fmt.Errorf("failed to register owners: %w", err)
 	}
-	if err := c.servicePrincipal().policies().assign(tx); err != nil {
+	if err := c.servicePrincipal().policies().assign(tx, *servicePrincipal.ID); err != nil {
 		return nil, err
 	}
 
@@ -202,7 +202,7 @@ func (c client) Update(tx azure.Transaction) (*azure.Application, error) {
 	if err := c.teamowners().update(tx); err != nil {
 		return nil, fmt.Errorf("failed to update owners: %w", err)
 	}
-	if err := c.servicePrincipal().policies().assign(tx); err != nil {
+	if err := c.servicePrincipal().policies().assign(tx, spId); err != nil {
 		return nil, err
 	}
 	return &azure.Application{
