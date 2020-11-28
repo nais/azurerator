@@ -2,6 +2,7 @@ package util
 
 import (
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
@@ -39,6 +40,11 @@ func (a ApplicationBuilder) PreAuthorizedApps(preAuthApps []msgraph.PreAuthorize
 
 func (a ApplicationBuilder) ResourceAccess(access []msgraph.RequiredResourceAccess) ApplicationBuilder {
 	a.RequiredResourceAccess = access
+	return a
+}
+
+func (a ApplicationBuilder) GroupMembershipClaims(groupMembershipClaim azure.GroupMembershipClaim) ApplicationBuilder {
+	a.Application.GroupMembershipClaims = ptr.String(groupMembershipClaim)
 	return a
 }
 

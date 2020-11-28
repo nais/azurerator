@@ -48,6 +48,7 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 		Key(*key).
 		PreAuthorizedApps(preAuthApps).
 		ResourceAccess(access).
+		GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup).
 		Build()
 	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
@@ -128,9 +129,8 @@ func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msg
 
 func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Application {
 	return &msgraph.Application{
-		DisplayName:           ptr.String(resource.GetUniqueName()),
-		GroupMembershipClaims: ptr.String("SecurityGroup"),
-		SignInAudience:        ptr.String("AzureADMyOrg"),
+		DisplayName:    ptr.String(resource.GetUniqueName()),
+		SignInAudience: ptr.String("AzureADMyOrg"),
 		Tags: []string{
 			IaCAppTag,
 			IntegratedAppTag,
