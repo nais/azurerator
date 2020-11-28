@@ -20,15 +20,15 @@ func (s servicePrincipal) policies() servicePrincipalPolicies {
 }
 
 func (sp servicePrincipalPolicies) assign(tx azure.Transaction) error {
-	if len(tx.Instance.Spec.AdditionalClaims) == 0 {
+	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Extra) == 0 {
 		return nil
 	}
 
-	policies := map[v1.AzureAdAdditionalClaim]string{
+	policies := map[v1.AzureAdExtraClaim]string{
 		ClaimNavIdent: sp.config.ClaimsMappingPolicy.NavIdent,
 	}
 
-	for _, claim := range tx.Instance.Spec.AdditionalClaims {
+	for _, claim := range tx.Instance.Spec.Claims.Extra {
 		policy, found := policies[claim]
 		if !found {
 			continue
@@ -52,8 +52,9 @@ func (sp servicePrincipalPolicies) assignForPolicy(tx azure.Transaction, policyI
 	err := req.JSONRequest(tx.Ctx, "POST", "/claimsMappingPolicies/$ref", body, nil)
 
 	if err != nil {
-		tx.Log.Error(fmt.Errorf("assigning claims-mapping policy with ID '%s' to service principal '%s': %w", policyID, servicePrincipalId, err))
+		return fmt.Errorf("assigning claims-mapping policy with ID '%s' to service principal '%s': %w", policyID, servicePrincipalId, err)
+	} else {
+		tx.Log.Infof("successfully assigned claims-mapping policy with ID '%s' to service principal '%s'", policyID, servicePrincipalId)
 	}
-	tx.Log.Infof("successfully assigned claims-mapping policy with ID '%s' to service principal '%s'", policyID, servicePrincipalId)
 	return nil
 }

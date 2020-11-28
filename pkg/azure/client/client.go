@@ -50,9 +50,6 @@ func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := c.servicePrincipal().policies().assign(tx); err != nil {
-		return nil, err
-	}
 	if err := c.oAuth2PermissionGrant().add(tx.Ctx, *servicePrincipal.ID); err != nil {
 		return nil, err
 	}
@@ -73,6 +70,9 @@ func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 	}
 	if err = c.teamowners().register(tx, *res.Application.ID, *servicePrincipal.ID); err != nil {
 		return nil, fmt.Errorf("failed to register owners: %w", err)
+	}
+	if err := c.servicePrincipal().policies().assign(tx); err != nil {
+		return nil, err
 	}
 
 	lastPasswordKeyId := string(*passwordCredential.KeyID)
@@ -199,11 +199,11 @@ func (c client) Update(tx azure.Transaction) (*azure.Application, error) {
 	if err := c.appRoles().update(tx, spId, preAuthApps); err != nil {
 		return nil, fmt.Errorf("failed to update app roles: %w", err)
 	}
-	if err := c.servicePrincipal().policies().assign(tx); err != nil {
-		return nil, err
-	}
 	if err := c.teamowners().update(tx); err != nil {
 		return nil, fmt.Errorf("failed to update owners: %w", err)
+	}
+	if err := c.servicePrincipal().policies().assign(tx); err != nil {
+		return nil, err
 	}
 	return &azure.Application{
 		ClientId:           clientId,

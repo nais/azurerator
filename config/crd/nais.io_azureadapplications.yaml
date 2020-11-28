@@ -50,14 +50,19 @@ spec:
         spec:
           description: AzureAdApplicationSpec defines the desired state of AzureAdApplication
           properties:
-            additionalClaims:
-              description: AdditionalClaims is a list of additional claims to be mapped
-                from an associated claim-mapping policy.
-              items:
-                enum:
-                - navident
-                type: string
-              type: array
+            claims:
+              description: Claims defines additional configuration of the emitted
+                claims in tokens returned to the AzureAdApplication
+              properties:
+                extra:
+                  description: Extra is a list of additional claims to be mapped from
+                    an associated claim-mapping policy.
+                  items:
+                    enum:
+                    - navident
+                    type: string
+                  type: array
+              type: object
             logoutUrl:
               description: LogoutUrl is the URL where Azure AD sends a request to
                 have the application clear the user's session data. This is required
