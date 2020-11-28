@@ -102,7 +102,7 @@ type AzureAdClaims struct {
 	Extra []AzureAdExtraClaim `json:"extra,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=navident
+// +kubebuilder:validation:Enum=NAVident
 type AzureAdExtraClaim string
 
 func init() {

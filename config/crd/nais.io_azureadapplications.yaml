@@ -59,7 +59,7 @@ spec:
                     an associated claim-mapping policy.
                   items:
                     enum:
-                    - navident
+                    - NAVident
                     type: string
                   type: array
               type: object
