@@ -48,6 +48,11 @@ func (a ApplicationBuilder) GroupMembershipClaims(groupMembershipClaim azure.Gro
 	return a
 }
 
+func (a ApplicationBuilder) AppRoles(appRoles []msgraph.AppRole) ApplicationBuilder {
+	a.Application.AppRoles = appRoles
+	return a
+}
+
 func (a ApplicationBuilder) Build() *msgraph.Application {
 	return a.Application
 }

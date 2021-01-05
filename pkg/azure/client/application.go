@@ -44,11 +44,15 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 	access := []msgraph.RequiredResourceAccess{
 		a.requiredResourceAccess().microsoftGraph(),
 	}
+	appRoles := []msgraph.AppRole{
+		a.appRoles().defaultRole(),
+	}
 	req := util.Application(a.defaultTemplate(tx.Instance)).
 		Key(*key).
 		PreAuthorizedApps(preAuthApps).
 		ResourceAccess(access).
 		GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup).
+		AppRoles(appRoles).
 		Build()
 	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
@@ -73,8 +77,14 @@ func (a application) update(tx azure.Transaction) error {
 	objectId := tx.Instance.Status.ObjectId
 
 	identifierUri := util.IdentifierUri(clientId)
+	defaultRole := a.appRoles().defaultRole()
+	appRoles, err := a.appRoles().ensureExists(tx, defaultRole)
+	if err != nil {
+		return fmt.Errorf("updating approles for application: %w", err)
+	}
 	app := util.Application(a.defaultTemplate(tx.Instance)).
 		IdentifierUri(identifierUri).
+		AppRoles(appRoles).
 		Build()
 
 	return a.patch(tx.Ctx, objectId, app)
@@ -134,9 +144,6 @@ func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 		Tags: []string{
 			IaCAppTag,
 			IntegratedAppTag,
-		},
-		AppRoles: []msgraph.AppRole{
-			a.appRoles().defaultRole(),
 		},
 		API: &msgraph.APIApplication{
 			AcceptMappedClaims:          ptr.Bool(true),
