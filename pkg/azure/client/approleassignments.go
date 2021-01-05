@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/util/approle"
+	"github.com/nais/azureator/pkg/azure/util/approleassignment"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
@@ -27,7 +27,7 @@ type appRoleAssignments struct {
 	client
 }
 
-func (c client) appRoles() appRoleAssignments {
+func (c client) appRoleAssignments() appRoleAssignments {
 	return appRoleAssignments{c}
 }
 
@@ -46,12 +46,12 @@ func (a appRoleAssignments) add(tx azure.Transaction, targetId azure.ServicePrin
 }
 
 func (a appRoleAssignments) exists(tx azure.Transaction, id azure.ServicePrincipalId, assignment msgraphbeta.AppRoleAssignment) (bool, error) {
-	assignments, err := a.getAllFor(tx.Ctx, id)
+	assignments, err := a.getAll(tx.Ctx, id)
 	if err != nil {
 		return false, err
 	}
 	for _, a := range assignments {
-		if *a.PrincipalID == *assignment.PrincipalID {
+		if *a.PrincipalID == *assignment.PrincipalID && *a.AppRoleID == *assignment.AppRoleID {
 			return true, nil
 		}
 	}
@@ -78,7 +78,7 @@ func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServiceP
 		tx.Log.Debugf("skipping AppRole assignment: ServicePrincipal for PreAuthorizedApp (clientId '%s', name '%s') does not exist", app.ClientId, app.Name)
 		return msgraphbeta.AppRoleAssignment{}, nil
 	}
-	assignment := a.toAssignment(targetId, *assigneeSp.ID)
+	assignment := toAssignment(targetId, *assigneeSp.ID, msgraphbeta.UUID(DefaultAppRoleId))
 	assignmentExists, err := a.exists(tx, targetId, *assignment)
 	if err != nil {
 		return msgraphbeta.AppRoleAssignment{}, err
@@ -97,11 +97,11 @@ func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServiceP
 }
 
 func (a appRoleAssignments) getRevoked(tx azure.Transaction, id azure.ServicePrincipalId, desired []msgraphbeta.AppRoleAssignment) ([]msgraphbeta.AppRoleAssignment, error) {
-	existing, err := a.getAssignedServicePrincipals(tx.Ctx, id)
+	existing, err := a.getServicePrincipals(tx.Ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	revoked := approle.Difference(existing, desired)
+	revoked := approleassignment.Difference(existing, desired)
 	return revoked, nil
 }
 
@@ -128,7 +128,7 @@ func (a appRoleAssignments) delete(tx azure.Transaction, id azure.ServicePrincip
 	return nil
 }
 
-func (a appRoleAssignments) getAllFor(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
+func (a appRoleAssignments) getAll(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
 	assignments, err := a.request(id).GetN(ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup AppRoleAssignments for service principal: %w", err)
@@ -136,17 +136,17 @@ func (a appRoleAssignments) getAllFor(ctx context.Context, id azure.ServicePrinc
 	return assignments, nil
 }
 
-func (a appRoleAssignments) getAssignedServicePrincipals(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
-	assignments, err := a.getAllFor(ctx, id)
+func (a appRoleAssignments) getServicePrincipals(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
+	assignments, err := a.getAll(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	groups := filterByType(assignments, ServicePrincipal)
-	return groups, nil
+	servicePrincipals := filterByType(assignments, ServicePrincipal)
+	return servicePrincipals, nil
 }
 
-func (a appRoleAssignments) getAssignedGroups(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
-	assignments, err := a.getAllFor(ctx, id)
+func (a appRoleAssignments) getGroups(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
+	assignments, err := a.getAll(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -158,28 +158,13 @@ func (a appRoleAssignments) request(id azure.ServicePrincipalId) *msgraphbeta.Se
 	return a.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().Request()
 }
 
-func (a appRoleAssignments) toAssignment(target azure.ObjectId, assignee azure.ObjectId) *msgraphbeta.AppRoleAssignment {
-	appRoleId := msgraphbeta.UUID(DefaultAppRoleId)
+func toAssignment(target azure.ObjectId, assignee azure.ObjectId, appRoleId msgraphbeta.UUID) *msgraphbeta.AppRoleAssignment {
 	appRoleAssignment := &msgraphbeta.AppRoleAssignment{
 		AppRoleID:   &appRoleId,
 		PrincipalID: (*msgraphbeta.UUID)(&assignee), // Service Principal ID for the assignee, i.e. the application that should be assigned to the app role
 		ResourceID:  (*msgraphbeta.UUID)(&target),   // Service Principal ID for the target resource, i.e. the application that owns the app role
 	}
 	return appRoleAssignment
-}
-
-func (a appRoleAssignments) defaultRole() msgraph.AppRole {
-	roleId := msgraph.UUID(DefaultAppRoleId)
-	allowedMemberTypes := []string{"Application"}
-	return msgraph.AppRole{
-		Object:             msgraph.Object{},
-		AllowedMemberTypes: allowedMemberTypes,
-		Description:        ptr.String(DefaultAppRole),
-		DisplayName:        ptr.String(DefaultAppRole),
-		ID:                 &roleId,
-		IsEnabled:          ptr.Bool(true),
-		Value:              ptr.String(DefaultAppRole),
-	}
 }
 
 func filterByType(assignments []msgraphbeta.AppRoleAssignment, principalType PrincipalType) []msgraphbeta.AppRoleAssignment {

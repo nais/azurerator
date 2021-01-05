@@ -1,4 +1,4 @@
-package approle
+package approleassignment
 
 import (
 	"testing"

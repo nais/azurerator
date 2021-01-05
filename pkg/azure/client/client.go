@@ -64,7 +64,7 @@ func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = c.appRoles().add(tx, *servicePrincipal.ID, preAuthApps)
+	_, err = c.appRoleAssignments().add(tx, *servicePrincipal.ID, preAuthApps)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add app role assignments: %w", err)
 	}
@@ -196,8 +196,9 @@ func (c client) Update(tx azure.Transaction) (*azure.Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := c.appRoles().update(tx, spId, preAuthApps); err != nil {
-		return nil, fmt.Errorf("failed to update app roles: %w", err)
+
+	if err := c.appRoleAssignments().update(tx, spId, preAuthApps); err != nil {
+		return nil, fmt.Errorf("updating approles: %w", err)
 	}
 	if err := c.teamowners().update(tx); err != nil {
 		return nil, fmt.Errorf("failed to update owners: %w", err)

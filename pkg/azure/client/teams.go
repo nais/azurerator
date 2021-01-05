@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 )
 
@@ -20,7 +19,7 @@ func (t teams) get(ctx context.Context) ([]msgraphbeta.AppRoleAssignment, error)
 	if len(t.config.TeamsManagement.ServicePrincipalId) == 0 {
 		return groups, nil
 	}
-	groups, err := t.appRoles().getAssignedGroups(ctx, t.config.TeamsManagement.ServicePrincipalId)
+	groups, err := t.appRoleAssignments().getGroups(ctx, t.config.TeamsManagement.ServicePrincipalId)
 	if err != nil {
 		return groups, fmt.Errorf("failed to get assigned groups for teams management service principal: %w", err)
 	}
