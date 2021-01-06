@@ -19,7 +19,11 @@ func (c client) servicePrincipal() servicePrincipal {
 }
 
 func (s servicePrincipal) register(ctx context.Context, id azure.ClientId) (msgraphbeta.ServicePrincipal, error) {
-	servicePrincipal, err := s.graphBetaClient.ServicePrincipals().Request().Add(ctx, s.toMsGraph(id))
+	request := &msgraphbeta.ServicePrincipal{
+		AppID:                     &id,
+		AppRoleAssignmentRequired: ptr.Bool(false),
+	}
+	servicePrincipal, err := s.graphBetaClient.ServicePrincipals().Request().Add(ctx, request)
 	if err != nil {
 		return msgraphbeta.ServicePrincipal{}, fmt.Errorf("failed to register service principal: %w", err)
 	}
@@ -47,11 +51,4 @@ func (s servicePrincipal) getWithFilter(ctx context.Context, filter azure.Filter
 		return []msgraphbeta.ServicePrincipal{}, fmt.Errorf("failed to lookup service principals with filter '%s': %w", filter, err)
 	}
 	return sps, nil
-}
-
-func (s servicePrincipal) toMsGraph(clientId azure.ClientId) *msgraphbeta.ServicePrincipal {
-	return &msgraphbeta.ServicePrincipal{
-		AppID:                     &clientId,
-		AppRoleAssignmentRequired: ptr.Bool(false),
-	}
 }
