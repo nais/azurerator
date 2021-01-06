@@ -70,8 +70,8 @@ type ObjectId = string
 // ServicePrincipalId is the Object ID for the Graph API Service Principal resource
 type ServicePrincipalId = string
 
-// IdentifierUri is the unique Application ID URI for the Graph API Application resource
-type IdentifierUri = string
+// IdentifierUris is a list of unique Application ID URIs for the Graph API Application resource
+type IdentifierUris = []string
 
 // Filter is the Graph API OData query option for filtering results of a collection
 type Filter = string

@@ -66,11 +66,23 @@ func TestFilters(t *testing.T) {
 	}
 }
 
-func TestIdentifierUri(t *testing.T) {
+func TestIdentifierUriClientId(t *testing.T) {
 	t.Run("Given a UUID, the Identifier URI should be a formatted string following a template", func(t *testing.T) {
 		p := "some-uuid"
-		actual := IdentifierUri(p)
-		expected := fmt.Sprintf("api://%s", p)
+		actual := IdentifierUriClientId(p)
+		expected := "api://some-uuid"
+		assert.Equal(t, expected, actual)
+	})
+}
+
+func TestIdentifierUriHumanReadable(t *testing.T) {
+	t.Run("Given an Application spec, the Identifier URI should be a formatted string following a template", func(t *testing.T) {
+		spec := v1.AzureAdApplication{}
+		spec.SetName("test")
+		spec.SetNamespace("test-namespace")
+		spec.SetClusterName("test-cluster")
+		actual := IdentifierUriHumanReadable(spec)
+		expected := "api://test.test-namespace.test-cluster"
 		assert.Equal(t, expected, actual)
 	})
 }

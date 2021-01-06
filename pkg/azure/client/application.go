@@ -73,17 +73,16 @@ func (a application) delete(tx azure.Transaction) error {
 }
 
 func (a application) update(tx azure.Transaction) error {
-	clientId := tx.Instance.Status.ClientId
 	objectId := tx.Instance.Status.ObjectId
 
-	identifierUri := util.IdentifierUri(clientId)
+	identifierUris := util.IdentifierUris(tx)
 	defaultRole := a.appRoles().defaultRole()
 	appRoles, err := a.appRoles().ensureExists(tx, defaultRole)
 	if err != nil {
 		return fmt.Errorf("updating approles for application: %w", err)
 	}
 	app := util.Application(a.defaultTemplate(tx.Instance)).
-		IdentifierUri(identifierUri).
+		IdentifierUriList(identifierUris).
 		AppRoles(appRoles).
 		Build()
 

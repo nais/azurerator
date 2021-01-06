@@ -28,8 +28,8 @@ func (a ApplicationBuilder) Keys(keyCredentials []msgraph.KeyCredential) Applica
 	return a
 }
 
-func (a ApplicationBuilder) IdentifierUri(uri azure.IdentifierUri) ApplicationBuilder {
-	a.IdentifierUris = []string{uri}
+func (a ApplicationBuilder) IdentifierUriList(uris azure.IdentifierUris) ApplicationBuilder {
+	a.IdentifierUris = uris
 	return a
 }
 

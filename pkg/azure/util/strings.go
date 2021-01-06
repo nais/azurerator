@@ -17,8 +17,19 @@ func GetReplyUrlsStringSlice(resource v1.AzureAdApplication) []string {
 	return replyUrls
 }
 
-func IdentifierUri(id azure.ClientId) azure.IdentifierUri {
+func IdentifierUriClientId(id azure.ClientId) string {
 	return fmt.Sprintf("api://%s", id)
+}
+
+func IdentifierUriHumanReadable(spec v1.AzureAdApplication) string {
+	return fmt.Sprintf("api://%s.%s.%s", spec.GetName(), spec.GetNamespace(), spec.GetClusterName())
+}
+
+func IdentifierUris(tx azure.Transaction) azure.IdentifierUris {
+	return []string{
+		IdentifierUriClientId(tx.Instance.Status.ClientId),
+		IdentifierUriHumanReadable(tx.Instance),
+	}
 }
 
 func MapFiltersToFilter(filters []azure.Filter) azure.Filter {

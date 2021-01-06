@@ -57,7 +57,7 @@ func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := app.identifierUri().set(tx.Ctx, res.Application); err != nil {
+	if err := app.identifierUri().set(tx, res.Application); err != nil {
 		return nil, err
 	}
 	preAuthApps, err := c.preAuthApps().mapWithNames(tx.Ctx, res.Application.API.PreAuthorizedApplications)
