@@ -27,7 +27,7 @@ func (a appRoles) ensureExists(tx azure.Transaction, role msgraph.AppRole) ([]ms
 		return nil, fmt.Errorf("fetching approles for application: %w", err)
 	}
 
-	roles, err = a.disableDuplicateRoles(tx, role, roles)
+	roles, err = a.disableConflictingRoles(tx, role, roles)
 	if err != nil {
 		return nil, fmt.Errorf("disabling duplicate roles: %w", err)
 	}
@@ -63,10 +63,10 @@ func (a appRoles) defaultRole() msgraph.AppRole {
 	}
 }
 
-func (a appRoles) disableDuplicateRoles(tx azure.Transaction, role msgraph.AppRole, roles []msgraph.AppRole) ([]msgraph.AppRole, error) {
+// Disable roles with other IDs that have the same Value (i.e. the emitted string value in the _roles_ claim - must be unique per Application)
+func (a appRoles) disableConflictingRoles(tx azure.Transaction, role msgraph.AppRole, roles []msgraph.AppRole) ([]msgraph.AppRole, error) {
 	result := make([]msgraph.AppRole, 0)
 	for _, r := range roles {
-		// Disable roles with other IDs that have the same Value (i.e. the emitted string value in the _roles_ claim - must be unique per Application)
 		if *role.ID != *r.ID && *role.Value == *r.Value {
 			tx.Log.Debugf("disabling role '%s' with duplicate value '%s'", *r.ID, *r.Value)
 			r.IsEnabled = ptr.Bool(false)
