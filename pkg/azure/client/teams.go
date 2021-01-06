@@ -16,10 +16,10 @@ func (c client) teams() teams {
 
 func (t teams) get(ctx context.Context) ([]msgraphbeta.AppRoleAssignment, error) {
 	groups := make([]msgraphbeta.AppRoleAssignment, 0)
-	if len(t.config.TeamsManagement.ServicePrincipalId) == 0 {
+	if len(t.config.Features.TeamsManagement.ServicePrincipalId) == 0 {
 		return groups, nil
 	}
-	groups, err := t.appRoleAssignments().getGroups(ctx, t.config.TeamsManagement.ServicePrincipalId)
+	groups, err := t.appRoleAssignments().getGroups(ctx, t.config.Features.TeamsManagement.ServicePrincipalId)
 	if err != nil {
 		return groups, fmt.Errorf("failed to get assigned groups for teams management service principal: %w", err)
 	}

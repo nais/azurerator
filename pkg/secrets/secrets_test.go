@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	v1 "github.com/nais/azureator/api/v1"
-	azureConfig "github.com/nais/azureator/pkg/azure/config"
 	"github.com/nais/azureator/pkg/azure/fake"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/stretchr/testify/assert"
@@ -114,7 +113,7 @@ func TestCreateSecretSpec(t *testing.T) {
 		})
 
 		t.Run("Secret Data should contain well-known URL", func(t *testing.T) {
-			expected := azureConfig.WellKnownUrl(azureApp.Tenant)
+			expected := WellKnownUrl(azureApp.Tenant)
 			assert.NoError(t, err)
 			assert.Equal(t, expected, spec.StringData[WellKnownUrlKey])
 		})

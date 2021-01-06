@@ -19,10 +19,10 @@ func (r *Reconciler) shouldSkip(tx *transaction) bool {
 	}
 
 	if r.shouldSkipForTenant(tx) {
-		logger.Debugf("resource is not addressed to tenant '%s', ignoring...", r.Config.AzureAd.TenantName)
+		logger.Debugf("resource is not addressed to tenant '%s', ignoring...", r.Config.Azure.Tenant.Name)
 		return true
 	} else {
-		logger.Debugf("resource is addressed to tenant '%s', processing...", r.Config.AzureAd.TenantName)
+		logger.Debugf("resource is addressed to tenant '%s', processing...", r.Config.Azure.Tenant.Name)
 		return false
 	}
 }
@@ -51,7 +51,7 @@ func (r *Reconciler) deleteUnusedSecrets(tx transaction, unused corev1.SecretLis
 }
 
 func (r *Reconciler) shouldSkipForTenant(tx *transaction) bool {
-	config := r.Config.AzureAd.TenantName
+	config := r.Config.Azure.Tenant.Name
 	tenant := tx.instance.Spec.Tenant
 
 	if len(tenant) > 0 {

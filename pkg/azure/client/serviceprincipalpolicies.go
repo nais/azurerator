@@ -46,7 +46,7 @@ func (sp *servicePrincipalPolicies) prepare(tx azure.Transaction, id azure.Servi
 	sp.assignedPolicies = assignedPolicies
 
 	sp.validPolicies = map[v1.AzureAdExtraClaim]string{
-		ClaimNAVIdent: sp.config.ClaimsMappingPolicy.NavIdent,
+		ClaimNAVIdent: sp.config.Features.ClaimsMappingPolicies.NavIdent,
 	}
 
 	return nil

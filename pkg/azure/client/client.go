@@ -3,9 +3,8 @@ package client
 import (
 	"context"
 	"fmt"
-
 	"github.com/nais/azureator/pkg/azure"
-	azureConfig "github.com/nais/azureator/pkg/azure/config"
+	"github.com/nais/azureator/pkg/config"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/msauth"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
@@ -15,15 +14,15 @@ import (
 const MaxNumberOfPagesToFetch = 1000
 
 type client struct {
-	config          *azureConfig.Config
+	config          *config.AzureConfig
 	graphClient     *msgraph.GraphServiceRequestBuilder
 	graphBetaClient *msgraphbeta.GraphServiceRequestBuilder
 }
 
-func New(ctx context.Context, cfg *azureConfig.Config) (azure.Client, error) {
+func New(ctx context.Context, cfg *config.AzureConfig) (azure.Client, error) {
 	m := msauth.NewManager()
 	scopes := []string{msauth.DefaultMSGraphScope}
-	ts, err := m.ClientCredentialsGrant(ctx, cfg.Tenant, cfg.Auth.ClientId, cfg.Auth.ClientSecret, scopes)
+	ts, err := m.ClientCredentialsGrant(ctx, cfg.Tenant.Id, cfg.Auth.ClientId, cfg.Auth.ClientSecret, scopes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate graph client: %w", err)
 	}
@@ -68,11 +67,17 @@ func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to add app role assignments: %w", err)
 	}
-	if err = c.teamowners().register(tx, *res.Application.ID, *servicePrincipal.ID); err != nil {
-		return nil, fmt.Errorf("failed to register owners: %w", err)
+
+	if c.config.Features.TeamsManagement.Enabled {
+		if err = c.teamowners().register(tx, *res.Application.ID, *servicePrincipal.ID); err != nil {
+			return nil, fmt.Errorf("failed to register owners: %w", err)
+		}
 	}
-	if err := c.servicePrincipal().policies().process(tx, *servicePrincipal.ID); err != nil {
-		return nil, err
+
+	if c.config.Features.ClaimsMappingPolicies.Enabled {
+		if err := c.servicePrincipal().policies().process(tx, *servicePrincipal.ID); err != nil {
+			return nil, err
+		}
 	}
 
 	lastPasswordKeyId := string(*passwordCredential.KeyID)
@@ -97,7 +102,7 @@ func (c client) Create(tx azure.Transaction) (*azure.Application, error) {
 		ObjectId:           *res.Application.ID,
 		ServicePrincipalId: *servicePrincipal.ID,
 		PreAuthorizedApps:  preAuthApps,
-		Tenant:             c.config.Tenant,
+		Tenant:             c.config.Tenant.Id,
 	}, nil
 }
 
@@ -200,17 +205,24 @@ func (c client) Update(tx azure.Transaction) (*azure.Application, error) {
 	if err := c.appRoleAssignments().update(tx, spId, preAuthApps); err != nil {
 		return nil, fmt.Errorf("updating approles: %w", err)
 	}
-	if err := c.teamowners().update(tx); err != nil {
-		return nil, fmt.Errorf("failed to update owners: %w", err)
+
+	if c.config.Features.TeamsManagement.Enabled {
+		if err := c.teamowners().update(tx); err != nil {
+			return nil, fmt.Errorf("updating owners: %w", err)
+		}
 	}
-	if err := c.servicePrincipal().policies().process(tx, spId); err != nil {
-		return nil, err
+
+	if c.config.Features.ClaimsMappingPolicies.Enabled {
+		if err := c.servicePrincipal().policies().process(tx, spId); err != nil {
+			return nil, err
+		}
 	}
+
 	return &azure.Application{
 		ClientId:           clientId,
 		ObjectId:           objectId,
 		ServicePrincipalId: spId,
 		PreAuthorizedApps:  preAuthApps,
-		Tenant:             c.config.Tenant,
+		Tenant:             c.config.Tenant.Id,
 	}, nil
 }

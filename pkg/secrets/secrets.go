@@ -7,7 +7,6 @@ import (
 
 	v1 "github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
-	azureConfig "github.com/nais/azureator/pkg/azure/config"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/pods"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +28,10 @@ const (
 	PreAuthAppsKey   = "AZURE_APP_PRE_AUTHORIZED_APPS"
 	TenantId         = "AZURE_APP_TENANT_ID"
 	WellKnownUrlKey  = "AZURE_APP_WELL_KNOWN_URL"
+)
+
+const (
+	wellKnownUrlFormat = "https://login.microsoftonline.com/%s/v2.0/.well-known/openid-configuration"
 )
 
 var AllKeys = []string{
@@ -152,6 +155,10 @@ func stringData(app azure.Application) (map[string]string, error) {
 		PasswordIdKey:    app.Password.KeyId.Latest,
 		PreAuthAppsKey:   string(preAuthAppsJson),
 		TenantId:         app.Tenant,
-		WellKnownUrlKey:  azureConfig.WellKnownUrl(app.Tenant),
+		WellKnownUrlKey:  WellKnownUrl(app.Tenant),
 	}, nil
+}
+
+func WellKnownUrl(tenant string) string {
+	return fmt.Sprintf(wellKnownUrlFormat, tenant)
 }

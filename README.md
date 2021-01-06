@@ -45,10 +45,20 @@ azure:
   auth:
     client-id: ""
     client-secret: ""
-  tenant: ""
-  permissiongrantresourceid: ""
-  teamsmanagement:
-    service-principal-id: "" 
+  tenant
+    id: "726d6769-7efc-4578-990a-f483ec2ec2d3"
+    name: "local.test"
+  permissiongrant-resource-id: ""
+  features:
+    claims-mapping-policies:
+      enabled: false
+      navident: ""
+    teams-management:
+      enabled: false
+      service-principal-id: ""
+validations:
+  tenant:
+    required: false
 cluster-name: local
 debug: true
 ```

@@ -11,7 +11,6 @@ import (
 	"github.com/go-logr/zapr"
 	"github.com/nais/azureator/controllers/azureadapplication"
 	"github.com/nais/azureator/pkg/azure/client"
-	azureConfig "github.com/nais/azureator/pkg/azure/config"
 	"github.com/nais/azureator/pkg/config"
 	azureMetrics "github.com/nais/azureator/pkg/metrics"
 	log "github.com/sirupsen/logrus"
@@ -86,7 +85,7 @@ func run() error {
 		}
 	}
 
-	azureClient, err := client.New(ctx, &cfg.AzureAd)
+	azureClient, err := client.New(ctx, &cfg.Azure)
 	if err != nil {
 		return fmt.Errorf("unable to create Azure client: %w", err)
 	}
@@ -130,14 +129,14 @@ func setupConfig() (*config.Config, error) {
 	}
 
 	cfg.Print([]string{
-		azureConfig.ClientSecret,
+		config.AzureClientSecret,
 	})
 
 	if err = cfg.Validate([]string{
-		azureConfig.Tenant,
-		azureConfig.ClientId,
-		azureConfig.ClientSecret,
-		azureConfig.PermissionGrantResourceId,
+		config.AzureTenantId,
+		config.AzureClientId,
+		config.AzureClientSecret,
+		config.AzurePermissionGrantResourceId,
 		config.ClusterName,
 	}); err != nil {
 		return nil, err
