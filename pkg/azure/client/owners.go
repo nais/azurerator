@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -16,25 +17,9 @@ func (c client) teamowners() teamowners {
 	return teamowners{c}
 }
 
-func (to teamowners) register(tx azure.Transaction, objectId azure.ObjectId, spId azure.ServicePrincipalId) error {
-	owners, err := to.get(tx)
-	if err != nil {
-		return err
-	}
-	if len(owners) == 0 {
-		return nil
-	}
-	if err = to.application().owners().register(tx.Ctx, objectId, owners); err != nil {
-		return err
-	}
-	if err = to.servicePrincipal().owners().register(tx.Ctx, spId, owners); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (to teamowners) get(tx azure.Transaction) ([]msgraph.DirectoryObject, error) {
 	owners := make([]msgraph.DirectoryObject, 0)
+
 	group, err := to.getTeamGroup(tx)
 	if err != nil {
 		return owners, err
@@ -43,34 +28,27 @@ func (to teamowners) get(tx azure.Transaction) ([]msgraph.DirectoryObject, error
 		return owners, nil
 	}
 	groupId := (string)(*group.PrincipalID)
-	owners, err = to.group().getOwnersFor(tx.Ctx, groupId)
+
+	owners, err = to.groups().getOwnersFor(tx.Ctx, groupId)
 	if err != nil {
 		return owners, err
 	}
+
 	return owners, nil
 }
 
-func (to teamowners) update(tx azure.Transaction) error {
-	objectId := tx.Instance.Status.ObjectId
-	servicePrincipalId := tx.Instance.Status.ServicePrincipalId
+func (to teamowners) process(tx azure.Transaction) error {
+	owners, err := to.get(tx)
+	if err != nil {
+		return err
+	}
 
-	if err := to.register(tx, objectId, servicePrincipalId); err != nil {
-		return err
+	if err = to.application().owners().process(tx, owners); err != nil {
+		return fmt.Errorf("processing application owners: %w", err)
 	}
-	if err := to.revoke(tx); err != nil {
-		return err
-	}
-	return nil
-}
 
-func (to teamowners) revoke(tx azure.Transaction) error {
-	objectId := tx.Instance.Status.ObjectId
-	servicePrincipalId := tx.Instance.Status.ServicePrincipalId
-	if err := to.application().owners().revoke(tx, objectId); err != nil {
-		return err
-	}
-	if err := to.servicePrincipal().owners().revoke(tx, servicePrincipalId); err != nil {
-		return err
+	if err = to.servicePrincipal().owners().process(tx, owners); err != nil {
+		return fmt.Errorf("processing service principal owners: %w", err)
 	}
 	return nil
 }
@@ -81,9 +59,12 @@ func (to teamowners) getTeamGroup(tx azure.Transaction) (*msgraphbeta.AppRoleAss
 	if err != nil {
 		return group, err
 	}
+
 	teamName := strings.ToLower(tx.Instance.Namespace)
+
 	for _, g := range groups {
 		groupName := strings.ToLower(*g.PrincipalDisplayName)
+
 		if groupName == teamName {
 			return &g, nil
 		}

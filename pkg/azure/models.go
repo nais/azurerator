@@ -13,13 +13,13 @@ import (
 const AzureratorPrefix = "azurerator"
 
 type Client interface {
-	Create(tx Transaction) (*Application, error)
+	Create(tx Transaction) (*ApplicationResult, error)
 	Delete(tx Transaction) error
 	Exists(tx Transaction) (bool, error)
 	Get(tx Transaction) (msgraph.Application, error)
 	GetServicePrincipal(tx Transaction) (msgraphbeta.ServicePrincipal, error)
-	Rotate(tx Transaction, app Application) (*Application, error)
-	Update(tx Transaction) (*Application, error)
+	Rotate(tx Transaction, app ApplicationResult) (*ApplicationResult, error)
+	Update(tx Transaction) (*ApplicationResult, error)
 }
 
 type Transaction struct {
@@ -28,14 +28,29 @@ type Transaction struct {
 	Log      log.Entry
 }
 
-type Application struct {
-	Certificate        Certificate        `json:"certificate"`
-	Password           Password           `json:"password"`
-	ClientId           string             `json:"clientId"`
-	ObjectId           string             `json:"objectId"`
-	ServicePrincipalId string             `json:"servicePrincipalId"`
-	PreAuthorizedApps  []PreAuthorizedApp `json:"preAuthorizedApps"`
-	Tenant             string             `json:"tenant"`
+func (t Transaction) UpdateWithApplicationIDs(application msgraph.Application) Transaction {
+	newInstance := t.Instance
+	newInstance.SetClientId(*application.AppID)
+	newInstance.SetObjectId(*application.ID)
+	t.Instance = newInstance
+	return t
+}
+
+func (t Transaction) UpdateWithServicePrincipalID(servicePrincipal msgraphbeta.ServicePrincipal) Transaction {
+	newInstance := t.Instance
+	newInstance.SetServicePrincipalId(*servicePrincipal.ID)
+	t.Instance = newInstance
+	return t
+}
+
+type ApplicationResult struct {
+	Certificate        Certificate `json:"certificate"`
+	Password           Password    `json:"password"`
+	ClientId           string      `json:"clientId"`
+	ObjectId           string      `json:"objectId"`
+	ServicePrincipalId string      `json:"servicePrincipalId"`
+	PreAuthorizedApps  []Resource  `json:"preAuthorizedApps"`
+	Tenant             string      `json:"tenant"`
 }
 
 type Certificate struct {
@@ -53,9 +68,12 @@ type KeyId struct {
 	AllInUse []string `json:"allInUse"`
 }
 
-type PreAuthorizedApp struct {
-	Name     string `json:"name"`
-	ClientId string `json:"clientId"`
+// Resource contains metadata that identifies a resource (e.g. User, Group, Application, or Service Principal) within Azure AD.
+type Resource struct {
+	Name          string        `json:"name"`
+	ClientId      string        `json:"clientId"`
+	ObjectId      string        `json:"-"`
+	PrincipalType PrincipalType `json:"-"`
 }
 
 // DisplayName is the display name for the Graph API Application resource
@@ -86,4 +104,11 @@ const (
 	GroupMembershipClaimApplicationGroup GroupMembershipClaim = "ApplicationGroup"
 	// No groups are returned.
 	GroupMembershipClaimNone GroupMembershipClaim = "None"
+)
+
+type PrincipalType = string
+
+const (
+	PrincipalTypeGroup            PrincipalType = "Group"
+	PrincipalTypeServicePrincipal PrincipalType = "ServicePrincipal"
 )

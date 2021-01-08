@@ -55,7 +55,7 @@ func secretInPods(secret corev1.Secret, pods corev1.PodList) bool {
 	return false
 }
 
-func WithIdsFromUsedSecrets(a azure.Application, s Lists) azure.Application {
+func WithIdsFromUsedSecrets(a azure.ApplicationResult, s Lists) azure.ApplicationResult {
 	passwordIds := make([]string, 0)
 	certificateIds := make([]string, 0)
 	for _, sec := range s.Used.Items {

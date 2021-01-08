@@ -62,6 +62,12 @@ spec:
                     - NAVident
                     type: string
                   type: array
+                groups:
+                  description: Groups is a list of Azure AD group IDs to be emitted
+                    in the 'Groups' claim.
+                  items:
+                    type: string
+                  type: array
               type: object
             logoutUrl:
               description: LogoutUrl is the URL where Azure AD sends a request to

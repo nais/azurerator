@@ -38,6 +38,7 @@ type AzureAuth struct {
 type AzureFeatures struct {
 	TeamsManagement       TeamsManagement       `json:"teams-management"`
 	ClaimsMappingPolicies ClaimsMappingPolicies `json:"claims-mapping-policies"`
+	GroupsAssignment      GroupsAssignment      `json:"groups-assignment"`
 }
 
 type TeamsManagement struct {
@@ -48,6 +49,10 @@ type TeamsManagement struct {
 type ClaimsMappingPolicies struct {
 	Enabled  bool   `json:"enabled"`
 	NavIdent string `json:"navident"`
+}
+
+type GroupsAssignment struct {
+	Enabled bool `json:"enabled"`
 }
 
 type Validations struct {
@@ -69,6 +74,7 @@ const (
 	AzureFeaturesClaimsMappingPoliciesNavIdent     = "azure.features.claims-mapping-policies.navident"
 	AzureFeaturesTeamsManagementEnabled            = "azure.features.teams-management.enabled"
 	AzureFeaturesTeamsManagementServicePrincipalId = "azure.features.teams-management.service-principal-id"
+	AzureFeaturesGroupsAssignmentEnabled           = "azure.features.groups-assignment.enabled"
 	MetricsAddress                                 = "metrics-address"
 	ClusterName                                    = "cluster-name"
 	DebugEnabled                                   = "debug"
@@ -94,13 +100,15 @@ func init() {
 	flag.String(AzureTenantId, "", "Tenant ID for Azure AD")
 	flag.String(AzureTenantName, "", "Alias/name of tenant for Azure AD")
 
-	flag.String(AzurePermissionGrantResourceId, "", "Object ID for Graph API permissions grant ('GraphAggregatorService' in Enterprise Applications)")
+	flag.String(AzurePermissionGrantResourceId, "", "Object ID for Graph API permissions grant ('GraphAggregatorService' or 'Microsoft Graph' in Enterprise Applications under 'Microsoft Applications')")
 
 	flag.Bool(AzureFeaturesClaimsMappingPoliciesEnabled, false, "Feature toggle for assigning custom claims-mapping policies to a service principal")
 	flag.String(AzureFeaturesClaimsMappingPoliciesNavIdent, "", "Claims-mapping policy ID for NavIdent")
 
 	flag.Bool(AzureFeaturesTeamsManagementEnabled, false, "Feature toggle for assigning owners of matching teams to owners of applications")
 	flag.String(AzureFeaturesTeamsManagementServicePrincipalId, "", "Service Principal ID for teams management application containing team groups")
+
+	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Feature toggle for assigning explicitly specified groups to applications")
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
 	flag.String(ClusterName, "", "The cluster in which this application should run")

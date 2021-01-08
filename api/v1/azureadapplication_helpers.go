@@ -64,7 +64,7 @@ func (in *AzureAdApplication) SetSkipAnnotation() {
 	annotations.SetAnnotation(in, annotations.SkipKey, annotations.SkipValue)
 }
 
-func (in AzureAdApplication) Hash() (string, error) {
+func (in *AzureAdApplication) Hash() (string, error) {
 	marshalled, err := json.Marshal(in.Spec)
 	if err != nil {
 		return "", err
@@ -73,6 +73,30 @@ func (in AzureAdApplication) Hash() (string, error) {
 	return fmt.Sprintf("%x", h), err
 }
 
-func (in AzureAdApplication) GetUniqueName() string {
-	return fmt.Sprintf("%s:%s:%s", in.ClusterName, in.Namespace, in.Name)
+func (in *AzureAdApplication) GetUniqueName() string {
+	return fmt.Sprintf("%s:%s:%s", in.GetClusterName(), in.GetNamespace(), in.GetName())
+}
+
+func (in *AzureAdApplication) GetObjectId() string {
+	return in.Status.ObjectId
+}
+
+func (in *AzureAdApplication) GetServicePrincipalId() string {
+	return in.Status.ServicePrincipalId
+}
+
+func (in *AzureAdApplication) GetClientId() string {
+	return in.Status.ClientId
+}
+
+func (in *AzureAdApplication) SetObjectId(objectId string) {
+	in.Status.ObjectId = objectId
+}
+
+func (in *AzureAdApplication) SetServicePrincipalId(servicePrincipalId string) {
+	in.Status.ServicePrincipalId = servicePrincipalId
+}
+
+func (in *AzureAdApplication) SetClientId(clientId string) {
+	in.Status.ClientId = clientId
 }

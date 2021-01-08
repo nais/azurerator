@@ -15,17 +15,17 @@ func (r *Reconciler) azure() azureReconciler {
 	return azureReconciler{r}
 }
 
-func (a azureReconciler) create(tx transaction) (*azure.Application, error) {
+func (a azureReconciler) create(tx transaction) (*azure.ApplicationResult, error) {
 	logger.Info("Azure application not found, registering...")
 	return a.AzureClient.Create(tx.toAzureTx())
 }
 
-func (a azureReconciler) update(tx transaction) (*azure.Application, error) {
+func (a azureReconciler) update(tx transaction) (*azure.ApplicationResult, error) {
 	logger.Info("Azure application already exists, updating...")
 	return a.AzureClient.Update(tx.toAzureTx())
 }
 
-func (a azureReconciler) rotate(tx transaction, app azure.Application, managedSecrets secrets.Lists) (*azure.Application, error) {
+func (a azureReconciler) rotate(tx transaction, app azure.ApplicationResult, managedSecrets secrets.Lists) (*azure.ApplicationResult, error) {
 	appWithActiveKeyIds := secrets.WithIdsFromUsedSecrets(app, managedSecrets)
 	logger.Info("rotating credentials for Azure application...")
 	application, err := a.AzureClient.Rotate(tx.toAzureTx(), appWithActiveKeyIds)
@@ -66,14 +66,14 @@ func (a azureReconciler) exists(tx transaction) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("getting azure application: %w", err)
 		}
-		tx.instance.Status.ClientId = *application.AppID
-		tx.instance.Status.ObjectId = *application.ID
+		tx.instance.SetClientId(*application.AppID)
+		tx.instance.SetObjectId(*application.ID)
 
 		sp, err := a.AzureClient.GetServicePrincipal(tx.toAzureTx())
 		if err != nil {
 			return false, fmt.Errorf("getting service principal for application: %w", err)
 		}
-		tx.instance.Status.ServicePrincipalId = *sp.ID
+		tx.instance.SetServicePrincipalId(*sp.ID)
 	}
 
 	return exists, nil

@@ -137,7 +137,7 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 	return &transaction{ctx, instance, logger}, nil
 }
 
-func (r *Reconciler) process(tx transaction) (*azure.Application, error) {
+func (r *Reconciler) process(tx transaction) (*azure.ApplicationResult, error) {
 	managedSecrets, err := secrets.GetManaged(tx.ctx, tx.instance, r.Reader)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func (r *Reconciler) process(tx transaction) (*azure.Application, error) {
 		return nil, err
 	}
 
-	if err := r.createOrUpdateSecrets(tx, application); err != nil {
+	if err := r.createOrUpdateSecrets(tx, *application); err != nil {
 		return nil, err
 	}
 
@@ -156,7 +156,7 @@ func (r *Reconciler) process(tx transaction) (*azure.Application, error) {
 		return nil, err
 	}
 
-	return &application, nil
+	return application, nil
 }
 
 func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error) {
@@ -168,7 +168,7 @@ func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error)
 	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *Reconciler) complete(tx transaction, application azure.Application) (ctrl.Result, error) {
+func (r *Reconciler) complete(tx transaction, application azure.ApplicationResult) (ctrl.Result, error) {
 	if err := r.updateStatus(tx, application); err != nil {
 		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventFailedStatusUpdate, "Failed to update status")
 		return ctrl.Result{}, err
@@ -181,48 +181,48 @@ func (r *Reconciler) complete(tx transaction, application azure.Application) (ct
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secrets.Lists) (azure.Application, error) {
-	var application *azure.Application
+func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secrets.Lists) (*azure.ApplicationResult, error) {
+	var application *azure.ApplicationResult
 
 	exists, err := r.azure().exists(tx)
 	if err != nil {
-		return azure.Application{}, fmt.Errorf("failed to lookup existence of application: %w", err)
+		return nil, fmt.Errorf("looking up existence of application: %w", err)
 	}
 
 	if !exists {
 		application, err = r.azure().create(tx)
 		if err != nil {
-			return azure.Application{}, fmt.Errorf("failed to create azure application: %w", err)
+			return nil, fmt.Errorf("creating azure application: %w", err)
 		}
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsCreatedCount, tx.instance.Namespace)
 		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventCreatedInAzure, "Azure application is created")
 	} else {
 		application, err = r.azure().update(tx)
 		if err != nil {
-			return azure.Application{}, fmt.Errorf("failed to update azure application: %w", err)
+			return nil, fmt.Errorf("updating azure application: %w", err)
 		}
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsUpdatedCount, tx.instance.Namespace)
 		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventUpdatedInAzure, "Azure application is updated")
 
 		application, err = r.azure().rotate(tx, *application, managedSecrets)
 		if err != nil {
-			return azure.Application{}, fmt.Errorf("failed to rotate azure credentials: %w", err)
+			return nil, fmt.Errorf("rotating azure credentials: %w", err)
 		}
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsRotatedCount, tx.instance.Namespace)
 		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventRotatedInAzure, "Azure credentials is rotated")
 	}
 
 	logger.Info("successfully synchronized AzureAdApplication with Azure")
-	return *application, nil
+	return application, nil
 }
 
-func (r *Reconciler) updateStatus(tx transaction, application azure.Application) error {
+func (r *Reconciler) updateStatus(tx transaction, application azure.ApplicationResult) error {
 	logger.Debug("updating status for AzureAdApplication")
 	tx.instance.Status.CertificateKeyIds = application.Certificate.KeyId.AllInUse
 	tx.instance.Status.PasswordKeyIds = application.Password.KeyId.AllInUse
-	tx.instance.Status.ClientId = application.ClientId
-	tx.instance.Status.ObjectId = application.ObjectId
-	tx.instance.Status.ServicePrincipalId = application.ServicePrincipalId
+	tx.instance.SetClientId(application.ClientId)
+	tx.instance.SetObjectId(application.ObjectId)
+	tx.instance.SetServicePrincipalId(application.ServicePrincipalId)
 	tx.instance.SetSynchronized()
 
 	if err := tx.instance.UpdateHash(); err != nil {
@@ -235,9 +235,9 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.Application)
 		log.Fields{
 			"CertificateKeyIDs":  tx.instance.Status.CertificateKeyIds,
 			"PasswordKeyIDs":     tx.instance.Status.PasswordKeyIds,
-			"ClientID":           tx.instance.Status.ClientId,
-			"ObjectID":           tx.instance.Status.ObjectId,
-			"ServicePrincipalID": tx.instance.Status.ServicePrincipalId,
+			"ClientID":           tx.instance.GetClientId(),
+			"ObjectID":           tx.instance.GetObjectId(),
+			"ServicePrincipalID": tx.instance.GetServicePrincipalId(),
 		}).Info("status subresource successfully updated")
 	return nil
 }

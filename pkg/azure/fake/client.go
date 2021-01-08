@@ -13,7 +13,7 @@ const (
 	ApplicationExists        = "exists-in-azure"
 )
 
-func (a fakeAzureClient) Create(tx azure.Transaction) (*azure.Application, error) {
+func (a fakeAzureClient) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 	internalApp := InternalAzureApp(tx.Instance)
 	return &internalApp, nil
 }
@@ -24,7 +24,7 @@ func (a fakeAzureClient) Delete(azure.Transaction) error {
 
 func (a fakeAzureClient) Exists(tx azure.Transaction) (bool, error) {
 	appExists := tx.Instance.Name == ApplicationExists
-	validStatus := len(tx.Instance.Status.ObjectId) > 0 && len(tx.Instance.Status.ClientId) > 0
+	validStatus := len(tx.Instance.GetObjectId()) > 0 && len(tx.Instance.GetClientId()) > 0
 	if appExists || validStatus {
 		return true, nil
 	}
@@ -39,12 +39,12 @@ func (a fakeAzureClient) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.
 	return ServicePrincipal(tx.Instance), nil
 }
 
-func (a fakeAzureClient) Rotate(tx azure.Transaction, _ azure.Application) (*azure.Application, error) {
+func (a fakeAzureClient) Rotate(tx azure.Transaction, _ azure.ApplicationResult) (*azure.ApplicationResult, error) {
 	internalApp := InternalAzureApp(tx.Instance)
 	return &internalApp, nil
 }
 
-func (a fakeAzureClient) Update(tx azure.Transaction) (*azure.Application, error) {
+func (a fakeAzureClient) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
 	internalApp := InternalAzureApp(tx.Instance)
 	return &internalApp, nil
 }

@@ -3,6 +3,7 @@ package secrets
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/nais/azureator/pkg/azure"
 	"testing"
 
 	v1 "github.com/nais/azureator/api/v1"
@@ -22,6 +23,13 @@ func TestCreateSecretSpec(t *testing.T) {
 		},
 		Spec: v1.AzureAdApplicationSpec{
 			SecretName: "test-secret",
+			PreAuthorizedApplications: []v1.AzureAdPreAuthorizedApplication{
+				{
+					Application: "test-app-2",
+					Namespace:   "test",
+					Cluster:     "test-cluster",
+				},
+			},
 		},
 	}
 	azureApp := fake.InternalAzureApp(*app)
@@ -101,9 +109,14 @@ func TestCreateSecretSpec(t *testing.T) {
 		})
 
 		t.Run("Secret Data should contain list of PreAuthorizedApps", func(t *testing.T) {
-			expected, err := json.Marshal(azureApp.PreAuthorizedApps)
+			var actual []azure.Resource
+			err := json.Unmarshal([]byte(spec.StringData[PreAuthAppsKey]), &actual)
 			assert.NoError(t, err)
-			assert.Equal(t, string(expected), spec.StringData[PreAuthAppsKey])
+			assert.Len(t, actual, 1)
+			assert.Empty(t, actual[0].PrincipalType)
+			assert.Empty(t, actual[0].ObjectId)
+			assert.NotEmpty(t, actual[0].ClientId)
+			assert.Equal(t, "test-cluster:test:test-app-2", actual[0].Name)
 		})
 
 		t.Run("Secret Data should contain tenant ID", func(t *testing.T) {

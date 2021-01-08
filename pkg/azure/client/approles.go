@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	DefaultAppRole   string = "access_as_application"
-	DefaultAppRoleId string = "00000001-abcd-9001-0000-000000000000"
+	DefaultAppRole     string = "access_as_application"
+	DefaultAppRoleId   string = "00000001-abcd-9001-0000-000000000000"
+	DefaultGroupRoleId string = "00000000-0000-0000-0000-000000000000"
 )
 
 type appRoles struct {
@@ -42,7 +43,7 @@ func (a appRoles) ensureExists(tx azure.Transaction, role msgraph.AppRole) ([]ms
 }
 
 func (a appRoles) getAll(tx azure.Transaction) ([]msgraph.AppRole, error) {
-	application, err := a.application.getByClientId(tx.Ctx, tx.Instance.Status.ClientId)
+	application, err := a.application.getByClientId(tx.Ctx, tx.Instance.GetClientId())
 	if err != nil {
 		return nil, fmt.Errorf("fetching application by client ID: %w", err)
 	}
@@ -83,7 +84,7 @@ func (a appRoles) disableConflictingRoles(tx azure.Transaction, role msgraph.App
 
 func (a appRoles) update(tx azure.Transaction, roles []msgraph.AppRole) error {
 	app := util.EmptyApplication().AppRoles(roles).Build()
-	if err := a.application.patch(tx.Ctx, tx.Instance.Status.ObjectId, app); err != nil {
+	if err := a.application.patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
 		return fmt.Errorf("patching application: %w", err)
 	}
 	return nil

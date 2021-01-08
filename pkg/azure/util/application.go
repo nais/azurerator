@@ -53,6 +53,11 @@ func (a ApplicationBuilder) AppRoles(appRoles []msgraph.AppRole) ApplicationBuil
 	return a
 }
 
+func (a ApplicationBuilder) RedirectUris(redirectUris []string) ApplicationBuilder {
+	a.Web.RedirectUris = redirectUris
+	return a
+}
+
 func (a ApplicationBuilder) Build() *msgraph.Application {
 	return a.Application
 }

@@ -37,10 +37,6 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 	if err != nil {
 		return applicationResponse{}, err
 	}
-	preAuthApps, err := a.preAuthApps().mapToMsGraph(tx)
-	if err != nil {
-		return applicationResponse{}, err
-	}
 	access := []msgraph.RequiredResourceAccess{
 		a.requiredResourceAccess().microsoftGraph(),
 	}
@@ -49,15 +45,16 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 	}
 	req := util.Application(a.defaultTemplate(tx.Instance)).
 		Key(*key).
-		PreAuthorizedApps(preAuthApps).
 		ResourceAccess(access).
 		GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup).
 		AppRoles(appRoles).
+		RedirectUris(util.GetReplyUrlsStringSlice(tx.Instance)).
 		Build()
 	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
-		return applicationResponse{}, fmt.Errorf("failed to register application: %w", err)
+		return applicationResponse{}, fmt.Errorf("registering application: %w", err)
 	}
+
 	return applicationResponse{
 		Application:   *app,
 		KeyCredential: *key,
@@ -66,25 +63,32 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 }
 
 func (a application) delete(tx azure.Transaction) error {
-	if err := a.graphClient.Applications().ID(tx.Instance.Status.ObjectId).Request().Delete(tx.Ctx); err != nil {
+	if err := a.graphClient.Applications().ID(tx.Instance.GetObjectId()).Request().Delete(tx.Ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	return nil
 }
 
 func (a application) update(tx azure.Transaction) error {
-	objectId := tx.Instance.Status.ObjectId
+	objectId := tx.Instance.GetObjectId()
 
 	identifierUris := util.IdentifierUris(tx)
+
 	defaultRole := a.appRoles().defaultRole()
 	appRoles, err := a.appRoles().ensureExists(tx, defaultRole)
 	if err != nil {
 		return fmt.Errorf("updating approles for application: %w", err)
 	}
+
 	app := util.Application(a.defaultTemplate(tx.Instance)).
 		IdentifierUriList(identifierUris).
-		AppRoles(appRoles).
-		Build()
+		AppRoles(appRoles)
+
+	if tx.Instance.Spec.Claims != nil && len(tx.Instance.Spec.Claims.Groups) > 0 {
+		app.GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup)
+	}
+
+	app.Build()
 
 	return a.patch(tx.Ctx, objectId, app)
 }
@@ -150,8 +154,7 @@ func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 			OAuth2PermissionScopes:      a.oAuth2PermissionScopes().defaultScopes(),
 		},
 		Web: &msgraph.WebApplication{
-			LogoutURL:    ptr.String(resource.Spec.LogoutUrl),
-			RedirectUris: util.GetReplyUrlsStringSlice(resource),
+			LogoutURL: ptr.String(resource.Spec.LogoutUrl),
 			ImplicitGrantSettings: &msgraph.ImplicitGrantSettings{
 				EnableIDTokenIssuance:     ptr.Bool(false),
 				EnableAccessTokenIssuance: ptr.Bool(false),

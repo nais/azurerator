@@ -10,8 +10,8 @@ import (
 )
 
 func ExternalAzureApp(instance v1.AzureAdApplication) msgraph.Application {
-	objectId := getOrGenerate(instance.Status.ObjectId)
-	clientId := getOrGenerate(instance.Status.ClientId)
+	objectId := getOrGenerate(instance.GetObjectId())
+	clientId := getOrGenerate(instance.GetClientId())
 
 	return msgraph.Application{
 		DirectoryObject: msgraph.DirectoryObject{
@@ -22,21 +22,21 @@ func ExternalAzureApp(instance v1.AzureAdApplication) msgraph.Application {
 	}
 }
 
-func InternalAzureApp(instance v1.AzureAdApplication) azure.Application {
+func InternalAzureApp(instance v1.AzureAdApplication) azure.ApplicationResult {
 	jwk, err := crypto.GenerateJwk(instance)
 	if err != nil {
 		panic(err)
 	}
 
-	objectId := getOrGenerate(instance.Status.ObjectId)
-	clientId := getOrGenerate(instance.Status.ClientId)
-	servicePrincipalId := getOrGenerate(instance.Status.ServicePrincipalId)
+	objectId := getOrGenerate(instance.GetObjectId())
+	clientId := getOrGenerate(instance.GetClientId())
+	servicePrincipalId := getOrGenerate(instance.GetServicePrincipalId())
 
 	tenantId := uuid.New().String()
 	lastPasswordKeyId := uuid.New().String()
 	lastCertificateKeyId := uuid.New().String()
 
-	return azure.Application{
+	return azure.ApplicationResult{
 		Certificate: azure.Certificate{
 			KeyId: azure.KeyId{
 				Latest:   lastCertificateKeyId,
@@ -59,20 +59,23 @@ func InternalAzureApp(instance v1.AzureAdApplication) azure.Application {
 	}
 }
 
-func mapToInternalPreAuthApps(apps []v1.AzureAdPreAuthorizedApplication) []azure.PreAuthorizedApp {
-	as := make([]azure.PreAuthorizedApp, 0)
+func mapToInternalPreAuthApps(apps []v1.AzureAdPreAuthorizedApplication) []azure.Resource {
+	as := make([]azure.Resource, 0)
 	for _, app := range apps {
 		as = append(as, mapToInternalPreAuthApp(app))
 	}
 	return as
 }
 
-func mapToInternalPreAuthApp(app v1.AzureAdPreAuthorizedApplication) azure.PreAuthorizedApp {
+func mapToInternalPreAuthApp(app v1.AzureAdPreAuthorizedApplication) azure.Resource {
 	clientId := uuid.New().String()
+	objectId := uuid.New().String()
 	name := getOrGenerate(app.GetUniqueName())
-	return azure.PreAuthorizedApp{
-		Name:     name,
-		ClientId: clientId,
+	return azure.Resource{
+		Name:          name,
+		ClientId:      clientId,
+		ObjectId:      objectId,
+		PrincipalType: azure.PrincipalTypeServicePrincipal,
 	}
 }
 

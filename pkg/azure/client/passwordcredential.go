@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -21,31 +20,39 @@ func (c client) passwordCredential() passwordCredential {
 	return passwordCredential{c}
 }
 
-func (p passwordCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (msgraph.PasswordCredential, error) {
+func (p passwordCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (*msgraph.PasswordCredential, error) {
 	app, err := p.Get(tx)
 	if err != nil {
-		return msgraph.PasswordCredential{}, err
+		return nil, err
 	}
-	newCred, err := p.add(tx.Ctx, *app.ID)
+
+	newCred, err := p.add(tx)
 	if err != nil {
-		return msgraph.PasswordCredential{}, err
+		return nil, err
 	}
+
 	revocationCandidates := p.revocationCandidates(app, append(keyIdsInUse, string(*newCred.KeyID)))
 	for _, cred := range revocationCandidates {
 		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
-			return msgraph.PasswordCredential{}, err
+			return nil, err
 		}
 	}
-	return newCred, nil
+
+	return &newCred, nil
 }
 
-func (p passwordCredential) add(ctx context.Context, id azure.ObjectId) (msgraph.PasswordCredential, error) {
+func (p passwordCredential) add(tx azure.Transaction) (msgraph.PasswordCredential, error) {
+	objectId := tx.Instance.GetObjectId()
+
 	requestParameter := p.toAddRequest()
-	request := p.graphClient.Applications().ID(id).AddPassword(requestParameter).Request()
-	response, err := request.Post(ctx)
+
+	request := p.graphClient.Applications().ID(objectId).AddPassword(requestParameter).Request()
+
+	response, err := request.Post(tx.Ctx)
 	if err != nil {
-		return msgraph.PasswordCredential{}, fmt.Errorf("failed to add password credentials for application: %w", err)
+		return msgraph.PasswordCredential{}, fmt.Errorf("adding password credentials for application: %w", err)
 	}
+
 	return *response, nil
 }
 

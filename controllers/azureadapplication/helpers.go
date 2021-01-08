@@ -27,7 +27,7 @@ func (r *Reconciler) shouldSkip(tx *transaction) bool {
 	}
 }
 
-func (r *Reconciler) createOrUpdateSecrets(tx transaction, application azure.Application) error {
+func (r *Reconciler) createOrUpdateSecrets(tx transaction, application azure.ApplicationResult) error {
 	logger.Infof("processing secret with name '%s'...", tx.instance.Spec.SecretName)
 	res, err := secrets.CreateOrUpdate(tx.ctx, tx.instance, application, r.Client, r.Scheme)
 	if err != nil {

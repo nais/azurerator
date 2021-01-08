@@ -100,6 +100,8 @@ type AzureAdPreAuthorizedApplication struct {
 type AzureAdClaims struct {
 	// Extra is a list of additional claims to be mapped from an associated claim-mapping policy.
 	Extra []AzureAdExtraClaim `json:"extra,omitempty"`
+	// Groups is a list of Azure AD group IDs to be emitted in the 'Groups' claim.
+	Groups []string `json:"groups,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=NAVident

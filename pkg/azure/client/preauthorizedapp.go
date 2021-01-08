@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 
 	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
@@ -15,8 +16,13 @@ import (
 // If all the pre-authorized applications are removed from our custom resource, the PATCH operation on the Azure
 // 'Application' resource will not update the list of pre-authorized applications in Azure AD,
 // which will no longer reflect our observed nor desired cluster state.
-type preAuthAppApi struct {
+type preAuthAppPatch struct {
 	PreAuthorizedApplications []msgraph.PreAuthorizedApplication `json:"preAuthorizedApplications"`
+}
+
+type appPatch struct {
+	msgraph.DirectoryObject
+	API preAuthAppPatch `json:"api"`
 }
 
 type preAuthApps struct {
@@ -27,75 +33,96 @@ func (c client) preAuthApps() preAuthApps {
 	return preAuthApps{c}
 }
 
-func (p preAuthApps) update(tx azure.Transaction) ([]azure.PreAuthorizedApp, error) {
-	objectId := tx.Instance.Status.ObjectId
-	preAuthApps, err := p.mapToMsGraph(tx)
+func (p preAuthApps) process(tx azure.Transaction) ([]azure.Resource, error) {
+	servicePrincipalId := tx.Instance.GetServicePrincipalId()
+
+	preAuthApps, err := p.patchApplication(tx)
+	if err != nil {
+		return nil, fmt.Errorf("updating preauthorizedapps for application: %w", err)
+	}
+
+	resources, err := p.mapToResources(tx.Ctx, preAuthApps)
+	if err != nil {
+		return nil, fmt.Errorf("mapping preauthorizedapps to resources: %w", err)
+	}
+
+	err = p.appRoleAssignments(msgraphbeta.UUID(DefaultAppRoleId), servicePrincipalId).
+		processForServicePrincipals(tx, resources)
+	if err != nil {
+		return nil, fmt.Errorf("updating approle assignments for service principals: %w", err)
+	}
+	return resources, nil
+}
+
+func (p preAuthApps) patchApplication(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
+	objectId := tx.Instance.GetObjectId()
+
+	preAuthApps, err := p.toGraphRequest(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	app := &struct {
-		msgraph.DirectoryObject
-		API preAuthAppApi `json:"api"`
-	}{
-		API: preAuthAppApi{
-			PreAuthorizedApplications: preAuthApps,
-		},
-	}
+	app := appPatch{API: preAuthAppPatch{PreAuthorizedApplications: preAuthApps}}
 	if err := p.application().patch(tx.Ctx, objectId, app); err != nil {
-		return nil, fmt.Errorf("failed to update PreAuthorizedApps in azure: %w", err)
+		return nil, fmt.Errorf("patching preauthorizedapps for application: %w", err)
 	}
-	return p.mapWithNames(tx.Ctx, preAuthApps)
+	return preAuthApps, nil
 }
 
 func (p preAuthApps) exists(ctx context.Context, app v1.AzureAdPreAuthorizedApplication) (bool, error) {
 	return p.application().existsByFilter(ctx, util.FilterByName(app.GetUniqueName()))
 }
 
-func (p preAuthApps) mapToMsGraph(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
+func (p preAuthApps) toGraphRequest(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
 	apps := make([]msgraph.PreAuthorizedApplication, 0)
 	for _, app := range tx.Instance.Spec.PreAuthorizedApplications {
 		exists, err := p.exists(tx.Ctx, app)
 		if err != nil {
-			return nil, fmt.Errorf("failed to lookup existence of PreAuthorizedApp '%s': %w", app.GetUniqueName(), err)
+			return nil, fmt.Errorf("looking up existence of PreAuthorizedApp '%s': %w", app.GetUniqueName(), err)
 		}
+
 		if !exists {
 			tx.Log.Debugf("skipping PreAuthorizedApp assignment: '%s' does not exist", app.GetUniqueName())
 			continue
 		}
-		a, err := p.toMsGraph(tx, app)
+
+		clientId, err := p.getClientIdFor(tx.Ctx, app)
 		if err != nil {
 			return nil, err
 		}
-		apps = append(apps, a)
+
+		apps = append(apps, msgraph.PreAuthorizedApplication{
+			AppID:                  &clientId,
+			DelegatedPermissionIDs: []string{OAuth2DefaultPermissionScopeId},
+		})
 	}
 	return apps, nil
 }
 
-func (p preAuthApps) toMsGraph(tx azure.Transaction, app v1.AzureAdPreAuthorizedApplication) (msgraph.PreAuthorizedApplication, error) {
-	clientId, err := p.getClientIdFor(tx.Ctx, app)
-	if err != nil {
-		return msgraph.PreAuthorizedApplication{}, err
-	}
-	return msgraph.PreAuthorizedApplication{
-		AppID:                  &clientId,
-		DelegatedPermissionIDs: []string{OAuth2DefaultPermissionScopeId},
-	}, nil
-}
-
-func (p preAuthApps) mapWithNames(ctx context.Context, preAuthApps []msgraph.PreAuthorizedApplication) ([]azure.PreAuthorizedApp, error) {
-	a := make([]azure.PreAuthorizedApp, 0)
+func (p preAuthApps) mapToResources(ctx context.Context, preAuthApps []msgraph.PreAuthorizedApplication) ([]azure.Resource, error) {
+	resources := make([]azure.Resource, 0)
 	for _, preAuthApp := range preAuthApps {
 		app, err := p.application().getByClientId(ctx, *preAuthApp.AppID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to map preauthorized apps with names: %w", err)
+			return nil, fmt.Errorf("mapping to preauthorized apps to resources: looking up application: %w", err)
 		}
-		a = append(a, azure.PreAuthorizedApp{
-			Name:     *app.DisplayName,
-			ClientId: *preAuthApp.AppID,
+
+		spExists, sp, err := p.servicePrincipal().exists(ctx, *preAuthApp.AppID)
+		if err != nil {
+			return nil, fmt.Errorf("mapping to preauthorized apps to resources: looking up service principal: %w", err)
+		}
+		if !spExists {
+			continue
+		}
+
+		resources = append(resources, azure.Resource{
+			Name:          *app.DisplayName,
+			ClientId:      *preAuthApp.AppID,
+			ObjectId:      *sp.ID,
+			PrincipalType: azure.PrincipalTypeServicePrincipal,
 		})
 	}
-	return a, nil
+	return resources, nil
 }
 
 func (p preAuthApps) getClientIdFor(ctx context.Context, app v1.AzureAdPreAuthorizedApplication) (azure.ClientId, error) {

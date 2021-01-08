@@ -3,164 +3,171 @@ package client
 import (
 	"context"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util/approleassignment"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 )
 
-type PrincipalType = string
-
-const (
-	Group            PrincipalType = "Group"
-	ServicePrincipal PrincipalType = "ServicePrincipal"
-)
-
 type appRoleAssignments struct {
 	client
+	roleId    msgraphbeta.UUID
+	targetId  azure.ObjectId
+	logFields log.Fields
 }
 
-func (c client) appRoleAssignments() appRoleAssignments {
-	return appRoleAssignments{c}
+func (c client) appRoleAssignments(roleId msgraphbeta.UUID, targetId azure.ObjectId) appRoleAssignments {
+	return appRoleAssignments{
+		client:   c,
+		roleId:   roleId,
+		targetId: targetId,
+		logFields: log.Fields{
+			"roleId":   roleId,
+			"targetId": targetId,
+		},
+	}
 }
 
-func (a appRoleAssignments) add(tx azure.Transaction, targetId azure.ServicePrincipalId, preAuthApps []azure.PreAuthorizedApp) ([]msgraphbeta.AppRoleAssignment, error) {
+func (a appRoleAssignments) request() *msgraphbeta.ServicePrincipalAppRoleAssignedToCollectionRequest {
+	return a.graphBetaClient.ServicePrincipals().ID(a.targetId).AppRoleAssignedTo().Request()
+}
+
+func (a appRoleAssignments) assignFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) ([]msgraphbeta.AppRoleAssignment, error) {
 	assignments := make([]msgraphbeta.AppRoleAssignment, 0)
-	for _, app := range preAuthApps {
-		a, err := a.assign(tx, targetId, app)
+
+	existing, err := a.getAll(tx.Ctx)
+	if err != nil {
+		return nil, fmt.Errorf("looking up existing AppRole assignments: %w", err)
+	}
+
+	for _, assignee := range assignees {
+		logFields := a.logFields
+		logFields["assigneeClientId"] = assignee.ClientId
+		logFields["assigneeObjectId"] = assignee.ObjectId
+
+		if len(assignee.ObjectId) == 0 {
+			tx.Log.WithFields(logFields).Debugf("skipping AppRole assignment: object ID for %s '%s' is not set", assignee.PrincipalType, assignee.Name)
+			continue
+		}
+
+		assignment := a.toAssignment(assignee.ObjectId, principalType)
+		if assignmentInAssignments(*assignment, existing) {
+			tx.Log.WithFields(logFields).Infof("skipping AppRole assignment: already assigned for %s '%s'", assignee.PrincipalType, assignee.Name)
+			assignments = append(assignments, *assignment)
+			continue
+		}
+
+		tx.Log.WithFields(logFields).Debugf("assigning AppRole for %s '%s'...", principalType, assignee.Name)
+		result, err := a.request().Add(tx.Ctx, assignment)
 		if err != nil {
-			return assignments, err
+			return nil, fmt.Errorf("assigning AppRole for %s '%s' (%s) to target service principal ID '%s': %w", assignee.PrincipalType, assignee.Name, assignee.ObjectId, a.targetId, err)
 		}
-		if a.AppRoleID != nil && a.ResourceID != nil && a.PrincipalID != nil {
-			assignments = append(assignments, a)
+
+		if result.AppRoleID != nil && result.ResourceID != nil && result.PrincipalID != nil {
+			tx.Log.WithFields(logFields).Infof("successfully assigned AppRole for %s '%s'", assignee.PrincipalType, assignee.Name)
+			assignments = append(assignments, *result)
 		}
 	}
 	return assignments, nil
 }
 
-func (a appRoleAssignments) exists(tx azure.Transaction, id azure.ServicePrincipalId, assignment msgraphbeta.AppRoleAssignment) (bool, error) {
-	assignments, err := a.getAll(tx.Ctx, id)
+func (a appRoleAssignments) getAll(ctx context.Context) ([]msgraphbeta.AppRoleAssignment, error) {
+	assignments, err := a.request().GetN(ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
-		return false, err
-	}
-	for _, a := range assignments {
-		if *a.PrincipalID == *assignment.PrincipalID && *a.AppRoleID == *assignment.AppRoleID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func (a appRoleAssignments) update(tx azure.Transaction, targetId azure.ServicePrincipalId, preAuthApps []azure.PreAuthorizedApp) error {
-	assignments, err := a.add(tx, targetId, preAuthApps)
-	if err != nil {
-		return fmt.Errorf("failed to add app role assignments: %w", err)
-	}
-	if err := a.deleteRevoked(tx, targetId, assignments); err != nil {
-		return fmt.Errorf("failed to delete revoked app role assignments: %w", err)
-	}
-	return nil
-}
-
-func (a appRoleAssignments) assign(tx azure.Transaction, targetId azure.ServicePrincipalId, app azure.PreAuthorizedApp) (msgraphbeta.AppRoleAssignment, error) {
-	spExists, assigneeSp, err := a.servicePrincipal().exists(tx.Ctx, app.ClientId)
-	if err != nil {
-		return msgraphbeta.AppRoleAssignment{}, err
-	}
-	if !spExists {
-		tx.Log.Debugf("skipping AppRole assignment: ServicePrincipal for PreAuthorizedApp (clientId '%s', name '%s') does not exist", app.ClientId, app.Name)
-		return msgraphbeta.AppRoleAssignment{}, nil
-	}
-	assignment := toAssignment(targetId, *assigneeSp.ID, msgraphbeta.UUID(DefaultAppRoleId))
-	assignmentExists, err := a.exists(tx, targetId, *assignment)
-	if err != nil {
-		return msgraphbeta.AppRoleAssignment{}, err
-	}
-	if assignmentExists {
-		tx.Log.Infof("skipping AppRole assignment: already assigned for PreAuthorizedApp (clientId '%s', name '%s')", app.ClientId, app.Name)
-		return *assignment, nil
-	}
-	tx.Log.Debugf("assigning AppRole for PreAuthorizedApp (clientId '%s', name '%s')...", app.ClientId, app.Name)
-	_, err = a.request(targetId).Add(tx.Ctx, assignment)
-	if err != nil {
-		return msgraphbeta.AppRoleAssignment{}, fmt.Errorf("failed to add AppRole assignment to target service principal ID '%s': %w", targetId, err)
-	}
-	tx.Log.Infof("successfully assigned AppRole for PreAuthorizedApp (clientId '%s', name '%s')", app.ClientId, app.Name)
-	return *assignment, nil
-}
-
-func (a appRoleAssignments) getRevoked(tx azure.Transaction, id azure.ServicePrincipalId, desired []msgraphbeta.AppRoleAssignment) ([]msgraphbeta.AppRoleAssignment, error) {
-	existing, err := a.getServicePrincipals(tx.Ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	revoked := approleassignment.Difference(existing, desired)
-	return revoked, nil
-}
-
-func (a appRoleAssignments) deleteRevoked(tx azure.Transaction, id azure.ServicePrincipalId, desired []msgraphbeta.AppRoleAssignment) error {
-	revoked, err := a.getRevoked(tx, id, desired)
-	if err != nil {
-		return err
-	}
-	for _, r := range revoked {
-		tx.Log.Debugf("deleting AppRole assignment: revoked for PreAuthorizedApp (servicePrincipalId '%s')", *r.PrincipalID)
-		if err := a.delete(tx, id, r); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (a appRoleAssignments) delete(tx azure.Transaction, id azure.ServicePrincipalId, revoked msgraphbeta.AppRoleAssignment) error {
-	err := a.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().ID(*revoked.ID).Request().Delete(tx.Ctx)
-	if err != nil {
-		return fmt.Errorf("failed to delete revoked AppRole assignment: %w", err)
-	}
-	tx.Log.Infof("successfully deleted AppRole assignment for PreAuthorizedApp (servicePrincipalId '%s')", *revoked.PrincipalID)
-	return nil
-}
-
-func (a appRoleAssignments) getAll(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
-	assignments, err := a.request(id).GetN(ctx, MaxNumberOfPagesToFetch)
-	if err != nil {
-		return nil, fmt.Errorf("failed to lookup AppRoleAssignments for service principal: %w", err)
+		return nil, fmt.Errorf("looking up AppRole assignments for service principal '%s': %w", a.targetId, err)
 	}
 	return assignments, nil
 }
 
-func (a appRoleAssignments) getServicePrincipals(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
-	assignments, err := a.getAll(ctx, id)
+func (a appRoleAssignments) getAllGroups(ctx context.Context) ([]msgraphbeta.AppRoleAssignment, error) {
+	assignments, err := a.getAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	servicePrincipals := filterByType(assignments, ServicePrincipal)
-	return servicePrincipals, nil
-}
-
-func (a appRoleAssignments) getGroups(ctx context.Context, id azure.ServicePrincipalId) ([]msgraphbeta.AppRoleAssignment, error) {
-	assignments, err := a.getAll(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	groups := filterByType(assignments, Group)
+	groups := filterByType(assignments, azure.PrincipalTypeGroup)
 	return groups, nil
 }
 
-func (a appRoleAssignments) request(id azure.ServicePrincipalId) *msgraphbeta.ServicePrincipalAppRoleAssignedToCollectionRequest {
-	return a.graphBetaClient.ServicePrincipals().ID(id).AppRoleAssignedTo().Request()
+func (a appRoleAssignments) getAllServicePrincipals(ctx context.Context) ([]msgraphbeta.AppRoleAssignment, error) {
+	assignments, err := a.getAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	servicePrincipals := filterByType(assignments, azure.PrincipalTypeServicePrincipal)
+	return servicePrincipals, nil
 }
 
-func toAssignment(target azure.ObjectId, assignee azure.ObjectId, appRoleId msgraphbeta.UUID) *msgraphbeta.AppRoleAssignment {
+func (a appRoleAssignments) revokeFor(tx azure.Transaction, revoked []msgraphbeta.AppRoleAssignment, principalType azure.PrincipalType) error {
+	for _, r := range revoked {
+		logFields := a.logFields
+		logFields["assigneeObjectId"] = *r.PrincipalID
+
+		tx.Log.WithFields(logFields).Debugf("revoking AppRole assignment for %s '%s'", principalType, *r.PrincipalDisplayName)
+		err := a.graphBetaClient.ServicePrincipals().ID(a.targetId).AppRoleAssignedTo().ID(*r.ID).Request().Delete(tx.Ctx)
+		if err != nil {
+			return fmt.Errorf("deleting AppRole assignment for %s '%s' (%s) from '%s': %w", principalType, *r.PrincipalDisplayName, *r.PrincipalID, a.targetId, err)
+		}
+		tx.Log.WithFields(logFields).Infof("successfully deleted AppRole assignment for %s '%s'", principalType, *r.PrincipalDisplayName)
+		return nil
+	}
+	return nil
+}
+
+func (a appRoleAssignments) processFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) error {
+	desired, err := a.assignFor(tx, assignees, principalType)
+	if err != nil {
+		return fmt.Errorf("adding app role assignments: %w", err)
+	}
+
+	existing := make([]msgraphbeta.AppRoleAssignment, 0)
+	switch principalType {
+	case azure.PrincipalTypeGroup:
+		existing, err = a.getAllGroups(tx.Ctx)
+	case azure.PrincipalTypeServicePrincipal:
+		existing, err = a.getAllServicePrincipals(tx.Ctx)
+	}
+
+	revoked := approleassignment.Difference(existing, desired)
+
+	if err := a.revokeFor(tx, revoked, principalType); err != nil {
+		return fmt.Errorf("deleting revoked app role assignments: %w", err)
+	}
+	return nil
+}
+
+func (a appRoleAssignments) processForGroups(tx azure.Transaction, assignees []azure.Resource) error {
+	return a.processFor(tx, assignees, azure.PrincipalTypeGroup)
+}
+
+func (a appRoleAssignments) processForServicePrincipals(tx azure.Transaction, assignees []azure.Resource) error {
+	return a.processFor(tx, assignees, azure.PrincipalTypeServicePrincipal)
+}
+
+func (a appRoleAssignments) toAssignment(assignee azure.ObjectId, principalType azure.PrincipalType) *msgraphbeta.AppRoleAssignment {
 	appRoleAssignment := &msgraphbeta.AppRoleAssignment{
-		AppRoleID:   &appRoleId,
-		PrincipalID: (*msgraphbeta.UUID)(&assignee), // Service Principal ID for the assignee, i.e. the application that should be assigned to the app role
-		ResourceID:  (*msgraphbeta.UUID)(&target),   // Service Principal ID for the target resource, i.e. the application that owns the app role
+		AppRoleID:     &a.roleId,
+		PrincipalID:   (*msgraphbeta.UUID)(&assignee),   // Service Principal ID for the assignee, i.e. the principal that should be assigned to the app role
+		ResourceID:    (*msgraphbeta.UUID)(&a.targetId), // Service Principal ID for the target resource, i.e. the application/service principal that owns the app role
+		PrincipalType: &principalType,
 	}
 	return appRoleAssignment
 }
 
-func filterByType(assignments []msgraphbeta.AppRoleAssignment, principalType PrincipalType) []msgraphbeta.AppRoleAssignment {
+func assignmentInAssignments(assignment msgraphbeta.AppRoleAssignment, assignments []msgraphbeta.AppRoleAssignment) bool {
+	for _, a := range assignments {
+		equalPrincipalID := *a.PrincipalID == *assignment.PrincipalID
+		equalAppRoleID := *a.AppRoleID == *assignment.AppRoleID
+		equalPrincipalType := *a.PrincipalType == *assignment.PrincipalType
+
+		if equalPrincipalID && equalAppRoleID && equalPrincipalType {
+			return true
+		}
+	}
+	return false
+}
+
+func filterByType(assignments []msgraphbeta.AppRoleAssignment, principalType azure.PrincipalType) []msgraphbeta.AppRoleAssignment {
 	filtered := make([]msgraphbeta.AppRoleAssignment, 0)
 	for _, assignment := range assignments {
 		if *assignment.PrincipalType == principalType {

@@ -216,12 +216,12 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1.Azu
 
 		test.AssertAllNotEmpty(t, []interface{}{
 			instance.Status.CertificateKeyIds,
-			instance.Status.ClientId,
+			instance.GetClientId(),
 			instance.Status.CorrelationId,
-			instance.Status.ObjectId,
+			instance.GetObjectId(),
 			instance.Status.PasswordKeyIds,
 			instance.Status.SynchronizationHash,
-			instance.Status.ServicePrincipalId,
+			instance.GetServicePrincipalId(),
 			instance.Status.SynchronizationTime,
 		})
 		assert.Equal(t, v1.EventSynchronized, instance.Status.SynchronizationState, "AzureAdApplication should be synchronized")
@@ -234,11 +234,11 @@ func assertApplicationShouldNotProcess(t *testing.T, testName string, key client
 	t.Run(testName, func(t *testing.T) {
 		assert.Eventually(t, resourceExists(key, instance), timeout, interval, "AzureAdApplication should exist")
 		assert.Empty(t, instance.Status.CertificateKeyIds)
-		assert.Empty(t, instance.Status.ClientId)
-		assert.Empty(t, instance.Status.ObjectId)
+		assert.Empty(t, instance.GetClientId())
+		assert.Empty(t, instance.GetObjectId())
 		assert.Empty(t, instance.Status.PasswordKeyIds)
 		assert.Empty(t, instance.Status.SynchronizationHash)
-		assert.Empty(t, instance.Status.ServicePrincipalId)
+		assert.Empty(t, instance.GetServicePrincipalId())
 		assert.Empty(t, instance.Status.SynchronizationTime)
 	})
 	return instance

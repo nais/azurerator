@@ -24,7 +24,8 @@ func (a application) redirectUri() redirectUri {
 }
 
 func (r redirectUri) update(tx azure.Transaction) error {
-	objectId := tx.Instance.Status.ObjectId
+	objectId := tx.Instance.GetObjectId()
+
 	app := &struct {
 		msgraph.DirectoryObject
 		Web webApi `json:"web"`
@@ -33,6 +34,7 @@ func (r redirectUri) update(tx azure.Transaction) error {
 			RedirectUris: util.GetReplyUrlsStringSlice(tx.Instance),
 		},
 	}
+
 	if err := r.patch(tx.Ctx, objectId, app); err != nil {
 		return fmt.Errorf("failed to update redirect URIs: %w", err)
 	}

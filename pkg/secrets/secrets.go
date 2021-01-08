@@ -48,7 +48,7 @@ var AllKeys = []string{
 
 // +kubebuilder:rbac:groups=*,resources=secrets,verbs=get;list;watch;create;delete;update;patch
 
-func CreateOrUpdate(ctx context.Context, instance *v1.AzureAdApplication, application azure.Application, cli client.Client, scheme *runtime.Scheme) (controllerutil.OperationResult, error) {
+func CreateOrUpdate(ctx context.Context, instance *v1.AzureAdApplication, application azure.ApplicationResult, cli client.Client, scheme *runtime.Scheme) (controllerutil.OperationResult, error) {
 	spec, err := spec(instance, application)
 	if err != nil {
 		return controllerutil.OperationResultNone, fmt.Errorf("unable to create secretSpec object: %w", err)
@@ -109,7 +109,7 @@ func getAll(ctx context.Context, instance *v1.AzureAdApplication, reader client.
 	return list, nil
 }
 
-func spec(instance *v1.AzureAdApplication, app azure.Application) (*corev1.Secret, error) {
+func spec(instance *v1.AzureAdApplication, app azure.ApplicationResult) (*corev1.Secret, error) {
 	data, err := stringData(app)
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func objectMeta(instance *v1.AzureAdApplication) metav1.ObjectMeta {
 	}
 }
 
-func stringData(app azure.Application) (map[string]string, error) {
+func stringData(app azure.ApplicationResult) (map[string]string, error) {
 	jwkJson, err := json.Marshal(app.Certificate.Jwk.Private)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal private JWK: %w", err)

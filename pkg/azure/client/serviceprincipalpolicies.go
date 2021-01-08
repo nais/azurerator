@@ -23,8 +23,8 @@ func (s servicePrincipal) policies() *servicePrincipalPolicies {
 	return &servicePrincipalPolicies{servicePrincipal: s}
 }
 
-func (sp *servicePrincipalPolicies) process(tx azure.Transaction, id azure.ServicePrincipalId) error {
-	if err := sp.prepare(tx, id); err != nil {
+func (sp *servicePrincipalPolicies) process(tx azure.Transaction) error {
+	if err := sp.prepare(tx); err != nil {
 		return err
 	}
 	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Extra) == 0 {
@@ -33,11 +33,12 @@ func (sp *servicePrincipalPolicies) process(tx azure.Transaction, id azure.Servi
 	return sp.assign(tx)
 }
 
-func (sp *servicePrincipalPolicies) prepare(tx azure.Transaction, id azure.ServicePrincipalId) error {
-	if len(id) == 0 {
+func (sp *servicePrincipalPolicies) prepare(tx azure.Transaction) error {
+	servicePrincipalId := tx.Instance.GetServicePrincipalId()
+	if len(servicePrincipalId) == 0 {
 		return fmt.Errorf("service principal ID is not set")
 	}
-	sp.servicePrincipalID = id
+	sp.servicePrincipalID = servicePrincipalId
 
 	assignedPolicies, err := sp.getAssigned(tx)
 	if err != nil {

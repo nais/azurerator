@@ -27,7 +27,7 @@ func IdentifierUriHumanReadable(spec v1.AzureAdApplication) string {
 
 func IdentifierUris(tx azure.Transaction) azure.IdentifierUris {
 	return []string{
-		IdentifierUriClientId(tx.Instance.Status.ClientId),
+		IdentifierUriClientId(tx.Instance.GetClientId()),
 		IdentifierUriHumanReadable(tx.Instance),
 	}
 }
@@ -50,6 +50,10 @@ func FilterByAppId(clientId azure.ClientId) azure.Filter {
 
 func FilterByClientId(clientId azure.ClientId) azure.Filter {
 	return fmt.Sprintf("clientId eq '%s'", clientId)
+}
+
+func FilterById(id string) azure.Filter {
+	return fmt.Sprintf("id eq '%s'", id)
 }
 
 func DisplayName(t time.Time) azure.DisplayName {
