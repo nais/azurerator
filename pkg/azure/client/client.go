@@ -210,6 +210,15 @@ func (c client) process(tx azure.Transaction) ([]azure.Resource, error) {
 		return nil, fmt.Errorf("processing preauthorized apps: %w", err)
 	}
 
+	if tx.Instance.Spec.EnforceAuthorization != nil && *tx.Instance.Spec.EnforceAuthorization {
+		err = c.servicePrincipal().setAppRoleAssignmentRequired(tx)
+	} else {
+		err = c.servicePrincipal().setAppRoleAssignmentNotRequired(tx)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("setting requirement for approle assignments: %w", err)
+	}
+
 	if c.config.Features.TeamsManagement.Enabled {
 		if err = c.teamowners().process(tx); err != nil {
 			return nil, fmt.Errorf("processing owners: %w", err)
@@ -225,16 +234,6 @@ func (c client) process(tx azure.Transaction) ([]azure.Resource, error) {
 	if c.config.Features.GroupsAssignment.Enabled {
 		if err := c.groups().process(tx); err != nil {
 			return nil, fmt.Errorf("processing groups to service principal: %w", err)
-		}
-
-		if tx.Instance.Spec.Claims != nil && len(tx.Instance.Spec.Claims.Groups) > 0 {
-			if err := c.servicePrincipal().setAppRoleAssignmentRequired(tx); err != nil {
-				return nil, err
-			}
-		} else {
-			if err := c.servicePrincipal().setAppRoleAssignmentNotRequired(tx); err != nil {
-				return nil, err
-			}
 		}
 	}
 

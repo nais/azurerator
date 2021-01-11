@@ -61,6 +61,8 @@ type AzureAdApplicationSpec struct {
 	Tenant string `json:"tenant,omitempty"`
 	// Claims defines additional configuration of the emitted claims in tokens returned to the AzureAdApplication
 	Claims *AzureAdClaims `json:"claims,omitempty"`
+	// EnforceAuthorization denotes whether or not Azure AD should require/enforce that principals are assigned to the application for access
+	EnforceAuthorization *bool `json:"enforceAuthorization,omitempty"`
 }
 
 // AzureAdApplicationStatus defines the observed state of AzureAdApplication
