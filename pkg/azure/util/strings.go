@@ -52,10 +52,6 @@ func FilterByClientId(clientId azure.ClientId) azure.Filter {
 	return fmt.Sprintf("clientId eq '%s'", clientId)
 }
 
-func FilterById(id string) azure.Filter {
-	return fmt.Sprintf("id eq '%s'", id)
-}
-
 func DisplayName(t time.Time) azure.DisplayName {
 	return fmt.Sprintf("%s-%s", azure.AzureratorPrefix, t.UTC().Format(time.RFC3339))
 }

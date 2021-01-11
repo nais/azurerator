@@ -9,12 +9,14 @@ import (
 	"github.com/yaegashi/msgraph.go/msauth"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 	"golang.org/x/oauth2"
+	"net/http"
 )
 
 const MaxNumberOfPagesToFetch = 1000
 
 type client struct {
 	config          *config.AzureConfig
+	httpClient      *http.Client
 	graphClient     *msgraph.GraphServiceRequestBuilder
 	graphBetaClient *msgraphbeta.GraphServiceRequestBuilder
 }
@@ -33,6 +35,7 @@ func New(ctx context.Context, cfg *config.AzureConfig) (azure.Client, error) {
 
 	return client{
 		config:          cfg,
+		httpClient:      httpClient,
 		graphClient:     graphClient,
 		graphBetaClient: graphBetaClient,
 	}, nil

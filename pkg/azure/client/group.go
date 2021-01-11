@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/util"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
+	"github.com/yaegashi/msgraph.go/jsonx"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	"io/ioutil"
+	"net/http"
 )
 
 type groups struct {
@@ -41,34 +43,28 @@ func (g groups) process(tx azure.Transaction) error {
 	return nil
 }
 
-func (g groups) exists(tx azure.Transaction, id azure.ObjectId) (bool, error) {
-	groups, err := g.getAll(tx, util.FilterById(id))
-	if err != nil {
-		return false, fmt.Errorf("chceking existence of group: %w", err)
-	}
-	return len(groups) > 0, nil
-}
+func (g groups) getById(tx azure.Transaction, id azure.ObjectId) (bool, *msgraph.Group, error) {
+	r := g.graphClient.Groups().ID(id).Request()
 
-func (g groups) getAll(tx azure.Transaction, filters ...azure.Filter) ([]msgraph.Group, error) {
-	req := g.graphClient.Groups().Request()
-	filter := util.MapFiltersToFilter(filters)
-	req.Filter(filter)
-
-	groups, err := req.GetN(tx.Ctx, MaxNumberOfPagesToFetch)
+	req, err := g.toGetRequestWithContext(tx.Ctx, r)
 	if err != nil {
-		return nil, fmt.Errorf("getting groups with filter '%s': %w", filter, err)
+		return false, nil, fmt.Errorf("to json request: %w", err)
 	}
 
-	return groups, nil
-}
-
-func (g groups) getById(tx azure.Transaction, id azure.ObjectId) (*msgraph.Group, error) {
-	group, err := g.graphClient.Groups().ID(id).Request().Get(tx.Ctx)
+	res, err := g.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("getting group '%s': %s", id, err)
+		return false, nil, fmt.Errorf("performing http request: %w", err)
 	}
 
-	return group, nil
+	defer res.Body.Close()
+
+	var group *msgraph.Group
+	exists, err := g.decodeJsonResponse(res, &group)
+	if err != nil {
+		return exists, nil, fmt.Errorf("decoding json response: %w", err)
+	}
+
+	return exists, group, nil
 }
 
 func (g groups) mapToResources(tx azure.Transaction) ([]azure.Resource, error) {
@@ -79,18 +75,14 @@ func (g groups) mapToResources(tx azure.Transaction) ([]azure.Resource, error) {
 	}
 
 	for _, group := range tx.Instance.Spec.Claims.Groups {
-		exists, err := g.exists(tx, group)
+		exists, groupResult, err := g.getById(tx, group)
 		if err != nil {
-			return nil, fmt.Errorf("checking if group exists: %w", err)
+			return nil, fmt.Errorf("getting group '%s': %w", group, err)
 		}
 
 		if !exists {
+			tx.Log.Debugf("skipping Group assignment: '%s' does not exist", group)
 			continue
-		}
-
-		groupResult, err := g.getById(tx, group)
-		if err != nil {
-			return nil, fmt.Errorf("getting group: %w", err)
 		}
 
 		resources = append(resources, azure.Resource{
@@ -101,4 +93,38 @@ func (g groups) mapToResources(tx azure.Transaction) ([]azure.Resource, error) {
 		})
 	}
 	return resources, nil
+}
+
+func (g groups) toGetRequestWithContext(ctx context.Context, r *msgraph.GroupRequest) (*http.Request, error) {
+	req, err := r.NewJSONRequest("GET", "", nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	return req, nil
+}
+
+func (g groups) decodeJsonResponse(res *http.Response, obj interface{}) (bool, error) {
+	switch res.StatusCode {
+	case http.StatusOK, http.StatusCreated:
+		if obj != nil {
+			err := jsonx.NewDecoder(res.Body).Decode(obj)
+			if err != nil {
+				return false, err
+			}
+		}
+		return true, nil
+	case http.StatusNoContent:
+		return true, nil
+	case http.StatusNotFound:
+		return false, nil
+	default:
+		b, _ := ioutil.ReadAll(res.Body)
+		errRes := &msgraph.ErrorResponse{Response: res}
+		err := jsonx.Unmarshal(b, errRes)
+		if err != nil {
+			return false, fmt.Errorf("%s: %s", res.Status, string(b))
+		}
+		return true, errRes
+	}
 }
