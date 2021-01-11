@@ -18,3 +18,9 @@ spec:
   replyUrls:
     - url: "http://localhost:3000/oauth2/callback"
   secretName: azuread-myapp
+  enforceAuthorization: false
+  claims:
+    groups:
+      - "00000000-0000-0000-0000-000000000000"
+    extra:
+      - "NAVident"

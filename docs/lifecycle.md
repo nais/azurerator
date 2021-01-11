@@ -18,6 +18,9 @@ The following is a short overview of operations performed.
   - [1.4 Service Principal](#14-service-principal)
   - [1.5 Delegated Permissions](#15-delegated-permissions)
   - [1.6 Credentials](#16-credentials)
+  - [1.7 Owner Assignment](#17-owner-assignment)
+  - [1.8 Group Assignment](#18-group-assignment)
+  - [1.9 Principal Assignment Requirement](#19-principal-assignment-required)
 - [2 Existing applications](#2-existing-applications)
   - [2.1 Credential Rotation](#21-credential-rotation)
 - [3 Cluster Resources](#3-cluster-resources)
@@ -45,17 +48,20 @@ handling both end-user logins with OIDC and on-behalf-of flows and/or act as dae
 
 #### Application Identifier URI
 
-The Application Identifier URI uniquely identifies the Web app within the Azure AD tenant.
+The Application Identifier URI uniquely identifies the Web app within the Azure AD tenant and is usually used as a scope 
+of a service-to-service token request.
 
-It is represented in the following form:
+Azurerator registers the following Identifier URIs:
+
 ```
 api://<clientId>
+api://<Metadata.Name>.<Metadata.Namespace>.<ClusterName>
 ```
 
 where `clientId` is the Azure Application / Client ID, e.g. `api://4f6fae71-89da-46ff-a6d5-04d27d76eb1a`.
 
-Other applications may use this identifier within the when requesting access tokens for the application from Azure,
-e.g. by providing the scope `api://<clientId>/.default` in the request.
+Other applications may use this identifier when requesting access tokens for the application from Azure,
+e.g. by providing the scope `api://<clientId>/.default` or `api://app.namespace.cluster/.default` in the request.
 
 #### OAuth2 Permission Scopes
 
@@ -91,7 +97,9 @@ The role should be present in the `roles` claim within the access token obtained
 
 Pre-authorized client applications define the set of client applications allowed to perform 
 [on-behalf-of flow](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow)
-to obtain access tokens intended for the application.
+to obtain access tokens intended for the application. This authorization is enforced by Azure AD in the case of the `on_behalf_of` flow.
+
+It is _not_ enforced for the `client_credentials` flow unless assignment requirement is explicitly enabled for the application (see [1.9 Principal Assignment Required](#19-principal-assignment-required)).
 
 These are registered according to the list of applications defined in `[]Spec.PreAuthorizedApplication` in
 the `AzureAdApplication` resource, with the following caveats:
@@ -143,6 +151,31 @@ i.e. in the fields:
 These fields thus denote the currently used set of credentials.
 
 See <https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal#certificates-and-secrets> for details.
+
+### 1.7 Owner Assignment
+
+It is assumed that the namespace an `AzureAdApplication` exists in is equal to the name of the team found in Azure AD. 
+
+If configured with a service principal containing a list of teams, Azurerator will attempt to cross-reference this 
+namespace to any group within that list. The owners of those groups will be assigned as owners of both the _Application_ 
+and the equivalent _Service Principal_ (i.e. Enterprise Application).
+
+### 1.8 Group Assignment
+
+`Spec.Claims.Groups[]` is a list of Object IDs that reference Azure AD groups to be assigned to the _Service Principal_
+belonging to the `AzureAdApplication`. 
+
+All groups assigned are emitted through the `groups` claim for tokens issued to the Application. 
+This can for example be used to restrict access to an Application.
+
+### 1.9 Principal Assignment Required
+
+`Spec.EnforceAuthorization` denotes whether Azure AD should enforce/require that Azure AD principals are explicitly 
+assigned to the `AzureAdApplication` when using the application in a Web API flow such as the OAuth 2.0 Client Credentials flow.
+
+This sets the `AppRoleAssignmentRequired` property for the Service Principal.
+
+Defaults to `false`.
 
 ## 2 Existing applications
 
