@@ -70,12 +70,13 @@ func (g groups) getById(tx azure.Transaction, id azure.ObjectId) (bool, *msgraph
 func (g groups) mapToResources(tx azure.Transaction) ([]azure.Resource, error) {
 	resources := make([]azure.Resource, 0)
 
-	if tx.Instance.Spec.Claims == nil {
+	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0 {
+		// TODO: assign default group with "all users"
 		return resources, nil
 	}
 
 	for _, group := range tx.Instance.Spec.Claims.Groups {
-		exists, groupResult, err := g.getById(tx, group)
+		exists, groupResult, err := g.getById(tx, group.ID)
 		if err != nil {
 			return nil, fmt.Errorf("getting group '%s': %w", group, err)
 		}

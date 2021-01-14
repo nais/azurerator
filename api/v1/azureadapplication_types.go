@@ -61,8 +61,6 @@ type AzureAdApplicationSpec struct {
 	Tenant string `json:"tenant,omitempty"`
 	// Claims defines additional configuration of the emitted claims in tokens returned to the AzureAdApplication
 	Claims *AzureAdClaims `json:"claims,omitempty"`
-	// EnforceAuthorization denotes whether or not Azure AD should require/enforce that principals are assigned to the application for access
-	EnforceAuthorization *bool `json:"enforceAuthorization,omitempty"`
 }
 
 // AzureAdApplicationStatus defines the observed state of AzureAdApplication
@@ -103,11 +101,15 @@ type AzureAdClaims struct {
 	// Extra is a list of additional claims to be mapped from an associated claim-mapping policy.
 	Extra []AzureAdExtraClaim `json:"extra,omitempty"`
 	// Groups is a list of Azure AD group IDs to be emitted in the 'Groups' claim.
-	Groups []string `json:"groups,omitempty"`
+	Groups []AzureAdGroup `json:"groups,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=NAVident
 type AzureAdExtraClaim string
+
+type AzureAdGroup struct {
+	ID string `json:"id,omitempty"`
+}
 
 func init() {
 	SchemeBuilder.Register(&AzureAdApplication{}, &AzureAdApplicationList{})

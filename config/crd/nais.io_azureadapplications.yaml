@@ -66,14 +66,12 @@ spec:
                   description: Groups is a list of Azure AD group IDs to be emitted
                     in the 'Groups' claim.
                   items:
-                    type: string
+                    properties:
+                      id:
+                        type: string
+                    type: object
                   type: array
               type: object
-            enforceAuthorization:
-              description: EnforceAuthorization denotes whether or not Azure AD should
-                require/enforce that principals are assigned to the application for
-                access
-              type: boolean
             logoutUrl:
               description: LogoutUrl is the URL where Azure AD sends a request to
                 have the application clear the user's session data. This is required
