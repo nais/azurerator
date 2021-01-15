@@ -82,7 +82,7 @@ func TestIdentifierUriHumanReadable(t *testing.T) {
 		spec.SetNamespace("test-namespace")
 		spec.SetClusterName("test-cluster")
 		actual := IdentifierUriHumanReadable(spec)
-		expected := "api://test.test-namespace.test-cluster"
+		expected := "api://test-cluster.test-namespace.test"
 		assert.Equal(t, expected, actual)
 	})
 }

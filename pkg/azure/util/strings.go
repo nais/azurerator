@@ -22,7 +22,7 @@ func IdentifierUriClientId(id azure.ClientId) string {
 }
 
 func IdentifierUriHumanReadable(spec v1.AzureAdApplication) string {
-	return fmt.Sprintf("api://%s.%s.%s", spec.GetName(), spec.GetNamespace(), spec.GetClusterName())
+	return fmt.Sprintf("api://%s.%s.%s", spec.GetClusterName(), spec.GetNamespace(), spec.GetName())
 }
 
 func IdentifierUris(tx azure.Transaction) azure.IdentifierUris {
