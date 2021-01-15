@@ -226,10 +226,6 @@ func (c client) process(tx azure.Transaction) ([]azure.Resource, error) {
 	}
 
 	if c.config.Features.GroupsAssignment.Enabled {
-		if err = c.servicePrincipal().setAppRoleAssignmentRequired(tx); err != nil {
-			return nil, fmt.Errorf("setting requirement for approle assignments: %w", err)
-		}
-
 		if err := c.groups().process(tx); err != nil {
 			return nil, fmt.Errorf("processing groups to service principal: %w", err)
 		}

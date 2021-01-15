@@ -30,6 +30,15 @@ func (g groups) getOwnersFor(ctx context.Context, groupId string) ([]msgraph.Dir
 func (g groups) process(tx azure.Transaction) error {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
+	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0 {
+		// TODO: assign default group with "all users" and require approle assignment to enforce service-to-service preauthorization
+		return nil
+	}
+
+	if err := g.servicePrincipal().setAppRoleAssignmentRequired(tx); err != nil {
+		return fmt.Errorf("setting requirement for approle assignments: %w", err)
+	}
+
 	groups, err := g.mapToResources(tx)
 	if err != nil {
 		return fmt.Errorf("looking up groups: %w", err)
@@ -69,11 +78,6 @@ func (g groups) getById(tx azure.Transaction, id azure.ObjectId) (bool, *msgraph
 
 func (g groups) mapToResources(tx azure.Transaction) ([]azure.Resource, error) {
 	resources := make([]azure.Resource, 0)
-
-	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0 {
-		// TODO: assign default group with "all users"
-		return resources, nil
-	}
 
 	for _, group := range tx.Instance.Spec.Claims.Groups {
 		exists, groupResult, err := g.getById(tx, group.ID)
