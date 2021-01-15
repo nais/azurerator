@@ -100,3 +100,12 @@ func (in *AzureAdApplication) SetServicePrincipalId(servicePrincipalId string) {
 func (in *AzureAdApplication) SetClientId(clientId string) {
 	in.Status.ClientId = clientId
 }
+
+func (in AzureAdClaims) HasExtraPolicy(policyName AzureAdExtraClaim) bool {
+	for _, policy := range in.Extra {
+		if policy == policyName {
+			return true
+		}
+	}
+	return false
+}

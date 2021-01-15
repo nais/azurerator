@@ -82,7 +82,7 @@ func (g groups) mapToResources(tx azure.Transaction) ([]azure.Resource, error) {
 		}
 
 		if !exists {
-			tx.Log.Debugf("skipping Group assignment: '%s' does not exist", group)
+			tx.Log.Debugf("skipping Group assignment: '%s' does not exist", group.ID)
 			continue
 		}
 

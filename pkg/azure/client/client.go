@@ -73,16 +73,6 @@ func (c client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		return nil, err
 	}
 
-	if c.config.Features.GroupsAssignment.Enabled {
-		if err = c.servicePrincipal().setAppRoleAssignmentRequired(tx); err != nil {
-			return nil, fmt.Errorf("setting requirement for approle assignments: %w", err)
-		}
-
-		if err := c.groups().process(tx); err != nil {
-			return nil, fmt.Errorf("processing groups to service principal: %w", err)
-		}
-	}
-
 	lastPasswordKeyId := string(*passwordCredential.KeyID)
 	lastCertificateKeyId := string(*res.KeyCredential.KeyID)
 

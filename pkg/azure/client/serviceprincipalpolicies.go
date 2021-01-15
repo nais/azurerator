@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	v1 "github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util/claimsmappingpolicy"
 	"net/http"
@@ -16,21 +15,42 @@ type servicePrincipalPolicies struct {
 	servicePrincipal
 	servicePrincipalID azure.ServicePrincipalId
 	assignedPolicies   *claimsmappingpolicy.ClaimsMappingPolicies
-	validPolicies      map[v1.AzureAdExtraClaim]string
+	validPolicies      claimsmappingpolicy.ValidPolicies
 }
 
 func (s servicePrincipal) policies() *servicePrincipalPolicies {
-	return &servicePrincipalPolicies{servicePrincipal: s}
+	return &servicePrincipalPolicies{
+		servicePrincipal: s,
+		validPolicies: claimsmappingpolicy.ValidPolicies{
+			Policies: []claimsmappingpolicy.ValidPolicy{
+				{
+					Name: ClaimNAVIdent,
+					ID:   s.config.Features.ClaimsMappingPolicies.NavIdent,
+				},
+			},
+		},
+	}
 }
 
 func (sp *servicePrincipalPolicies) process(tx azure.Transaction) error {
 	if err := sp.prepare(tx); err != nil {
-		return err
+		return fmt.Errorf("preparing to process service principal policies: %w", err)
 	}
+
 	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Extra) == 0 {
-		return sp.revoke(tx)
+		// revoke existing policies managed by this application if not found in spec
+		return sp.revokeAllManagedPolicies(tx)
 	}
-	return sp.assign(tx)
+
+	if err := sp.revoke(tx); err != nil {
+		return fmt.Errorf("revoking service principal policies: %w", err)
+	}
+
+	if err := sp.assign(tx); err != nil {
+		return fmt.Errorf("assigning service principal policies: %w", err)
+	}
+
+	return nil
 }
 
 func (sp *servicePrincipalPolicies) prepare(tx azure.Transaction) error {
@@ -46,16 +66,12 @@ func (sp *servicePrincipalPolicies) prepare(tx azure.Transaction) error {
 	}
 	sp.assignedPolicies = assignedPolicies
 
-	sp.validPolicies = map[v1.AzureAdExtraClaim]string{
-		ClaimNAVIdent: sp.config.Features.ClaimsMappingPolicies.NavIdent,
-	}
-
 	return nil
 }
 
 func (sp *servicePrincipalPolicies) assign(tx azure.Transaction) error {
 	for _, claim := range tx.Instance.Spec.Claims.Extra {
-		policy, found := sp.validPolicies[claim]
+		policy, found := sp.validPolicies.HasPolicyByName(claim)
 		if !found {
 			continue
 		}
@@ -73,9 +89,23 @@ func (sp *servicePrincipalPolicies) assign(tx azure.Transaction) error {
 }
 
 func (sp *servicePrincipalPolicies) revoke(tx azure.Transaction) error {
-	for _, policyID := range sp.validPolicies {
-		if sp.assignedPolicies.Has(policyID) {
-			if err := sp.removeForPolicy(tx, policyID); err != nil {
+	for _, assignedPolicy := range sp.assignedPolicies.Policies {
+		validPolicy, found := sp.validPolicies.HasPolicyByID(*assignedPolicy.ID)
+		if !found || tx.Instance.Spec.Claims.HasExtraPolicy(validPolicy.Name) {
+			continue
+		}
+
+		if err := sp.removeForPolicy(tx, *assignedPolicy.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (sp *servicePrincipalPolicies) revokeAllManagedPolicies(tx azure.Transaction) error {
+	for _, policy := range sp.validPolicies.Policies {
+		if sp.assignedPolicies.Has(policy) {
+			if err := sp.removeForPolicy(tx, policy.ID); err != nil {
 				return err
 			}
 		}
@@ -83,20 +113,20 @@ func (sp *servicePrincipalPolicies) revoke(tx azure.Transaction) error {
 	return nil
 }
 
-func (sp *servicePrincipalPolicies) assignForPolicy(tx azure.Transaction, policyID string) error {
-	if len(policyID) == 0 {
+func (sp *servicePrincipalPolicies) assignForPolicy(tx azure.Transaction, policy claimsmappingpolicy.ValidPolicy) error {
+	if len(policy.ID) == 0 {
 		return nil
 	}
 
-	body := claimsmappingpolicy.ToClaimsMappingPolicyPayload(policyID)
+	body := claimsmappingpolicy.ToClaimsMappingPolicyPayload(policy)
 	method := http.MethodPost
 	path := "/claimsMappingPolicies/$ref"
 
 	if err := sp.jsonRequest(tx, method, path, body, nil); err != nil {
-		return fmt.Errorf("assigning claims-mapping policy '%s' to service principal '%s': %w", policyID, sp.servicePrincipalID, err)
+		return fmt.Errorf("assigning claims-mapping policy '%s' to service principal '%s': %w", policy.ID, sp.servicePrincipalID, err)
 	}
 
-	tx.Log.Infof("successfully assigned claims-mapping policy '%s' to service principal '%s'", policyID, sp.servicePrincipalID)
+	tx.Log.Infof("successfully assigned claims-mapping policy '%s' to service principal '%s'", policy.ID, sp.servicePrincipalID)
 	return nil
 }
 

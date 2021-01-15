@@ -9,9 +9,9 @@ type Payload struct {
 	Content string `json:"@odata.id"`
 }
 
-func ToClaimsMappingPolicyPayload(policyId string) Payload {
+func ToClaimsMappingPolicyPayload(policy ValidPolicy) Payload {
 	return Payload{
-		Content: fmt.Sprintf("https://graph.microsoft.com/v1.0/policies/claimsMappingPolicies/%s", policyId),
+		Content: fmt.Sprintf("https://graph.microsoft.com/v1.0/policies/claimsMappingPolicies/%s", policy.ID),
 	}
 }
 
@@ -24,12 +24,12 @@ type ClaimsMappingPolicy struct {
 	DisplayName *string `json:"displayName,omitempty"`
 }
 
-func (in *ClaimsMappingPolicies) Has(policyID string) bool {
+func (in *ClaimsMappingPolicies) Has(validPolicy ValidPolicy) bool {
 	if len(in.Policies) == 0 {
 		return false
 	}
 	for _, policy := range in.Policies {
-		if *policy.ID == policyID {
+		if *policy.ID == validPolicy.ID {
 			return true
 		}
 	}
