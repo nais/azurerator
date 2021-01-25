@@ -10,10 +10,10 @@ metadata:
 spec:
   additionalPrinterColumns:
   - JSONPath: .spec.secretName
-    name: Secret
+    name: Secret Ref
     type: string
   - JSONPath: .status.clientId
-    name: ClientId
+    name: Client ID
     type: string
   - JSONPath: .spec.tenant
     name: Tenant

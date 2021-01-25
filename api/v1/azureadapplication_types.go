@@ -26,8 +26,8 @@ const (
 // +kubebuilder:resource:shortName=azureapp
 
 // AzureAdApplication is the Schema for the AzureAdApplications API
-// +kubebuilder:printcolumn:name="Secret",type=string,JSONPath=`.spec.secretName`
-// +kubebuilder:printcolumn:name="ClientId",type=string,JSONPath=`.status.clientId`
+// +kubebuilder:printcolumn:name="Secret Ref",type=string,JSONPath=`.spec.secretName`
+// +kubebuilder:printcolumn:name="Client ID",type=string,JSONPath=`.status.clientId`
 // +kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.spec.tenant`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type AzureAdApplication struct {
