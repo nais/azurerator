@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/secrets"
 )
 
 type azureReconciler struct {
@@ -25,15 +24,13 @@ func (a azureReconciler) update(tx transaction) (*azure.ApplicationResult, error
 	return a.AzureClient.Update(tx.toAzureTx())
 }
 
-func (a azureReconciler) rotate(tx transaction, app azure.ApplicationResult, managedSecrets secrets.Lists) (*azure.ApplicationResult, error) {
-	appWithActiveKeyIds := secrets.WithIdsFromUsedSecrets(app, managedSecrets)
+func (a azureReconciler) rotate(tx transaction, app azure.ApplicationResult) (*azure.ApplicationResult, error) {
 	logger.Info("rotating credentials for Azure application...")
-	application, err := a.AzureClient.Rotate(tx.toAzureTx(), appWithActiveKeyIds)
+	application, err := a.AzureClient.Rotate(tx.toAzureTx(), app)
 	if err != nil {
 		return nil, err
 	}
-	application.Password.KeyId.AllInUse = append(appWithActiveKeyIds.Password.KeyId.AllInUse, application.Password.KeyId.Latest)
-	application.Certificate.KeyId.AllInUse = append(appWithActiveKeyIds.Certificate.KeyId.AllInUse, application.Certificate.KeyId.Latest)
+
 	logger.Info("successfully rotated credentials for Azure application")
 	return application, nil
 }

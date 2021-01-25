@@ -101,6 +101,10 @@ func (in *AzureAdApplication) SetClientId(clientId string) {
 	in.Status.ClientId = clientId
 }
 
+func (in *AzureAdApplication) SetSynchronizedSecretName(secretName string) {
+	in.Status.SynchronizationSecretName = secretName
+}
+
 func (in AzureAdClaims) HasExtraPolicy(policyName AzureAdExtraClaim) bool {
 	for _, policy := range in.Extra {
 		if policy == policyName {
@@ -108,4 +112,8 @@ func (in AzureAdClaims) HasExtraPolicy(policyName AzureAdExtraClaim) bool {
 		}
 	}
 	return false
+}
+
+func (in *AzureAdApplication) ShouldUpdateSecrets() bool {
+	return in.Status.SynchronizationSecretName != in.Spec.SecretName
 }

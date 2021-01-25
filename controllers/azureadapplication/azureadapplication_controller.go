@@ -148,12 +148,14 @@ func (r *Reconciler) process(tx transaction) (*azure.ApplicationResult, error) {
 		return nil, err
 	}
 
-	if err := r.createOrUpdateSecrets(tx, *application); err != nil {
-		return nil, err
-	}
+	if tx.instance.ShouldUpdateSecrets() {
+		if err := r.createOrUpdateSecrets(tx, *application); err != nil {
+			return nil, err
+		}
 
-	if err := r.deleteUnusedSecrets(tx, managedSecrets.Unused); err != nil {
-		return nil, err
+		if err := r.deleteUnusedSecrets(tx, managedSecrets.Unused); err != nil {
+			return nil, err
+		}
 	}
 
 	return application, nil
@@ -204,12 +206,18 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secre
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsUpdatedCount, tx.instance.Namespace)
 		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventUpdatedInAzure, "Azure application is updated")
 
-		application, err = r.azure().rotate(tx, *application, managedSecrets)
-		if err != nil {
-			return nil, fmt.Errorf("rotating azure credentials: %w", err)
+		appWithActiveCredentialKeyIds := secrets.WithIdsFromUsedSecrets(*application, managedSecrets)
+
+		if tx.instance.ShouldUpdateSecrets() {
+			application, err = r.azure().rotate(tx, appWithActiveCredentialKeyIds)
+			if err != nil {
+				return nil, fmt.Errorf("rotating azure credentials: %w", err)
+			}
+			metrics.IncWithNamespaceLabel(metrics.AzureAppsRotatedCount, tx.instance.Namespace)
+			r.reportEvent(tx, corev1.EventTypeNormal, v1.EventRotatedInAzure, "Azure credentials is rotated")
+		} else {
+			application = &appWithActiveCredentialKeyIds
 		}
-		metrics.IncWithNamespaceLabel(metrics.AzureAppsRotatedCount, tx.instance.Namespace)
-		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventRotatedInAzure, "Azure credentials is rotated")
 	}
 
 	logger.Info("successfully synchronized AzureAdApplication with Azure")
@@ -223,6 +231,7 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.ApplicationR
 	tx.instance.SetClientId(application.ClientId)
 	tx.instance.SetObjectId(application.ObjectId)
 	tx.instance.SetServicePrincipalId(application.ServicePrincipalId)
+	tx.instance.SetSynchronizedSecretName(tx.instance.Spec.SecretName)
 	tx.instance.SetSynchronized()
 
 	if err := tx.instance.UpdateHash(); err != nil {

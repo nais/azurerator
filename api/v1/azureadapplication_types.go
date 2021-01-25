@@ -83,6 +83,8 @@ type AzureAdApplicationStatus struct {
 	ObjectId string `json:"objectId,omitempty"`
 	// ServicePrincipalId is the Azure applications service principal object ID
 	ServicePrincipalId string `json:"servicePrincipalId,omitempty"`
+	// SynchronizationSecretName is the SecretName set in the last successful synchronization
+	SynchronizationSecretName string `json:"synchronizationSecretName,omitempty"`
 }
 
 // AzureAdReplyUrl defines the valid reply URLs for callbacks after OIDC flows for this application

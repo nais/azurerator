@@ -149,6 +149,10 @@ spec:
               description: SynchronizationHash is the hash of the AzureAdApplication
                 object
               type: string
+            synchronizationSecretName:
+              description: SynchronizationSecretName is the SecretName set in the
+                last successful synchronization
+              type: string
             synchronizationState:
               description: SynchronizationState denotes whether the provisioning of
                 the AzureAdApplication has been successfully completed or not

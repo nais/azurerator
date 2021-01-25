@@ -135,6 +135,18 @@ func TestAzureAdApplication_SetSkipAnnotation(t *testing.T) {
 	})
 }
 
+func TestAzureAdApplication_ShouldUpdateSecrets(t *testing.T) {
+	app := minimalApplication()
+
+	t.Run("Minimal Application should not update secrets", func(t *testing.T) {
+		assert.False(t, app.ShouldUpdateSecrets())
+	})
+	t.Run("Application should update secrets when SecretName has changed", func(t *testing.T) {
+		app.Spec.SecretName = "changed"
+		assert.True(t, app.ShouldUpdateSecrets())
+	})
+}
+
 func minimalApplication() *AzureAdApplication {
 	return &AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
@@ -149,12 +161,13 @@ func minimalApplication() *AzureAdApplication {
 			SecretName:                "test",
 		},
 		Status: AzureAdApplicationStatus{
-			PasswordKeyIds:      []string{"test"},
-			CertificateKeyIds:   []string{"test"},
-			ClientId:            "test",
-			ObjectId:            "test",
-			ServicePrincipalId:  "test",
-			SynchronizationHash: expectedHash,
+			PasswordKeyIds:            []string{"test"},
+			CertificateKeyIds:         []string{"test"},
+			ClientId:                  "test",
+			ObjectId:                  "test",
+			ServicePrincipalId:        "test",
+			SynchronizationHash:       expectedHash,
+			SynchronizationSecretName: "test",
 		},
 	}
 }
