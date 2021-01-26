@@ -30,18 +30,17 @@ func (g groups) getOwnersFor(ctx context.Context, groupId string) ([]msgraph.Dir
 func (g groups) process(tx azure.Transaction) error {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
-	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0 {
-		// TODO: assign default group with "all users" and require approle assignment to enforce service-to-service preauthorization
-		return nil
-	}
-
-	if err := g.servicePrincipal().setAppRoleAssignmentRequired(tx); err != nil {
-		return fmt.Errorf("setting requirement for approle assignments: %w", err)
-	}
-
-	groups, err := g.mapToResources(tx)
+	groups, err := g.mapGroupClaimsToResources(tx)
 	if err != nil {
-		return fmt.Errorf("looking up groups: %w", err)
+		return fmt.Errorf("mapping group claims to resources: %w", err)
+	}
+
+	if len(groups) == 0 {
+		groups, err = g.mapAllUserGroupToResources(tx)
+
+		if err != nil {
+			return fmt.Errorf("mapping all-users group to resources: %w", err)
+		}
 	}
 
 	err = g.appRoleAssignments(msgraphbeta.UUID(DefaultGroupRoleId), servicePrincipalId).
@@ -49,6 +48,7 @@ func (g groups) process(tx azure.Transaction) error {
 	if err != nil {
 		return fmt.Errorf("updating app roles for groups: %w", err)
 	}
+
 	return nil
 }
 
@@ -76,8 +76,12 @@ func (g groups) getById(tx azure.Transaction, id azure.ObjectId) (bool, *msgraph
 	return exists, group, nil
 }
 
-func (g groups) mapToResources(tx azure.Transaction) ([]azure.Resource, error) {
+func (g groups) mapGroupClaimsToResources(tx azure.Transaction) ([]azure.Resource, error) {
 	resources := make([]azure.Resource, 0)
+
+	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0 {
+		return resources, nil
+	}
 
 	for _, group := range tx.Instance.Spec.Claims.Groups {
 		exists, groupResult, err := g.getById(tx, group.ID)
@@ -90,14 +94,25 @@ func (g groups) mapToResources(tx azure.Transaction) ([]azure.Resource, error) {
 			continue
 		}
 
-		resources = append(resources, azure.Resource{
-			Name:          *groupResult.DisplayName,
-			ClientId:      "",
-			ObjectId:      *groupResult.ID,
-			PrincipalType: azure.PrincipalTypeGroup,
-		})
+		resources = append(resources, g.mapToResource(*groupResult))
 	}
+
 	return resources, nil
+}
+
+func (g groups) mapAllUserGroupToResources(tx azure.Transaction) ([]azure.Resource, error) {
+	allUsersGroupID := g.config.Features.GroupsAssignment.AllUsersGroupId
+
+	exists, groupResult, err := g.getById(tx, allUsersGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("getting all-users group '%s': %w", allUsersGroupID, err)
+	}
+
+	if !exists {
+		return nil, fmt.Errorf("all-users group '%s' does not exist: %w", allUsersGroupID, err)
+	}
+
+	return []azure.Resource{g.mapToResource(*groupResult)}, nil
 }
 
 func (g groups) toGetRequestWithContext(ctx context.Context, r *msgraph.GroupRequest) (*http.Request, error) {
@@ -131,5 +146,14 @@ func (g groups) decodeJsonResponse(res *http.Response, obj interface{}) (bool, e
 			return false, fmt.Errorf("%s: %s", res.Status, string(b))
 		}
 		return true, errRes
+	}
+}
+
+func (g groups) mapToResource(group msgraph.Group) azure.Resource {
+	return azure.Resource{
+		Name:          *group.DisplayName,
+		ClientId:      "",
+		ObjectId:      *group.ID,
+		PrincipalType: azure.PrincipalTypeGroup,
 	}
 }

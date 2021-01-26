@@ -52,7 +52,8 @@ type ClaimsMappingPolicies struct {
 }
 
 type GroupsAssignment struct {
-	Enabled bool `json:"enabled"`
+	Enabled         bool   `json:"enabled"`
+	AllUsersGroupId string `json:"all-users-group-id"`
 }
 
 type Validations struct {
@@ -75,6 +76,7 @@ const (
 	AzureFeaturesTeamsManagementEnabled            = "azure.features.teams-management.enabled"
 	AzureFeaturesTeamsManagementServicePrincipalId = "azure.features.teams-management.service-principal-id"
 	AzureFeaturesGroupsAssignmentEnabled           = "azure.features.groups-assignment.enabled"
+	AzureFeaturesGroupsAllUsersGroupId             = "azure.features.groups-assignment.all-users-group-id"
 	MetricsAddress                                 = "metrics-address"
 	ClusterName                                    = "cluster-name"
 	DebugEnabled                                   = "debug"
@@ -109,6 +111,7 @@ func init() {
 	flag.String(AzureFeaturesTeamsManagementServicePrincipalId, "", "Service Principal ID for teams management application containing team groups")
 
 	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Feature toggle for assigning explicitly specified groups to applications")
+	flag.String(AzureFeaturesGroupsAllUsersGroupId, "", "Group ID that contains all users in the tenant. Assigned to all application by default unless overridden by user in the custom resource.")
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
 	flag.String(ClusterName, "", "The cluster in which this application should run")
