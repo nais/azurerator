@@ -20,7 +20,6 @@ The following is a short overview of operations performed.
   - [1.6 Credentials](#16-credentials)
   - [1.7 Owner Assignment](#17-owner-assignment)
   - [1.8 Group Assignment](#18-group-assignment)
-  - [1.9 Principal Assignment Requirement](#19-principal-assignment-required)
 - [2 Existing applications](#2-existing-applications)
   - [2.1 Credential Rotation](#21-credential-rotation)
 - [3 Cluster Resources](#3-cluster-resources)
@@ -168,14 +167,12 @@ belonging to the `AzureAdApplication`.
 All groups assigned are emitted through the `groups` claim for tokens issued to the Application. 
 This can for example be used to restrict access to an Application.
 
-### 1.9 Principal Assignment Required
+By enabling the groups assignment feature, the `AppRoleAssignmentRequired` property is also enabled for the Service Principal.
+This denotes whether Azure AD should enforce/require that Azure AD principals are explicitly assigned to the `AzureAdApplication` when using the application in a Web API flow such as the OAuth 2.0 Client Credentials flow.
 
-`Spec.EnforceAuthorization` denotes whether Azure AD should enforce/require that Azure AD principals are explicitly 
-assigned to the `AzureAdApplication` when using the application in a Web API flow such as the OAuth 2.0 Client Credentials flow.
-
-This sets the `AppRoleAssignmentRequired` property for the Service Principal.
-
-Defaults to `false`.
+Additionally, any users that should be able to log in to the application using the OpenID Connect flows must be explicitly assigned to the application through one of the groups
+defined in `Spec.Claims.Groups[]`. The user _must_ be a direct member of the group; assignment does not cascade to nested groups. If `Spec.Claims.Groups[]` is not defined,
+we fall back to assigning a single group that should contain all users that should have access to the application by default.
 
 ## 2 Existing applications
 
