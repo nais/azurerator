@@ -3,8 +3,8 @@ package pods
 import (
 	"context"
 
-	v1 "github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/labels"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

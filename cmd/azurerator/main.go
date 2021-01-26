@@ -22,7 +22,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	naisiov1 "github.com/nais/azureator/api/v1"
+	naisiov1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	// +kubebuilder:scaffold:imports
 )
 

@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/liberator/pkg/crd"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure/fake"
 	"github.com/nais/azureator/pkg/fixtures"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/secrets"
 	"github.com/nais/azureator/pkg/util/test"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -46,6 +46,7 @@ var azureClient = fake.NewFakeAzureClient()
 func TestMain(m *testing.M) {
 	testEnv, err := setup()
 	if err != nil {
+		fmt.Printf("%s", err)
 		os.Exit(1)
 	}
 	code := m.Run()
@@ -316,8 +317,9 @@ func setup() (*envtest.Environment, error) {
 	ctrl.SetLogger(logger)
 	log.SetLevel(log.DebugLevel)
 
+	crdPath := crd.YamlDirectory()
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd")},
+		CRDDirectoryPaths: []string{crdPath},
 	}
 
 	cfg, err := testEnv.Start()

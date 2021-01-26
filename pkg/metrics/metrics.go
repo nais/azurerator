@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/namespaces"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"

@@ -6,9 +6,9 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"testing"
 
-	v1 "github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure/fake"
 	"github.com/nais/azureator/pkg/labels"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/square/go-jose.v2"
 	corev1 "k8s.io/api/core/v1"

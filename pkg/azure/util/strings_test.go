@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/azure"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/stretchr/testify/assert"
 )
 

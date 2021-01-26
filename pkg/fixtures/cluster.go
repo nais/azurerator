@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/labels"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

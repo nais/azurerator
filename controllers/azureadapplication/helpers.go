@@ -2,11 +2,11 @@ package azureadapplication
 
 import (
 	"fmt"
-	v1 "github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/namespaces"
 	"github.com/nais/azureator/pkg/secrets"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -77,7 +77,7 @@ func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
 		if ns.Name == tx.instance.Namespace {
 			msg := fmt.Sprintf("Resource should not exist in shared namespace '%s'. Skipping...", tx.instance.Namespace)
 			logger.Debug(msg)
-			tx.instance.SetSkipAnnotation()
+			annotations.SetAnnotation(tx.instance, annotations.SkipKey, annotations.SkipValue)
 			r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventNotInTeamNamespace, msg)
 			r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventSkipped, msg)
 			return true, nil

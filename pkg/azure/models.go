@@ -3,8 +3,8 @@ package azure
 import (
 	"context"
 
-	"github.com/nais/azureator/api/v1"
 	"github.com/nais/azureator/pkg/util/crypto"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"

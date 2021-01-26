@@ -1,6 +1,6 @@
 package claimsmappingpolicy
 
-import v1 "github.com/nais/azureator/api/v1"
+import v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 
 type ValidPolicies struct {
 	Policies []ValidPolicy

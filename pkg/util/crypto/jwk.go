@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 
-	"github.com/nais/azureator/api/v1"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"gopkg.in/square/go-jose.v2"
 )
 

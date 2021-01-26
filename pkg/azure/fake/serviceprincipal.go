@@ -2,7 +2,7 @@ package fake
 
 import (
 	"github.com/google/uuid"
-	"github.com/nais/azureator/api/v1"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/ptr"
 )

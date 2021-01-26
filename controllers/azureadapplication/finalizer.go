@@ -2,7 +2,7 @@ package azureadapplication
 
 import (
 	"fmt"
-	v1 "github.com/nais/azureator/api/v1"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/nais/azureator/pkg/metrics"
