@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util/claimsmappingpolicy"
+	"github.com/nais/azureator/pkg/util/azurerator"
 	"net/http"
 )
 
@@ -91,7 +92,7 @@ func (sp *servicePrincipalPolicies) assign(tx azure.Transaction) error {
 func (sp *servicePrincipalPolicies) revoke(tx azure.Transaction) error {
 	for _, assignedPolicy := range sp.assignedPolicies.Policies {
 		validPolicy, found := sp.validPolicies.HasPolicyByID(*assignedPolicy.ID)
-		if !found || tx.Instance.Spec.Claims.HasExtraPolicy(validPolicy.Name) {
+		if !found || azurerator.HasExtraPolicy(tx.Instance.Spec.Claims, validPolicy.Name) {
 			continue
 		}
 

@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/util/azurerator"
+	finalizer2 "github.com/nais/liberator/pkg/finalizer"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"time"
@@ -80,11 +83,11 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if tx.instance.IsBeingDeleted() {
+	if finalizer2.IsBeingDeleted(tx.instance) {
 		return r.finalizer().process(*tx)
 	}
 
-	if !tx.instance.HasFinalizer(FinalizerName) {
+	if !finalizer2.HasFinalizer(tx.instance, FinalizerName) {
 		return r.finalizer().register(*tx)
 	}
 
@@ -101,7 +104,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if upToDate, err := tx.instance.IsUpToDate(); upToDate {
+	if upToDate, err := azurerator.IsUpToDate(tx.instance); upToDate {
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -148,7 +151,7 @@ func (r *Reconciler) process(tx transaction) (*azure.ApplicationResult, error) {
 		return nil, err
 	}
 
-	if tx.instance.ShouldUpdateSecrets() {
+	if azurerator.ShouldUpdateSecrets(tx.instance) {
 		if err := r.createOrUpdateSecrets(tx, *application); err != nil {
 			return nil, err
 		}
@@ -208,7 +211,7 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secre
 
 		appWithActiveCredentialKeyIds := secrets.WithIdsFromUsedSecrets(*application, managedSecrets)
 
-		if tx.instance.ShouldUpdateSecrets() {
+		if azurerator.ShouldUpdateSecrets(tx.instance) {
 			application, err = r.azure().rotate(tx, appWithActiveCredentialKeyIds)
 			if err != nil {
 				return nil, fmt.Errorf("rotating azure credentials: %w", err)
@@ -228,15 +231,22 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.ApplicationR
 	logger.Debug("updating status for AzureAdApplication")
 	tx.instance.Status.CertificateKeyIds = application.Certificate.KeyId.AllInUse
 	tx.instance.Status.PasswordKeyIds = application.Password.KeyId.AllInUse
-	tx.instance.SetClientId(application.ClientId)
-	tx.instance.SetObjectId(application.ObjectId)
-	tx.instance.SetServicePrincipalId(application.ServicePrincipalId)
-	tx.instance.SetSynchronizedSecretName(tx.instance.Spec.SecretName)
-	tx.instance.SetSynchronized()
 
-	if err := tx.instance.UpdateHash(); err != nil {
-		return err
+	tx.instance.Status.ClientId = application.ClientId
+	tx.instance.Status.ObjectId = application.ObjectId
+	tx.instance.Status.ServicePrincipalId = application.ServicePrincipalId
+
+	tx.instance.Status.SynchronizationSecretName = tx.instance.Spec.SecretName
+	tx.instance.Status.SynchronizationState = v1.EventSynchronized
+	now := metav1.Now()
+	tx.instance.Status.SynchronizationTime = &now
+
+	newHash, err := tx.instance.Hash()
+	if err != nil {
+		return fmt.Errorf("calculating application hash: %w", err)
 	}
+	tx.instance.Status.SynchronizationHash = newHash
+
 	if err := r.Update(tx.ctx, tx.instance); err != nil {
 		return fmt.Errorf("updating status fields: %w", err)
 	}

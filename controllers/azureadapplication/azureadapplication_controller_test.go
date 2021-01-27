@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/util/azurerator"
 	"github.com/nais/liberator/pkg/crd"
+	finalizer2 "github.com/nais/liberator/pkg/finalizer"
 	"os"
 	"testing"
 	"time"
@@ -120,7 +122,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 		Namespace: sharedNamespace,
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication in shared namespace should not be processed", key)
-	assert.True(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should contain a finalizer")
+	assert.True(t, finalizer2.HasFinalizer(instance, FinalizerName), "AzureAdApplication should contain a finalizer")
 	assert.Equal(t, v1.EventSkipped, instance.Status.SynchronizationState, "AzureAdApplication should be skipped")
 	assertAnnotationExists(t, instance, annotations.SkipKey, annotations.SkipValue)
 }
@@ -145,7 +147,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication with tenant should not be processed", key)
 	assert.Empty(t, instance.Status.SynchronizationState, "AzureAdApplication should not be processed")
-	assert.False(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should not contain a finalizer")
+	assert.False(t, finalizer2.HasFinalizer(instance, FinalizerName), "AzureAdApplication should not contain a finalizer")
 }
 
 func TestReconciler_UpdateAzureAdApplication(t *testing.T) {
@@ -206,12 +208,12 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1.Azu
 		assert.Eventually(t, func() bool {
 			err := cli.Get(context.Background(), key, instance)
 			assert.NoError(t, err)
-			b, err := instance.IsUpToDate()
+			b, err := azurerator.IsUpToDate(instance)
 			assert.NoError(t, err)
 			return b
 		}, timeout, interval, "AzureAdApplication should be synchronized")
 
-		assert.True(t, instance.HasFinalizer(FinalizerName), "AzureAdApplication should contain a finalizer")
+		assert.True(t, finalizer2.HasFinalizer(instance, FinalizerName), "AzureAdApplication should contain a finalizer2")
 
 		assert.Empty(t, instance.Annotations[annotations.SkipKey], "AzureAdApplication should not contain skip annotation")
 

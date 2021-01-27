@@ -63,14 +63,14 @@ func (a azureReconciler) exists(tx transaction) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("getting azure application: %w", err)
 		}
-		tx.instance.SetClientId(*application.AppID)
-		tx.instance.SetObjectId(*application.ID)
+		tx.instance.Status.ClientId = *application.AppID
+		tx.instance.Status.ObjectId = *application.ID
 
 		sp, err := a.AzureClient.GetServicePrincipal(tx.toAzureTx())
 		if err != nil {
 			return false, fmt.Errorf("getting service principal for application: %w", err)
 		}
-		tx.instance.SetServicePrincipalId(*sp.ID)
+		tx.instance.Status.ServicePrincipalId = *sp.ID
 	}
 
 	return exists, nil

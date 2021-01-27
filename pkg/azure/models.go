@@ -30,15 +30,15 @@ type Transaction struct {
 
 func (t Transaction) UpdateWithApplicationIDs(application msgraph.Application) Transaction {
 	newInstance := t.Instance
-	newInstance.SetClientId(*application.AppID)
-	newInstance.SetObjectId(*application.ID)
+	newInstance.Status.ClientId = *application.AppID
+	newInstance.Status.ObjectId = *application.ID
 	t.Instance = newInstance
 	return t
 }
 
 func (t Transaction) UpdateWithServicePrincipalID(servicePrincipal msgraphbeta.ServicePrincipal) Transaction {
 	newInstance := t.Instance
-	newInstance.SetServicePrincipalId(*servicePrincipal.ID)
+	newInstance.Status.ServicePrincipalId = *servicePrincipal.ID
 	t.Instance = newInstance
 	return t
 }
