@@ -84,7 +84,10 @@ func (a application) update(tx azure.Transaction) error {
 		IdentifierUriList(identifierUris).
 		AppRoles(appRoles)
 
-	if tx.Instance.Spec.Claims != nil && len(tx.Instance.Spec.Claims.Groups) > 0 {
+	groupClaimsIsDefined := tx.Instance.Spec.Claims != nil && len(tx.Instance.Spec.Claims.Groups) > 0
+
+	// todo: remove 'groupClaimsIsDefined' predicate after grace period
+	if a.config.Features.GroupsAssignment.Enabled && groupClaimsIsDefined {
 		app.GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup)
 	}
 
