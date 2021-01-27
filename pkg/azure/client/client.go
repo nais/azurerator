@@ -233,10 +233,6 @@ func (c client) process(tx azure.Transaction) ([]azure.Resource, error) {
 		if err := c.servicePrincipal().setAppRoleAssignmentRequired(tx); err != nil {
 			return nil, fmt.Errorf("enabling requirement for approle assignments: %w", err)
 		}
-	} else {
-		if err := c.servicePrincipal().setAppRoleAssignmentNotRequired(tx); err != nil {
-			return nil, fmt.Errorf("enabling requirement for approle assignments: %w", err)
-		}
 	}
 
 	return preAuthApps, nil
