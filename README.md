@@ -13,7 +13,7 @@ See <https://doc.nais.io/security/auth/azure-ad>
 
 The operator introduces a new Kind `AzureAdApplication` (shortname `azureapp`), and acts upon changes to resources of this kind.
 
-See the spec in [liberator](https://github.com/nais/liberator/config/crd/bases/nais.io_azureadapplications.yaml) for details.
+See the spec in [liberator](https://github.com/nais/liberator/blob/main/config/crd/bases/nais.io_azureadapplications.yaml) for details.
 
 An example resource is available in [config/samples/azureadapplication.yaml](./config/samples/azureadapplication.yaml).
 
@@ -45,7 +45,7 @@ azure:
   auth:
     client-id: ""
     client-secret: ""
-  tenant
+  tenant:
     id: "726d6769-7efc-4578-990a-f483ec2ec2d3"
     name: "local.test"
   permissiongrant-resource-id: ""
