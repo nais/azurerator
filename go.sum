@@ -253,6 +253,8 @@ github.com/nais/liberator v0.0.0-20210126150625-aac465c98541 h1:fDNjj+4AoMGGblLI
 github.com/nais/liberator v0.0.0-20210126150625-aac465c98541/go.mod h1:uzvfQMpRYghcBoSbUSvcI/coCFZ3pRkccrJl2xAWtfA=
 github.com/nais/liberator v0.0.0-20210127092653-062f2aadbef2 h1:7sg+LlKlK+vJ4bywhmBv76zacycyt/Q7hxkaiGypdDs=
 github.com/nais/liberator v0.0.0-20210127092653-062f2aadbef2/go.mod h1:uzvfQMpRYghcBoSbUSvcI/coCFZ3pRkccrJl2xAWtfA=
+github.com/nais/liberator v0.0.0-20210203090557-d2dea20e63e4 h1:TA5uo15Q4n1rKcxCxpD7wD21y7r4Sd/A+FhZ/QX+Trs=
+github.com/nais/liberator v0.0.0-20210203090557-d2dea20e63e4/go.mod h1:h1iiqSOe4iznytPgo4kVKPao9UHcgKYLMPxsXJhw0VQ=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/onsi/ginkgo v0.0.0-20170829012221-11459a886d9c/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=

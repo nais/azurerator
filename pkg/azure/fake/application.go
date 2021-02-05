@@ -59,7 +59,7 @@ func InternalAzureApp(instance v1.AzureAdApplication) azure.ApplicationResult {
 	}
 }
 
-func mapToInternalPreAuthApps(apps []v1.AzureAdPreAuthorizedApplication) []azure.Resource {
+func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) []azure.Resource {
 	as := make([]azure.Resource, 0)
 	for _, app := range apps {
 		as = append(as, mapToInternalPreAuthApp(app))
@@ -67,7 +67,7 @@ func mapToInternalPreAuthApps(apps []v1.AzureAdPreAuthorizedApplication) []azure
 	return as
 }
 
-func mapToInternalPreAuthApp(app v1.AzureAdPreAuthorizedApplication) azure.Resource {
+func mapToInternalPreAuthApp(app v1.AccessPolicyRule) azure.Resource {
 	clientId := uuid.New().String()
 	objectId := uuid.New().String()
 	name := getOrGenerate(app.GetUniqueName())

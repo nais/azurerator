@@ -23,7 +23,7 @@ func TestCreateSecretSpec(t *testing.T) {
 		},
 		Spec: v1.AzureAdApplicationSpec{
 			SecretName: "test-secret",
-			PreAuthorizedApplications: []v1.AzureAdPreAuthorizedApplication{
+			PreAuthorizedApplications: []v1.AccessPolicyRule{
 				{
 					Application: "test-app-2",
 					Namespace:   "test",

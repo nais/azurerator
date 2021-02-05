@@ -69,7 +69,7 @@ func (p preAuthApps) patchApplication(tx azure.Transaction) ([]msgraph.PreAuthor
 	return preAuthApps, nil
 }
 
-func (p preAuthApps) exists(ctx context.Context, app v1.AzureAdPreAuthorizedApplication) (bool, error) {
+func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyRule) (bool, error) {
 	return p.application().existsByFilter(ctx, util.FilterByName(app.GetUniqueName()))
 }
 
@@ -125,7 +125,7 @@ func (p preAuthApps) mapToResources(ctx context.Context, preAuthApps []msgraph.P
 	return resources, nil
 }
 
-func (p preAuthApps) getClientIdFor(ctx context.Context, app v1.AzureAdPreAuthorizedApplication) (azure.ClientId, error) {
+func (p preAuthApps) getClientIdFor(ctx context.Context, app v1.AccessPolicyRule) (azure.ClientId, error) {
 	azureApp, err := p.application().getByName(ctx, app.GetUniqueName())
 	if err != nil {
 		return "", fmt.Errorf("failed to get client ID for preauthorized app: %w", err)

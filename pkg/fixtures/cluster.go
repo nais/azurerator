@@ -68,7 +68,7 @@ func (c ClusterFixtures) WithAzureApp() ClusterFixtures {
 				Url: "http://localhost:3000/auth/callback",
 			},
 		},
-		PreAuthorizedApplications: []v1.AzureAdPreAuthorizedApplication{
+		PreAuthorizedApplications: []v1.AccessPolicyRule{
 			{
 				Application: "some-other-app",
 				Namespace:   key.Namespace,
