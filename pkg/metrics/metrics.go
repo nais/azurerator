@@ -2,10 +2,10 @@ package metrics
 
 import (
 	"context"
+	"github.com/nais/liberator/pkg/kubernetes"
 	"time"
 
 	"github.com/nais/azureator/pkg/labels"
-	"github.com/nais/azureator/pkg/namespaces"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -120,7 +120,7 @@ func New(reader client.Reader) Metrics {
 }
 
 func (m metrics) InitWithNamespaceLabels() {
-	ns, err := namespaces.GetAll(context.Background(), m.reader)
+	ns, err := kubernetes.ListNamespaces(context.Background(), m.reader)
 	if err != nil {
 		log.Errorf("failed to list namespaces: %v", err)
 	}

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/namespaces"
 	"github.com/nais/azureator/pkg/secrets"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/nais/liberator/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -70,7 +70,7 @@ func (r *Reconciler) shouldSkipForTenant(tx *transaction) bool {
 }
 
 func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
-	sharedNs, err := namespaces.GetShared(tx.ctx, r.Reader)
+	sharedNs, err := kubernetes.ListSharedNamespaces(tx.ctx, r.Reader)
 	if err != nil {
 		return false, err
 	}

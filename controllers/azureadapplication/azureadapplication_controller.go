@@ -6,6 +6,7 @@ import (
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/util/azurerator"
 	finalizer2 "github.com/nais/liberator/pkg/finalizer"
+	"github.com/nais/liberator/pkg/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -190,7 +191,7 @@ func (r *Reconciler) complete(tx transaction, application azure.ApplicationResul
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets secrets.Lists) (*azure.ApplicationResult, error) {
+func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets kubernetes.SecretLists) (*azure.ApplicationResult, error) {
 	var application *azure.ApplicationResult
 
 	exists, err := r.azure().exists(tx)

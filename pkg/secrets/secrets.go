@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/nais/liberator/pkg/kubernetes"
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/labels"
-	"github.com/nais/azureator/pkg/pods"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -72,9 +72,9 @@ func CreateOrUpdate(ctx context.Context, instance *v1.AzureAdApplication, applic
 	return res, nil
 }
 
-func GetManaged(ctx context.Context, instance *v1.AzureAdApplication, reader client.Reader) (*Lists, error) {
+func GetManaged(ctx context.Context, instance *v1.AzureAdApplication, reader client.Reader) (*kubernetes.SecretLists, error) {
 	// fetch all application pods for this app
-	podList, err := pods.GetForApplication(ctx, instance, reader)
+	podList, err := kubernetes.ListPodsForApplication(ctx, reader, instance.GetName(), instance.GetNamespace())
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func GetManaged(ctx context.Context, instance *v1.AzureAdApplication, reader cli
 	}
 
 	// find intersect between secrets in use by application pods and all managed secrets
-	podSecrets := podSecretLists(allSecrets, *podList)
+	podSecrets := kubernetes.ListUsedAndUnusedSecretsForPods(allSecrets, podList)
 	return &podSecrets, nil
 }
 

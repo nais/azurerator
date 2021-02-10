@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/nais/liberator/pkg/kubernetes"
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
@@ -105,7 +106,7 @@ func (a application) patch(ctx context.Context, id azure.ObjectId, application i
 }
 
 func (a application) exists(tx azure.Transaction) (bool, error) {
-	name := tx.Instance.GetUniqueName()
+	name := kubernetes.UniformResourceName(&tx.Instance)
 	return a.existsByFilter(tx.Ctx, util.FilterByName(name))
 }
 
@@ -145,7 +146,7 @@ func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msg
 
 func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Application {
 	return &msgraph.Application{
-		DisplayName:    ptr.String(resource.GetUniqueName()),
+		DisplayName:    ptr.String(kubernetes.UniformResourceName(&resource)),
 		SignInAudience: ptr.String("AzureADMyOrg"),
 		Tags: []string{
 			IaCAppTag,

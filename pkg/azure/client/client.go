@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/liberator/pkg/kubernetes"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/msauth"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
@@ -108,7 +109,7 @@ func (c client) Delete(tx azure.Transaction) error {
 	if exists {
 		return c.application().delete(tx)
 	}
-	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", tx.Instance.GetUniqueName(), tx.Instance.GetClientId(), tx.Instance.GetObjectId())
+	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", kubernetes.UniformResourceName(&tx.Instance), tx.Instance.GetClientId(), tx.Instance.GetObjectId())
 }
 
 // Exists returns an indication of whether the application exists in AAD or not
@@ -122,7 +123,7 @@ func (c client) Exists(tx azure.Transaction) (bool, error) {
 
 // Get returns a Graph API Application entity, which represents an Application in AAD
 func (c client) Get(tx azure.Transaction) (msgraph.Application, error) {
-	return c.application().getByName(tx.Ctx, tx.Instance.GetUniqueName())
+	return c.application().getByName(tx.Ctx, kubernetes.UniformResourceName(&tx.Instance))
 }
 
 // GetServicePrincipal returns the application's associated Graph ServicePrincipal entity, or registers and returns one if none exist for the application.

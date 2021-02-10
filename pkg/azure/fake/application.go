@@ -5,6 +5,7 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/util/crypto"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
@@ -17,7 +18,7 @@ func ExternalAzureApp(instance v1.AzureAdApplication) msgraph.Application {
 		DirectoryObject: msgraph.DirectoryObject{
 			Entity: msgraph.Entity{ID: ptr.String(objectId)},
 		},
-		DisplayName: ptr.String(instance.GetUniqueName()),
+		DisplayName: ptr.String(kubernetes.UniformResourceName(&instance)),
 		AppID:       ptr.String(clientId),
 	}
 }
