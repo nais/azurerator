@@ -23,7 +23,7 @@ An example resource is available in [config/samples/azureadapplication.yaml](./c
 
 See [lifecycle](./docs/lifecycle.md) for details.
 
-[overview]: ./docs/sequence.png "Sequence diagram"
+[overview]: ./docs/sequence.svg "Sequence diagram"
 
 ## Development
 
@@ -56,6 +56,9 @@ azure:
     teams-management:
       enabled: false
       service-principal-id: ""
+    groups-assignment:
+      enabled: false
+      all-users-group-id: ""
 validations:
   tenant:
     required: false
