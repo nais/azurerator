@@ -109,7 +109,6 @@ func (a appRoleAssignments) revokeFor(tx azure.Transaction, revoked []msgraphbet
 			return fmt.Errorf("deleting AppRole assignment for %s '%s' (%s) from '%s': %w", principalType, *r.PrincipalDisplayName, *r.PrincipalID, a.targetId, err)
 		}
 		tx.Log.WithFields(logFields).Infof("successfully deleted AppRole assignment for %s '%s'", principalType, *r.PrincipalDisplayName)
-		return nil
 	}
 	return nil
 }
