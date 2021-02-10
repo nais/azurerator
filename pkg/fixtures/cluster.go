@@ -81,6 +81,9 @@ func (c ClusterFixtures) WithAzureApp() ClusterFixtures {
 			{
 				Application: "some-other-app-in-same-namespace-and-cluster",
 			},
+			{
+				Application: "some-other-app-in-same-namespace-and-cluster",
+			},
 		},
 		LogoutUrl:  "",
 		SecretName: c.SecretName,
