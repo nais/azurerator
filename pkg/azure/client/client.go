@@ -231,9 +231,11 @@ func (c client) process(tx azure.Transaction) ([]azure.Resource, error) {
 			return nil, fmt.Errorf("processing groups to service principal: %w", err)
 		}
 
+		/* todo: set requirement after grace period
 		if err := c.servicePrincipal().setAppRoleAssignmentRequired(tx); err != nil {
 			return nil, fmt.Errorf("enabling requirement for approle assignments: %w", err)
 		}
+		*/
 	}
 
 	return preAuthApps, nil
