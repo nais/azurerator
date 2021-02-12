@@ -8,6 +8,7 @@ import (
 	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func ExternalAzureApp(instance v1.AzureAdApplication) msgraph.Application {
@@ -71,7 +72,11 @@ func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) []azure.Resource {
 func mapToInternalPreAuthApp(app v1.AccessPolicyRule) azure.Resource {
 	clientId := uuid.New().String()
 	objectId := uuid.New().String()
-	name := getOrGenerate(app.GetUniqueName())
+	name := getOrGenerate(kubernetes.UniformResourceName(&metav1.ObjectMeta{
+		Name:        app.Application,
+		Namespace:   app.Namespace,
+		ClusterName: app.Cluster,
+	}))
 	return azure.Resource{
 		Name:          name,
 		ClientId:      clientId,

@@ -3,7 +3,9 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/nais/liberator/pkg/kubernetes"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
@@ -70,19 +72,28 @@ func (p preAuthApps) patchApplication(tx azure.Transaction) ([]msgraph.PreAuthor
 }
 
 func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyRule) (bool, error) {
-	return p.application().existsByFilter(ctx, util.FilterByName(app.GetUniqueName()))
+	return p.application().existsByFilter(ctx, util.FilterByName(p.getUniqueName(app)))
 }
 
 func (p preAuthApps) toGraphRequest(tx azure.Transaction) ([]msgraph.PreAuthorizedApplication, error) {
 	apps := make([]msgraph.PreAuthorizedApplication, 0)
 	for _, app := range tx.Instance.Spec.PreAuthorizedApplications {
+
+		if len(app.Cluster) == 0 {
+			app.Cluster = tx.Instance.GetClusterName()
+		}
+
+		if len(app.Namespace) == 0 {
+			app.Namespace = tx.Instance.GetNamespace()
+		}
+
 		exists, err := p.exists(tx.Ctx, app)
 		if err != nil {
-			return nil, fmt.Errorf("looking up existence of PreAuthorizedApp '%s': %w", app.GetUniqueName(), err)
+			return nil, fmt.Errorf("looking up existence of PreAuthorizedApp '%s': %w", p.getUniqueName(app), err)
 		}
 
 		if !exists {
-			tx.Log.Debugf("skipping PreAuthorizedApp assignment: '%s' does not exist", app.GetUniqueName())
+			tx.Log.Debugf("skipping PreAuthorizedApp assignment: '%s' does not exist", p.getUniqueName(app))
 			continue
 		}
 
@@ -126,9 +137,17 @@ func (p preAuthApps) mapToResources(ctx context.Context, preAuthApps []msgraph.P
 }
 
 func (p preAuthApps) getClientIdFor(ctx context.Context, app v1.AccessPolicyRule) (azure.ClientId, error) {
-	azureApp, err := p.application().getByName(ctx, app.GetUniqueName())
+	azureApp, err := p.application().getByName(ctx, p.getUniqueName(app))
 	if err != nil {
 		return "", fmt.Errorf("failed to get client ID for preauthorized app: %w", err)
 	}
 	return *azureApp.AppID, nil
+}
+
+func (p preAuthApps) getUniqueName(in v1.AccessPolicyRule) string {
+	return kubernetes.UniformResourceName(&metav1.ObjectMeta{
+		Name:        in.Application,
+		Namespace:   in.Namespace,
+		ClusterName: in.Cluster,
+	})
 }
