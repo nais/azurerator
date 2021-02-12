@@ -88,7 +88,6 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 
 		t.Run(c.name, func(t *testing.T) {
 			instance := assertApplicationExists(t, "New AzureAdApplication should exist", c.appName)
-			assertAllPreAuthAppsAreValid(t, instance)
 
 			assertSecretExists(t, secretName, instance)
 
@@ -179,8 +178,6 @@ func TestReconciler_UpdateAzureAdApplication(t *testing.T) {
 
 	// old secret referenced by pod should still exist
 	assertSecretExists(t, previousSecretName, instance)
-
-	assertAllPreAuthAppsAreValid(t, instance)
 }
 
 func TestReconciler_DeleteAzureAdApplication(t *testing.T) {
@@ -284,13 +281,6 @@ func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplicati
 	})
 }
 
-func assertAllPreAuthAppsAreValid(t *testing.T, instance *v1.AzureAdApplication) {
-	for _, preAuthApp := range instance.Spec.PreAuthorizedApplications {
-		assert.NotEmpty(t, preAuthApp.Namespace)
-		assert.NotEmpty(t, preAuthApp.Cluster)
-	}
-}
-
 func resourceExists(key client.ObjectKey, instance runtime.Object) func() bool {
 	return func() bool {
 		err := cli.Get(context.Background(), key, instance)
@@ -359,8 +349,6 @@ func setup() (*envtest.Environment, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	azureratorCfg.ClusterName = "test-cluster"
 
 	err = (&Reconciler{
 		Client:      cli,

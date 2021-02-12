@@ -138,7 +138,15 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 	instance.SetClusterName(r.Config.ClusterName)
 	instance.Status.CorrelationId = correlationId
 
-	ensurePreAuthAppsAreValid(req, instance, r.Config.ClusterName)
+	for _, preAuthApp := range instance.Spec.PreAuthorizedApplications {
+		if len(preAuthApp.Namespace) == 0 {
+			preAuthApp.Namespace = req.Namespace
+		}
+
+		if len(preAuthApp.Cluster) == 0 {
+			preAuthApp.Cluster = r.Config.ClusterName
+		}
+	}
 
 	logger.Info("processing AzureAdApplication...")
 

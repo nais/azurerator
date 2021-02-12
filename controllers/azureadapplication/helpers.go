@@ -8,7 +8,6 @@ import (
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func (r *Reconciler) shouldSkip(tx *transaction) bool {
@@ -90,22 +89,4 @@ func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
 func hasSkipFlag(tx *transaction) bool {
 	_, found := annotations.HasAnnotation(tx.instance, annotations.SkipKey)
 	return found
-}
-
-func ensurePreAuthAppsAreValid(req ctrl.Request, instance *v1.AzureAdApplication, clusterName string) {
-	preAuthApps := make([]v1.AccessPolicyRule, 0)
-
-	for _, preAuthApp := range instance.Spec.PreAuthorizedApplications {
-		if len(preAuthApp.Namespace) == 0 {
-			preAuthApp.Namespace = req.Namespace
-		}
-
-		if len(preAuthApp.Cluster) == 0 {
-			preAuthApp.Cluster = clusterName
-		}
-
-		preAuthApps = append(preAuthApps, preAuthApp)
-	}
-
-	instance.Spec.PreAuthorizedApplications = preAuthApps
 }
