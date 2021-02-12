@@ -115,3 +115,56 @@ func ensurePreAuthAppsAreValid(req ctrl.Request, instance *v1.AzureAdApplication
 
 	instance.Spec.PreAuthorizedApplications = preAuthApps
 }
+
+func ensureReplyUrlsAreValid(instance *v1.AzureAdApplication) {
+	seen := map[string]bool{}
+
+	replyUrls := make([]v1.AzureAdReplyUrl, 0)
+
+	for _, replyUrl := range instance.Spec.ReplyUrls {
+		url := replyUrl.Url
+		if _, found := seen[url]; !found {
+			seen[url] = true
+			replyUrls = append(replyUrls, replyUrl)
+		}
+	}
+
+	instance.Spec.ReplyUrls = replyUrls
+}
+
+func ensureGroupClaimsAreValid(instance *v1.AzureAdApplication) {
+	if instance.Spec.Claims == nil || len(instance.Spec.Claims.Groups) == 0 {
+		return
+	}
+
+	seen := map[string]bool{}
+	groups := make([]v1.AzureAdGroup, 0)
+
+	for _, group := range instance.Spec.Claims.Groups {
+		groupId := group.ID
+		if _, found := seen[groupId]; !found {
+			seen[groupId] = true
+			groups = append(groups, group)
+		}
+	}
+
+	instance.Spec.Claims.Groups = groups
+}
+
+func ensureExtraClaimsAreValid(instance *v1.AzureAdApplication) {
+	if instance.Spec.Claims == nil || len(instance.Spec.Claims.Extra) == 0 {
+		return
+	}
+
+	seen := map[v1.AzureAdExtraClaim]bool{}
+	claims := make([]v1.AzureAdExtraClaim, 0)
+
+	for _, claim := range instance.Spec.Claims.Extra {
+		if _, found := seen[claim]; !found {
+			seen[claim] = true
+			claims = append(claims, claim)
+		}
+	}
+
+	instance.Spec.Claims.Extra = claims
+}

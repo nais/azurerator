@@ -139,6 +139,9 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 	instance.Status.CorrelationId = correlationId
 
 	ensurePreAuthAppsAreValid(req, instance, r.Config.ClusterName)
+	ensureReplyUrlsAreValid(instance)
+	ensureExtraClaimsAreValid(instance)
+	ensureGroupClaimsAreValid(instance)
 
 	logger.Info("processing AzureAdApplication...")
 
