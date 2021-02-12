@@ -289,7 +289,6 @@ func assertAllPreAuthAppsAreValid(t *testing.T, instance *v1.AzureAdApplication)
 		assert.NotEmpty(t, preAuthApp.Namespace)
 		assert.NotEmpty(t, preAuthApp.Cluster)
 	}
-	assert.Len(t, instance.Spec.PreAuthorizedApplications, 3)
 }
 
 func resourceExists(key client.ObjectKey, instance runtime.Object) func() bool {

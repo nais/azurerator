@@ -93,8 +93,6 @@ func hasSkipFlag(tx *transaction) bool {
 }
 
 func ensurePreAuthAppsAreValid(req ctrl.Request, instance *v1.AzureAdApplication, clusterName string) {
-	seen := map[string]v1.AccessPolicyRule{}
-
 	preAuthApps := make([]v1.AccessPolicyRule, 0)
 
 	for _, preAuthApp := range instance.Spec.PreAuthorizedApplications {
@@ -106,11 +104,7 @@ func ensurePreAuthAppsAreValid(req ctrl.Request, instance *v1.AzureAdApplication
 			preAuthApp.Cluster = clusterName
 		}
 
-		name := preAuthApp.GetUniqueName()
-		if _, found := seen[name]; !found {
-			seen[name] = preAuthApp
-			preAuthApps = append(preAuthApps, preAuthApp)
-		}
+		preAuthApps = append(preAuthApps, preAuthApp)
 	}
 
 	instance.Spec.PreAuthorizedApplications = preAuthApps
