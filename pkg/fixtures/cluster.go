@@ -67,9 +67,6 @@ func (c ClusterFixtures) WithAzureApp() ClusterFixtures {
 			{
 				Url: "http://localhost:3000/auth/callback",
 			},
-			{
-				Url: "http://localhost:3000/auth/callback",
-			},
 		},
 		PreAuthorizedApplications: []v1.AccessPolicyRule{
 			{
@@ -86,20 +83,6 @@ func (c ClusterFixtures) WithAzureApp() ClusterFixtures {
 			},
 			{
 				Application: "some-other-app-in-same-namespace-and-cluster",
-			},
-		},
-		Claims: &v1.AzureAdClaims{
-			Extra: []v1.AzureAdExtraClaim{
-				"NAVident",
-				"NAVident",
-			},
-			Groups: []v1.AzureAdGroup{
-				{
-					ID: "00000000-0000-0000-0000-000000000000",
-				},
-				{
-					ID: "00000000-0000-0000-0000-000000000000",
-				},
 			},
 		},
 		LogoutUrl:  "",

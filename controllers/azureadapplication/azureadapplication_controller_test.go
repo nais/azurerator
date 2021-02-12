@@ -90,15 +90,6 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 			instance := assertApplicationExists(t, "New AzureAdApplication should exist", c.appName)
 			assertAllPreAuthAppsAreValid(t, instance)
 
-			assert.Len(t, instance.Spec.ReplyUrls, 1)
-			assert.Equal(t, "http://localhost:3000/auth/callback", instance.Spec.ReplyUrls[0].Url)
-
-			assert.Len(t, instance.Spec.Claims.Extra, 1)
-			assert.Equal(t, v1.AzureAdExtraClaim("NAVident"), instance.Spec.Claims.Extra[0])
-
-			assert.Len(t, instance.Spec.Claims.Groups, 1)
-			assert.Equal(t, "00000000-0000-0000-0000-000000000000", instance.Spec.Claims.Groups[0].ID)
-
 			assertSecretExists(t, secretName, instance)
 
 			t.Run("Unused Secret should not exist", func(t *testing.T) {
@@ -169,7 +160,6 @@ func TestReconciler_UpdateAzureAdApplication(t *testing.T) {
 	// update with new secret name
 	newSecretName := fmt.Sprintf("%s-%s", instance.GetName(), newSecret)
 	instance.Spec.SecretName = newSecretName
-	instance.Spec.Claims = nil
 	err := cli.Update(context.Background(), instance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
@@ -191,11 +181,6 @@ func TestReconciler_UpdateAzureAdApplication(t *testing.T) {
 	assertSecretExists(t, previousSecretName, instance)
 
 	assertAllPreAuthAppsAreValid(t, instance)
-
-	assert.Len(t, instance.Spec.ReplyUrls, 1)
-	assert.Equal(t, instance.Spec.ReplyUrls[0].Url, "http://localhost:3000/auth/callback")
-
-	assert.Nil(t, instance.Spec.Claims)
 }
 
 func TestReconciler_DeleteAzureAdApplication(t *testing.T) {
