@@ -231,7 +231,6 @@ func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets kuber
 }
 
 func (r *Reconciler) updateStatus(tx transaction, application azure.ApplicationResult) error {
-	logger.Debug("updating status for AzureAdApplication")
 	tx.instance.Status.CertificateKeyIds = application.Certificate.KeyId.AllInUse
 	tx.instance.Status.PasswordKeyIds = application.Password.KeyId.AllInUse
 
@@ -250,7 +249,11 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.ApplicationR
 	}
 	tx.instance.Status.SynchronizationHash = newHash
 
-	if err := r.Update(tx.ctx, tx.instance); err != nil {
+	if err := r.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
+		logger.Debug("updating status for AzureAdApplication")
+		existing.Status = tx.instance.Status
+		return r.Update(tx.ctx, existing)
+	}); err != nil {
 		return fmt.Errorf("updating status fields: %w", err)
 	}
 	logger.WithFields(

@@ -27,9 +27,12 @@ func (f finalizer) register(tx transaction) (ctrl.Result, error) {
 	if !finalizer2.HasFinalizer(tx.instance, FinalizerName) {
 		logger.Info("finalizer for object not found, registering...")
 
-		controllerutil.AddFinalizer(tx.instance, FinalizerName)
+		err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
+			controllerutil.AddFinalizer(existing, FinalizerName)
+			return f.Update(tx.ctx, existing)
+		})
 
-		if err := f.Update(tx.ctx, tx.instance); err != nil {
+		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("error when registering finalizer: %w", err)
 		}
 
@@ -48,9 +51,11 @@ func (f finalizer) process(tx transaction) (ctrl.Result, error) {
 
 		f.reportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedInAzure, "Azure application is deleted")
 
-		controllerutil.RemoveFinalizer(tx.instance, FinalizerName)
-
-		if err := f.Update(tx.ctx, tx.instance); err != nil {
+		err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
+			controllerutil.RemoveFinalizer(existing, FinalizerName)
+			return f.Update(tx.ctx, existing)
+		})
+		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer from list: %w", err)
 		}
 	}

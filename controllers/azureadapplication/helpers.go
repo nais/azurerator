@@ -1,6 +1,7 @@
 package azureadapplication
 
 import (
+	"context"
 	"fmt"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/azure"
@@ -8,6 +9,8 @@ import (
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sync"
 )
 
 func (r *Reconciler) shouldSkip(tx *transaction) bool {
@@ -89,4 +92,19 @@ func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
 func hasSkipFlag(tx *transaction) bool {
 	_, found := annotations.HasAnnotation(tx.instance, annotations.SkipKey)
 	return found
+}
+
+var appsync sync.Mutex
+
+func (r *Reconciler) updateApplication(ctx context.Context, app *v1.AzureAdApplication, updateFunc func(existing *v1.AzureAdApplication) error) error {
+	appsync.Lock()
+	defer appsync.Unlock()
+
+	existing := &v1.AzureAdApplication{}
+	err := r.Reader.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, existing)
+	if err != nil {
+		return fmt.Errorf("get newest version of AzureAdApplication: %s", err)
+	}
+
+	return updateFunc(existing)
 }
