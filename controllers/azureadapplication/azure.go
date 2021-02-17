@@ -2,6 +2,7 @@ package azureadapplication
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/azure"
 )
@@ -71,6 +72,12 @@ func (a azureReconciler) exists(tx transaction) (bool, error) {
 			return false, fmt.Errorf("getting service principal for application: %w", err)
 		}
 		tx.instance.Status.ServicePrincipalId = *sp.ID
+
+		tx.log.WithFields(log.Fields{
+			"ClientID":           tx.instance.GetClientId(),
+			"ObjectID":           tx.instance.GetObjectId(),
+			"ServicePrincipalID": tx.instance.GetServicePrincipalId(),
+		}).Debug("updated status fields with values from Azure")
 	}
 
 	return exists, nil

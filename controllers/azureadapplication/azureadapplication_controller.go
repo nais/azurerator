@@ -138,7 +138,14 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 	instance.SetClusterName(r.Config.ClusterName)
 	instance.Status.CorrelationId = correlationId
 
-	logger.Info("processing AzureAdApplication...")
+	logger.WithFields(
+		log.Fields{
+			"CertificateKeyIDs":  instance.Status.CertificateKeyIds,
+			"PasswordKeyIDs":     instance.Status.PasswordKeyIds,
+			"ClientID":           instance.GetClientId(),
+			"ObjectID":           instance.GetObjectId(),
+			"ServicePrincipalID": instance.GetServicePrincipalId(),
+		}).Info("processing AzureAdApplication...")
 
 	return &transaction{ctx, instance, logger}, nil
 }
