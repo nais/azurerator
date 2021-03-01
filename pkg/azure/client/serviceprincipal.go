@@ -59,10 +59,12 @@ func (s servicePrincipal) update(tx azure.Transaction, request *msgraphbeta.Serv
 }
 
 func (s servicePrincipal) setAppRoleAssignmentRequired(tx azure.Transaction) error {
+	tx.Log.Debug("enabling approle assignment requirement")
 	return s.setAppRoleAssignment(tx, true)
 }
 
 func (s servicePrincipal) setAppRoleAssignmentNotRequired(tx azure.Transaction) error {
+	tx.Log.Debug("disabling approle assignment requirement")
 	return s.setAppRoleAssignment(tx, false)
 }
 
