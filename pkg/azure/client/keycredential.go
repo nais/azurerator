@@ -36,7 +36,6 @@ func (k keyCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (*msgr
 	keysInUse = append(keysInUse, *keyCredential)
 	app := util.EmptyApplication().Keys(keysInUse).Build()
 	if err := k.application().patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
-		tx.Log.Debugf("objectId: %s, app: %v", tx.Instance.GetObjectId(), app)
 		return nil, nil, fmt.Errorf("failed to update application with keycredential: %w", err)
 	}
 	return keyCredential, jwkPair, nil
