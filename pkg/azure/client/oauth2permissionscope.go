@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-
+	"github.com/nais/azureator/pkg/azure"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
@@ -15,11 +15,45 @@ const (
 )
 
 type oAuth2PermissionScopes struct {
-	client
+	application
 }
 
-func (c client) oAuth2PermissionScopes() oAuth2PermissionScopes {
-	return oAuth2PermissionScopes{c}
+func (a application) oAuth2PermissionScopes() oAuth2PermissionScopes {
+	return oAuth2PermissionScopes{a}
+}
+
+// ensure all other scopes than default scope are disabled
+func (o oAuth2PermissionScopes) ensureValidScopes(tx azure.Transaction) error {
+	existingScopes, err := o.getAll(tx)
+	if err != nil {
+		return err
+	}
+
+	for i, scope := range existingScopes {
+		if *scope.ID == msgraph.UUID(OAuth2DefaultPermissionScopeId) {
+			continue
+		}
+		scope.IsEnabled = ptr.Bool(false)
+		existingScopes[i] = scope
+	}
+
+	return o.update(tx, existingScopes)
+}
+
+func (o oAuth2PermissionScopes) getAll(tx azure.Transaction) ([]msgraph.PermissionScope, error) {
+	application, err := o.application.getByClientId(tx.Ctx, tx.Instance.GetClientId())
+	if err != nil {
+		return nil, fmt.Errorf("fetching application by client ID: %w", err)
+	}
+	return application.API.OAuth2PermissionScopes, nil
+}
+
+func (o oAuth2PermissionScopes) update(tx azure.Transaction, scopes []msgraph.PermissionScope) error {
+	app := &msgraph.Application{API: &msgraph.APIApplication{OAuth2PermissionScopes: scopes}}
+	if err := o.application.patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
+		return fmt.Errorf("patching application: %w", err)
+	}
+	return nil
 }
 
 func (o oAuth2PermissionScopes) defaultScopes() []msgraph.PermissionScope {

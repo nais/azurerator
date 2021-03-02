@@ -2,18 +2,18 @@
 apiVersion: nais.io/v1
 kind: AzureAdApplication
 metadata:
-  name: myapp
-  namespace: plattformsikkerhet
+  name: myapp2
+  namespace: myteam
   labels:
     team: myteam
 spec:
   preAuthorizedApplications:
     - application: myapp2
       cluster: minikube
-      namespace: default
+      namespace: myteam
     - application: some-other-app
       cluster: test-cluster
-      namespace: default
+      namespace: myteam
   logoutUrl: "https://localhost:3000/oauth2/logout"
   replyUrls:
     - url: "http://localhost:3000/oauth2/callback"

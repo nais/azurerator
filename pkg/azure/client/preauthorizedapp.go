@@ -48,7 +48,13 @@ func (p preAuthApps) process(tx azure.Transaction) ([]azure.Resource, error) {
 		return nil, fmt.Errorf("mapping preauthorizedapps to resources: %w", err)
 	}
 
-	err = p.appRoleAssignments(msgraphbeta.UUID(DefaultAppRoleId), servicePrincipalId).
+	defaultRole := p.application().appRoles().defaultRole()
+	roleID, err := p.application().appRoles().getOrGenerateRoleID(tx, defaultRole)
+	if err != nil {
+		return nil, fmt.Errorf("fetching default app role ID: %w", err)
+	}
+
+	err = p.appRoleAssignments((msgraphbeta.UUID)(*roleID), servicePrincipalId).
 		processForServicePrincipals(tx, resources)
 	if err != nil {
 		return nil, fmt.Errorf("updating approle assignments for service principals: %w", err)

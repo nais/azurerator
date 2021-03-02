@@ -75,15 +75,13 @@ func (a application) update(tx azure.Transaction) error {
 
 	identifierUris := util.IdentifierUris(tx)
 
-	defaultRole := a.appRoles().defaultRole()
-	appRoles, err := a.appRoles().ensureExists(tx, defaultRole)
+	err := a.oAuth2PermissionScopes().ensureValidScopes(tx)
 	if err != nil {
-		return fmt.Errorf("updating approles for application: %w", err)
+		return fmt.Errorf("while ensuring valid oauth2 permission scopes: %w", err)
 	}
 
 	app := util.Application(a.defaultTemplate(tx.Instance)).
-		IdentifierUriList(identifierUris).
-		AppRoles(appRoles)
+		IdentifierUriList(identifierUris)
 
 	groupClaimsIsDefined := tx.Instance.Spec.Claims != nil && len(tx.Instance.Spec.Claims.Groups) > 0
 

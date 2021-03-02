@@ -8,7 +8,7 @@ import (
 )
 
 func TestOAuth2PermissionScope_defaultScopes(t *testing.T) {
-	a := client{}.oAuth2PermissionScopes().defaultScopes()
+	a := application{}.oAuth2PermissionScopes().defaultScopes()
 	j, _ := json.Marshal(a)
 
 	assert.JSONEq(t, `
