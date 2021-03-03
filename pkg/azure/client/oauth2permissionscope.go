@@ -29,6 +29,10 @@ func (o oAuth2PermissionScopes) ensureValidScopes(tx azure.Transaction) error {
 		return err
 	}
 
+	if len(existingScopes) == 1 && (*existingScopes[0].ID == msgraph.UUID(OAuth2DefaultPermissionScopeId)) {
+		return nil
+	}
+
 	for i, scope := range existingScopes {
 		if *scope.ID == msgraph.UUID(OAuth2DefaultPermissionScopeId) {
 			continue
