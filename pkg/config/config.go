@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
@@ -28,6 +29,10 @@ type AzureConfig struct {
 type AzureTenant struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
+}
+
+func (a AzureTenant) String() string {
+	return fmt.Sprintf("%s (%s)", a.Name, a.Id)
 }
 
 type AzureAuth struct {

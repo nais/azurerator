@@ -249,6 +249,7 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.ApplicationR
 	tx.instance.Status.SynchronizationState = v1.EventSynchronized
 	now := metav1.Now()
 	tx.instance.Status.SynchronizationTime = &now
+	tx.instance.Status.SynchronizationTenant = r.Config.Azure.Tenant.String()
 
 	newHash, err := tx.instance.Hash()
 	if err != nil {

@@ -2,7 +2,7 @@
 apiVersion: nais.io/v1
 kind: AzureAdApplication
 metadata:
-  name: myapp2
+  name: myapp
   namespace: myteam
   labels:
     team: myteam

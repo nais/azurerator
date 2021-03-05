@@ -226,6 +226,7 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1.Azu
 			instance.Status.SynchronizationHash,
 			instance.GetServicePrincipalId(),
 			instance.Status.SynchronizationTime,
+			instance.Status.SynchronizationTenant,
 		})
 		assert.Equal(t, v1.EventSynchronized, instance.Status.SynchronizationState, "AzureAdApplication should be synchronized")
 	})
@@ -243,6 +244,7 @@ func assertApplicationShouldNotProcess(t *testing.T, testName string, key client
 		assert.Empty(t, instance.Status.SynchronizationHash)
 		assert.Empty(t, instance.GetServicePrincipalId())
 		assert.Empty(t, instance.Status.SynchronizationTime)
+		assert.Empty(t, instance.Status.SynchronizationTenant)
 	})
 	return instance
 }
