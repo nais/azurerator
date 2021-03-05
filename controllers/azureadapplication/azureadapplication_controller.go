@@ -34,11 +34,12 @@ const (
 // AzureAdApplicationReconciler reconciles a AzureAdApplication object
 type Reconciler struct {
 	client.Client
-	Reader      client.Reader
-	Scheme      *runtime.Scheme
-	AzureClient azure.Client
-	Recorder    record.EventRecorder
-	Config      *config.Config
+	Reader            client.Reader
+	Scheme            *runtime.Scheme
+	AzureClient       azure.Client
+	Recorder          record.EventRecorder
+	Config            *config.Config
+	AzureOpenIDConfig config.AzureOpenIdConfig
 }
 
 type transaction struct {

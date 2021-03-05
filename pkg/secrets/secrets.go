@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/liberator/pkg/kubernetes"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -28,10 +29,10 @@ const (
 	PreAuthAppsKey   = "AZURE_APP_PRE_AUTHORIZED_APPS"
 	TenantId         = "AZURE_APP_TENANT_ID"
 	WellKnownUrlKey  = "AZURE_APP_WELL_KNOWN_URL"
-)
 
-const (
-	wellKnownUrlFormat = "https://login.microsoftonline.com/%s/v2.0/.well-known/openid-configuration"
+	OpenIDConfigIssuerKey        = "AZURE_OPENID_CONFIG_ISSUER"
+	OpenIDConfigJwksUriKey       = "AZURE_OPENID_CONFIG_JWKS_URI"
+	OpenIDConfigTokenEndpointKey = "AZURE_OPENID_CONFIG_TOKEN_ENDPOINT"
 )
 
 var AllKeys = []string{
@@ -44,12 +45,22 @@ var AllKeys = []string{
 	PreAuthAppsKey,
 	TenantId,
 	WellKnownUrlKey,
+	OpenIDConfigIssuerKey,
+	OpenIDConfigJwksUriKey,
+	OpenIDConfigTokenEndpointKey,
 }
 
 // +kubebuilder:rbac:groups=*,resources=secrets,verbs=get;list;watch;create;delete;update;patch
-
-func CreateOrUpdate(ctx context.Context, instance *v1.AzureAdApplication, application azure.ApplicationResult, cli client.Client, scheme *runtime.Scheme) (controllerutil.OperationResult, error) {
-	spec, err := spec(instance, application)
+// TODO(tronghn) - refactor
+func CreateOrUpdate(
+	ctx context.Context,
+	instance *v1.AzureAdApplication,
+	application azure.ApplicationResult,
+	cli client.Client,
+	scheme *runtime.Scheme,
+	azureOpenIDConfig config.AzureOpenIdConfig,
+) (controllerutil.OperationResult, error) {
+	spec, err := spec(instance, application, azureOpenIDConfig)
 	if err != nil {
 		return controllerutil.OperationResultNone, fmt.Errorf("unable to create secretSpec object: %w", err)
 	}
@@ -109,8 +120,8 @@ func getAll(ctx context.Context, instance *v1.AzureAdApplication, reader client.
 	return list, nil
 }
 
-func spec(instance *v1.AzureAdApplication, app azure.ApplicationResult) (*corev1.Secret, error) {
-	data, err := stringData(app)
+func spec(instance *v1.AzureAdApplication, app azure.ApplicationResult, azureOpenIDConfig config.AzureOpenIdConfig) (*corev1.Secret, error) {
+	data, err := stringData(app, azureOpenIDConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +144,7 @@ func objectMeta(instance *v1.AzureAdApplication) metav1.ObjectMeta {
 	}
 }
 
-func stringData(app azure.ApplicationResult) (map[string]string, error) {
+func stringData(app azure.ApplicationResult, azureOpenIDConfig config.AzureOpenIdConfig) (map[string]string, error) {
 	jwkJson, err := json.Marshal(app.Certificate.Jwk.Private)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal private JWK: %w", err)
@@ -147,18 +158,17 @@ func stringData(app azure.ApplicationResult) (map[string]string, error) {
 		return nil, fmt.Errorf("failed to marshal preauthorized apps: %w", err)
 	}
 	return map[string]string{
-		CertificateIdKey: app.Certificate.KeyId.Latest,
-		ClientIdKey:      app.ClientId,
-		ClientSecretKey:  app.Password.ClientSecret,
-		JwksKey:          string(jwksJson),
-		JwkKey:           string(jwkJson),
-		PasswordIdKey:    app.Password.KeyId.Latest,
-		PreAuthAppsKey:   string(preAuthAppsJson),
-		TenantId:         app.Tenant,
-		WellKnownUrlKey:  WellKnownUrl(app.Tenant),
+		CertificateIdKey:             app.Certificate.KeyId.Latest,
+		ClientIdKey:                  app.ClientId,
+		ClientSecretKey:              app.Password.ClientSecret,
+		JwksKey:                      string(jwksJson),
+		JwkKey:                       string(jwkJson),
+		PasswordIdKey:                app.Password.KeyId.Latest,
+		PreAuthAppsKey:               string(preAuthAppsJson),
+		TenantId:                     app.Tenant,
+		WellKnownUrlKey:              azureOpenIDConfig.WellKnownEndpoint,
+		OpenIDConfigIssuerKey:        azureOpenIDConfig.Issuer,
+		OpenIDConfigJwksUriKey:       azureOpenIDConfig.JwksURI,
+		OpenIDConfigTokenEndpointKey: azureOpenIDConfig.TokenEndpoint,
 	}, nil
-}
-
-func WellKnownUrl(tenant string) string {
-	return fmt.Sprintf(wellKnownUrlFormat, tenant)
 }

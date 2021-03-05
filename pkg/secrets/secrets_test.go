@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/nais/azureator/pkg/azure"
-	"testing"
-
 	"github.com/nais/azureator/pkg/azure/fake"
 	"github.com/nais/azureator/pkg/labels"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
@@ -13,6 +11,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"testing"
 )
 
 func TestCreateSecretSpec(t *testing.T) {
@@ -33,11 +32,12 @@ func TestCreateSecretSpec(t *testing.T) {
 		},
 	}
 	azureApp := fake.InternalAzureApp(*app)
+	azureOpenIdConfig := fake.AzureOpenIdConfig()
 
-	spec, err := spec(app, azureApp)
+	spec, err := spec(app, azureApp, azureOpenIdConfig)
 	assert.NoError(t, err, "should not error")
 
-	stringData, err := stringData(azureApp)
+	stringData, err := stringData(azureApp, azureOpenIdConfig)
 	assert.NoError(t, err, "should not error")
 
 	t.Run("Name should equal provided name in Spec", func(t *testing.T) {
@@ -126,9 +126,27 @@ func TestCreateSecretSpec(t *testing.T) {
 		})
 
 		t.Run("Secret Data should contain well-known URL", func(t *testing.T) {
-			expected := WellKnownUrl(azureApp.Tenant)
+			expected := azureOpenIdConfig.WellKnownEndpoint
 			assert.NoError(t, err)
 			assert.Equal(t, expected, spec.StringData[WellKnownUrlKey])
+		})
+
+		t.Run("Secret Data should issuer from OpenID configuration", func(t *testing.T) {
+			expected := azureOpenIdConfig.Issuer
+			assert.NoError(t, err)
+			assert.Equal(t, expected, spec.StringData[OpenIDConfigIssuerKey])
+		})
+
+		t.Run("Secret Data should token endpoint from OpenID configuration", func(t *testing.T) {
+			expected := azureOpenIdConfig.TokenEndpoint
+			assert.NoError(t, err)
+			assert.Equal(t, expected, spec.StringData[OpenIDConfigTokenEndpointKey])
+		})
+
+		t.Run("Secret Data should JWKS URI from OpenID configuration", func(t *testing.T) {
+			expected := azureOpenIdConfig.JwksURI
+			assert.NoError(t, err)
+			assert.Equal(t, expected, spec.StringData[OpenIDConfigJwksUriKey])
 		})
 	})
 }

@@ -90,16 +90,25 @@ func run() error {
 		return fmt.Errorf("unable to create Azure client: %w", err)
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+	azureOpenIDConfig, err := config.NewAzureOpenIdConfig(ctx, cfg.Azure.Tenant)
+	if err != nil {
+		return fmt.Errorf("fetching Azure OpenID Configuration: %w", err)
+	}
+
 	if err = (&azureadapplication.Reconciler{
-		Client:      mgr.GetClient(),
-		Reader:      mgr.GetAPIReader(),
-		Scheme:      mgr.GetScheme(),
-		AzureClient: azureClient,
-		Config:      cfg,
-		Recorder:    mgr.GetEventRecorderFor("azurerator"),
+		Client:            mgr.GetClient(),
+		Reader:            mgr.GetAPIReader(),
+		Scheme:            mgr.GetScheme(),
+		AzureClient:       azureClient,
+		Config:            cfg,
+		Recorder:          mgr.GetEventRecorderFor("azurerator"),
+		AzureOpenIDConfig: *azureOpenIDConfig,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller: %w", err)
 	}
+
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting metrics refresh goroutine")

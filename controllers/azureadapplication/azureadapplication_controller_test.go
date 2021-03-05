@@ -280,6 +280,12 @@ func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplicati
 		assert.Equal(t, corev1.SecretTypeOpaque, a.Type, "Secret type should be Opaque")
 
 		test.AssertContainsKeysWithNonEmptyValues(t, a.Data, secrets.AllKeys)
+
+		azureOpenIdConfig := fake.AzureOpenIdConfig()
+		assert.Equal(t, azureOpenIdConfig.WellKnownEndpoint, string(a.Data[secrets.WellKnownUrlKey]))
+		assert.Equal(t, azureOpenIdConfig.Issuer, string(a.Data[secrets.OpenIDConfigIssuerKey]))
+		assert.Equal(t, azureOpenIdConfig.JwksURI, string(a.Data[secrets.OpenIDConfigJwksUriKey]))
+		assert.Equal(t, azureOpenIdConfig.TokenEndpoint, string(a.Data[secrets.OpenIDConfigTokenEndpointKey]))
 	})
 }
 
@@ -352,13 +358,16 @@ func setup() (*envtest.Environment, error) {
 		return nil, err
 	}
 
+	azureOpenIDConfig := fake.AzureOpenIdConfig()
+
 	err = (&Reconciler{
-		Client:      cli,
-		Reader:      mgr.GetAPIReader(),
-		Scheme:      mgr.GetScheme(),
-		AzureClient: azureClient,
-		Recorder:    mgr.GetEventRecorderFor("azurerator"),
-		Config:      azureratorCfg,
+		Client:            cli,
+		Reader:            mgr.GetAPIReader(),
+		Scheme:            mgr.GetScheme(),
+		AzureClient:       azureClient,
+		Recorder:          mgr.GetEventRecorderFor("azurerator"),
+		Config:            azureratorCfg,
+		AzureOpenIDConfig: azureOpenIDConfig,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return nil, err
