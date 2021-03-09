@@ -2,7 +2,10 @@ package azureadapplication
 
 import (
 	"fmt"
+	"github.com/nais/azureator/pkg/metrics"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/nais/azureator/pkg/azure"
 )
@@ -15,25 +18,89 @@ func (r *Reconciler) azure() azureReconciler {
 	return azureReconciler{r}
 }
 
+func (a azureReconciler) createOrUpdate(tx transaction) (*azure.ApplicationResult, error) {
+	var applicationResult *azure.ApplicationResult
+
+	exists, err := a.exists(tx)
+	if err != nil {
+		return nil, fmt.Errorf("looking up existence of application: %w", err)
+	}
+
+	if !exists {
+		applicationResult, err = a.create(tx)
+	} else {
+		applicationResult, err = a.update(tx)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	tx.instance.Status.ClientId = applicationResult.ClientId
+	tx.instance.Status.ObjectId = applicationResult.ObjectId
+	tx.instance.Status.ServicePrincipalId = applicationResult.ServicePrincipalId
+
+	return applicationResult, nil
+}
+
 func (a azureReconciler) create(tx transaction) (*azure.ApplicationResult, error) {
 	logger.Info("Azure application not found, registering...")
-	return a.AzureClient.Create(tx.toAzureTx())
+
+	applicationResult, err := a.AzureClient.Create(tx.toAzureTx())
+	if err != nil {
+		return nil, fmt.Errorf("creating azure application: %w", err)
+	}
+
+	metrics.IncWithNamespaceLabel(metrics.AzureAppsCreatedCount, tx.instance.Namespace)
+	a.reportEvent(tx, corev1.EventTypeNormal, v1.EventCreatedInAzure, "Azure application is created")
+
+	return applicationResult, nil
 }
 
 func (a azureReconciler) update(tx transaction) (*azure.ApplicationResult, error) {
 	logger.Info("Azure application already exists, updating...")
-	return a.AzureClient.Update(tx.toAzureTx())
+
+	applicationResult, err := a.AzureClient.Update(tx.toAzureTx())
+	if err != nil {
+		return nil, fmt.Errorf("updating azure application: %w", err)
+	}
+
+	metrics.IncWithNamespaceLabel(metrics.AzureAppsUpdatedCount, tx.instance.Namespace)
+	a.reportEvent(tx, corev1.EventTypeNormal, v1.EventUpdatedInAzure, "Azure application is updated")
+
+	return applicationResult, nil
 }
 
-func (a azureReconciler) rotate(tx transaction, app azure.ApplicationResult) (*azure.ApplicationResult, error) {
+func (a azureReconciler) addCredentials(tx transaction, keyIdsInUse *azure.KeyIdsInUse) (*azure.CredentialsSet, error) {
+	logger.Info("adding credentials for Azure application...")
+
+	credentialsSet, err := a.AzureClient.AddCredentials(tx.toAzureTx())
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Info("successfully added credentials for Azure application")
+
+	keyIdsInUse.Certificate = append(keyIdsInUse.Certificate, credentialsSet.Current.Certificate.KeyId)
+	keyIdsInUse.Password = append(keyIdsInUse.Password, credentialsSet.Current.Password.KeyId)
+	return &credentialsSet, nil
+}
+
+func (a azureReconciler) rotateCredentials(tx transaction, existing azure.CredentialsSet, keyIdsInUse *azure.KeyIdsInUse) (*azure.CredentialsSet, error) {
 	logger.Info("rotating credentials for Azure application...")
-	application, err := a.AzureClient.Rotate(tx.toAzureTx(), app)
+
+	credentialsSet, err := a.AzureClient.RotateCredentials(tx.toAzureTx(), existing, *keyIdsInUse)
 	if err != nil {
 		return nil, err
 	}
 
 	logger.Info("successfully rotated credentials for Azure application")
-	return application, nil
+
+	keyIdsInUse.Certificate = append(keyIdsInUse.Certificate, credentialsSet.Current.Certificate.KeyId)
+	keyIdsInUse.Password = append(keyIdsInUse.Password, credentialsSet.Current.Password.KeyId)
+
+	metrics.IncWithNamespaceLabel(metrics.AzureAppsRotatedCount, tx.instance.Namespace)
+	a.reportEvent(tx, corev1.EventTypeNormal, v1.EventRotatedInAzure, "Azure credentials is rotated")
+	return &credentialsSet, nil
 }
 
 func (a azureReconciler) delete(tx transaction) error {

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -21,7 +22,7 @@ func AssertContainsKeysWithNonEmptyValues(t *testing.T, a interface{}, keys []st
 }
 
 func AssertAllNotEmpty(t *testing.T, values []interface{}) {
-	for _, val := range values {
-		assert.NotEmpty(t, val)
+	for i, val := range values {
+		assert.NotEmpty(t, val, fmt.Sprintf("%s (index %v) should not be empty", val, i))
 	}
 }

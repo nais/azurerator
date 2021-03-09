@@ -18,11 +18,6 @@ func Application(template *msgraph.Application) ApplicationBuilder {
 	return ApplicationBuilder{template}
 }
 
-func (a ApplicationBuilder) Key(keyCredential msgraph.KeyCredential) ApplicationBuilder {
-	a.KeyCredentials = []msgraph.KeyCredential{keyCredential}
-	return a
-}
-
 func (a ApplicationBuilder) Keys(keyCredentials []msgraph.KeyCredential) ApplicationBuilder {
 	a.KeyCredentials = keyCredentials
 	return a

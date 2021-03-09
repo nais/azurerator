@@ -37,7 +37,7 @@ func CertificateTemplate(application v1.AzureAdApplication) *x509.Certificate {
 			CommonName:         fmt.Sprintf("%s.%s.%s.azurerator.nais.io", application.Name, application.Namespace, application.ClusterName),
 		},
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(1, 0, 0),
+		NotAfter:              time.Now().AddDate(3, 0, 0),
 		KeyUsage:              x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,

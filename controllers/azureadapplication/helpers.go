@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/azureator/pkg/annotations"
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/secrets"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
@@ -28,29 +26,6 @@ func (r *Reconciler) shouldSkip(tx *transaction) bool {
 		logger.Debugf("resource is addressed to tenant '%s', processing...", r.Config.Azure.Tenant.Name)
 		return false
 	}
-}
-
-func (r *Reconciler) createOrUpdateSecrets(tx transaction, application azure.ApplicationResult) error {
-	logger.Infof("processing secret with name '%s'...", tx.instance.Spec.SecretName)
-	res, err := secrets.CreateOrUpdate(tx.ctx, tx.instance, application, r.Client, r.Scheme, r.AzureOpenIDConfig)
-	if err != nil {
-		return fmt.Errorf("failed to create or update secret: %w", err)
-	}
-	logger.Infof("secret '%s' %s", tx.instance.Spec.SecretName, res)
-	return nil
-}
-
-func (r *Reconciler) deleteUnusedSecrets(tx transaction, unused corev1.SecretList) error {
-	for _, oldSecret := range unused.Items {
-		if oldSecret.Name == tx.instance.Spec.SecretName {
-			continue
-		}
-		logger.Infof("deleting unused secret '%s'...", oldSecret.Name)
-		if err := secrets.Delete(tx.ctx, oldSecret, r.Client); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (r *Reconciler) shouldSkipForTenant(tx *transaction) bool {

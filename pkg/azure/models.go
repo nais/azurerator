@@ -18,7 +18,8 @@ type Client interface {
 	Exists(tx Transaction) (bool, error)
 	Get(tx Transaction) (msgraph.Application, error)
 	GetServicePrincipal(tx Transaction) (msgraphbeta.ServicePrincipal, error)
-	Rotate(tx Transaction, app ApplicationResult) (*ApplicationResult, error)
+	AddCredentials(tx Transaction) (CredentialsSet, error)
+	RotateCredentials(tx Transaction, existing CredentialsSet, inUse KeyIdsInUse) (CredentialsSet, error)
 	Update(tx Transaction) (*ApplicationResult, error)
 }
 
@@ -44,28 +45,36 @@ func (t Transaction) UpdateWithServicePrincipalID(servicePrincipal msgraphbeta.S
 }
 
 type ApplicationResult struct {
-	Certificate        Certificate `json:"certificate"`
-	Password           Password    `json:"password"`
-	ClientId           string      `json:"clientId"`
-	ObjectId           string      `json:"objectId"`
-	ServicePrincipalId string      `json:"servicePrincipalId"`
-	PreAuthorizedApps  []Resource  `json:"preAuthorizedApps"`
-	Tenant             string      `json:"tenant"`
+	ClientId           string     `json:"clientId"`
+	ObjectId           string     `json:"objectId"`
+	ServicePrincipalId string     `json:"servicePrincipalId"`
+	PreAuthorizedApps  []Resource `json:"preAuthorizedApps"`
+	Tenant             string     `json:"tenant"`
+}
+
+type CredentialsSet struct {
+	Current Credentials `json:"current"`
+	Next    Credentials `json:"next"`
+}
+
+type KeyIdsInUse struct {
+	Certificate []string `json:"certificate"`
+	Password    []string `json:"password"`
+}
+
+type Credentials struct {
+	Certificate Certificate `json:"certificate"`
+	Password    Password    `json:"password"`
 }
 
 type Certificate struct {
-	KeyId KeyId      `json:"keyId"`
-	Jwk   crypto.Jwk `json:"jwks"`
+	KeyId string     `json:"keyId"`
+	Jwk   crypto.Jwk `json:"jwk"`
 }
 
 type Password struct {
-	KeyId        KeyId  `json:"keyId"`
+	KeyId        string `json:"keyId"`
 	ClientSecret string `json:"clientSecret"`
-}
-
-type KeyId struct {
-	Latest   string   `json:"latest"`
-	AllInUse []string `json:"allInUse"`
 }
 
 // Resource contains metadata that identifies a resource (e.g. User, Group, Application, or Service Principal) within Azure AD.

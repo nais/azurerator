@@ -5,19 +5,17 @@ import (
 	"fmt"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/fake"
-	"github.com/nais/azureator/pkg/labels"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/square/go-jose.v2"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 )
 
-func TestCreateSecretSpec(t *testing.T) {
+func TestSecretData(t *testing.T) {
 	app := &v1.AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-app",
+			Name:      "test-ap",
 			Namespace: "test",
 		},
 		Spec: v1.AzureAdApplicationSpec{
@@ -31,86 +29,77 @@ func TestCreateSecretSpec(t *testing.T) {
 			},
 		},
 	}
-	azureApp := fake.InternalAzureApp(*app)
+	azureApp := fake.AzureApplicationResult(*app)
 	azureOpenIdConfig := fake.AzureOpenIdConfig()
+	azureCredentialsSet := fake.AzureCredentialsSet(*app)
 
-	spec, err := spec(app, azureApp, azureOpenIdConfig)
+	stringData, err := SecretData(azureApp, azureCredentialsSet, azureOpenIdConfig)
 	assert.NoError(t, err, "should not error")
-
-	stringData, err := stringData(azureApp, azureOpenIdConfig)
-	assert.NoError(t, err, "should not error")
-
-	t.Run("Name should equal provided name in Spec", func(t *testing.T) {
-		expected := app.Spec.SecretName
-		actual := spec.Name
-		assert.NotEmpty(t, actual)
-		assert.Equal(t, expected, actual)
-	})
-
-	t.Run("Secret spec should be as expected", func(t *testing.T) {
-		expected := &corev1.Secret{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Secret",
-				APIVersion: "v1",
-			},
-			ObjectMeta: objectMeta(app),
-			StringData: stringData,
-			Type:       corev1.SecretTypeOpaque,
-		}
-		assert.NotEmpty(t, spec)
-		assert.Equal(t, expected, spec)
-
-		assert.Equal(t, corev1.SecretTypeOpaque, spec.Type, "Secret Type should be Opaque")
-	})
 
 	t.Run("StringData should contain expected fields and values", func(t *testing.T) {
-		t.Run(fmt.Sprintf("Length of StringData should be equal to %v", len(AllKeys)), func(t *testing.T) {
-			expected := len(AllKeys)
-			assert.Len(t, spec.StringData, expected)
+		expectedLength := len(AllKeys)
+
+		t.Run(fmt.Sprintf("Length of StringData should be equal to %v", expectedLength), func(t *testing.T) {
+			assert.Len(t, stringData, expectedLength)
 		})
 
 		t.Run("Secret Data should contain Client Secret", func(t *testing.T) {
-			expected := azureApp.Password.ClientSecret
-			assert.Equal(t, expected, spec.StringData[ClientSecretKey])
+			expectedClientSecret := azureCredentialsSet.Current.Password.ClientSecret
+			assert.Equal(t, expectedClientSecret, stringData[ClientSecretKey])
+
+			expectedNextClientSecret := azureCredentialsSet.Next.Password.ClientSecret
+			assert.Equal(t, expectedNextClientSecret, stringData[NextClientSecretKey])
 		})
 
 		t.Run("Secret Data should contain Private JWKS", func(t *testing.T) {
-			expectedJwks := azureApp.Certificate.Jwk.ToPrivateJwks()
+			expectedJwks := azureCredentialsSet.Current.Certificate.Jwk.ToPrivateJwks()
 
 			expected, err := json.Marshal(expectedJwks)
 			assert.NoError(t, err)
-			assert.Equal(t, string(expected), spec.StringData[JwksKey])
+			assert.Equal(t, string(expected), stringData[JwksKey])
 
 			var jwks jose.JSONWebKeySet
-			err = json.Unmarshal([]byte(spec.StringData[JwksKey]), &jwks)
+			err = json.Unmarshal([]byte(stringData[JwksKey]), &jwks)
 			assert.NoError(t, err)
 			assert.Len(t, jwks.Keys, len(expectedJwks.Keys))
 		})
 
 		t.Run("Secret Data should contain Private JWK", func(t *testing.T) {
-			expected, err := json.Marshal(azureApp.Certificate.Jwk.Private)
+			expectedJwk, err := json.Marshal(azureCredentialsSet.Current.Certificate.Jwk.Private)
+
 			assert.NoError(t, err)
-			assert.Equal(t, string(expected), spec.StringData[JwkKey])
+			assert.Equal(t, string(expectedJwk), stringData[JwkKey])
+
+			expectedNextJwk, err := json.Marshal(azureCredentialsSet.Next.Certificate.Jwk.Private)
+
+			assert.NoError(t, err)
+			assert.Equal(t, string(expectedNextJwk), stringData[NextJwkKey])
 		})
 
 		t.Run("Secret Data should contain Certificate Key ID", func(t *testing.T) {
-			expected := azureApp.Certificate.KeyId.Latest
-			assert.Equal(t, expected, spec.StringData[CertificateIdKey])
+			expectedCertificateId := azureCredentialsSet.Current.Certificate.KeyId
+			assert.Equal(t, expectedCertificateId, stringData[CertificateIdKey])
+
+			expectedNextCertificateId := azureCredentialsSet.Next.Certificate.KeyId
+			assert.Equal(t, expectedNextCertificateId, stringData[NextCertificateIdKey])
 		})
 
 		t.Run("Secret Data should contain Password Key ID", func(t *testing.T) {
-			expected := azureApp.Password.KeyId.Latest
-			assert.Equal(t, expected, spec.StringData[PasswordIdKey])
+			expectedPasswordId := azureCredentialsSet.Current.Password.KeyId
+			assert.Equal(t, expectedPasswordId, stringData[PasswordIdKey])
+
+			expectedNextPasswordId := azureCredentialsSet.Next.Password.KeyId
+			assert.Equal(t, expectedNextPasswordId, stringData[NextPasswordIdKey])
 		})
 
 		t.Run("Secret Data should contain Client ID", func(t *testing.T) {
 			expected := azureApp.ClientId
-			assert.Equal(t, expected, spec.StringData[ClientIdKey])
+			assert.Equal(t, expected, stringData[ClientIdKey])
 		})
 
 		t.Run("Secret Data should contain list of PreAuthorizedApps", func(t *testing.T) {
 			var actual []azure.Resource
-			err := json.Unmarshal([]byte(spec.StringData[PreAuthAppsKey]), &actual)
+			err := json.Unmarshal([]byte(stringData[PreAuthAppsKey]), &actual)
 			assert.NoError(t, err)
 			assert.Len(t, actual, 1)
 			assert.Empty(t, actual[0].PrincipalType)
@@ -122,67 +111,31 @@ func TestCreateSecretSpec(t *testing.T) {
 		t.Run("Secret Data should contain tenant ID", func(t *testing.T) {
 			expected := azureApp.Tenant
 			assert.NoError(t, err)
-			assert.Equal(t, expected, spec.StringData[TenantId])
+			assert.Equal(t, expected, stringData[TenantId])
 		})
 
 		t.Run("Secret Data should contain well-known URL", func(t *testing.T) {
 			expected := azureOpenIdConfig.WellKnownEndpoint
 			assert.NoError(t, err)
-			assert.Equal(t, expected, spec.StringData[WellKnownUrlKey])
+			assert.Equal(t, expected, stringData[WellKnownUrlKey])
 		})
 
 		t.Run("Secret Data should issuer from OpenID configuration", func(t *testing.T) {
 			expected := azureOpenIdConfig.Issuer
 			assert.NoError(t, err)
-			assert.Equal(t, expected, spec.StringData[OpenIDConfigIssuerKey])
+			assert.Equal(t, expected, stringData[OpenIDConfigIssuerKey])
 		})
 
 		t.Run("Secret Data should token endpoint from OpenID configuration", func(t *testing.T) {
 			expected := azureOpenIdConfig.TokenEndpoint
 			assert.NoError(t, err)
-			assert.Equal(t, expected, spec.StringData[OpenIDConfigTokenEndpointKey])
+			assert.Equal(t, expected, stringData[OpenIDConfigTokenEndpointKey])
 		})
 
 		t.Run("Secret Data should JWKS URI from OpenID configuration", func(t *testing.T) {
 			expected := azureOpenIdConfig.JwksURI
 			assert.NoError(t, err)
-			assert.Equal(t, expected, spec.StringData[OpenIDConfigJwksUriKey])
+			assert.Equal(t, expected, stringData[OpenIDConfigJwksUriKey])
 		})
-	})
-}
-
-func TestObjectMeta(t *testing.T) {
-	name := "test-name"
-	app := &v1.AzureAdApplication{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-app",
-			Namespace: "test",
-		},
-		Spec: v1.AzureAdApplicationSpec{
-			SecretName: name,
-		},
-	}
-
-	om := objectMeta(app)
-
-	t.Run("Name should be set", func(t *testing.T) {
-		actual := om.GetName()
-		assert.NotEmpty(t, actual)
-		assert.Equal(t, name, actual)
-	})
-
-	t.Run("Namespace should be set", func(t *testing.T) {
-		actual := om.GetNamespace()
-		assert.NotEmpty(t, actual)
-		assert.Equal(t, app.GetNamespace(), actual)
-	})
-	t.Run("Labels should be set", func(t *testing.T) {
-		actualLabels := om.GetLabels()
-		expectedLabels := map[string]string{
-			labels.AppLabelKey:  app.GetName(),
-			labels.TypeLabelKey: labels.TypeLabelValue,
-		}
-		assert.NotEmpty(t, actualLabels, "Labels should not be empty")
-		assert.Equal(t, expectedLabels, actualLabels, "Labels should be set")
 	})
 }

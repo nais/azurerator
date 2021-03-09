@@ -11,9 +11,13 @@ import (
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 	"golang.org/x/oauth2"
 	"net/http"
+	"time"
 )
 
-const MaxNumberOfPagesToFetch = 1000
+const (
+	MaxNumberOfPagesToFetch           = 1000
+	DelayIntervalBetweenModifications = 2 * time.Second
+)
 
 type client struct {
 	config          *config.AzureConfig
@@ -42,16 +46,14 @@ func New(ctx context.Context, cfg *config.AzureConfig) (azure.Client, error) {
 	}, nil
 }
 
-// Create registers a new AAD application with all the required accompanying resources
+// Create registers a new AAD application with the desired configuration
 func (c client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
-	app := c.application()
-
-	res, err := app.register(tx)
+	app, err := c.application().register(tx)
 	if err != nil {
 		return nil, fmt.Errorf("registering application resource: %w", err)
 	}
 
-	tx = tx.UpdateWithApplicationIDs(res.Application)
+	tx = tx.UpdateWithApplicationIDs(*app)
 
 	servicePrincipal, err := c.servicePrincipal().register(tx)
 	if err != nil {
@@ -60,12 +62,7 @@ func (c client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 
 	tx = tx.UpdateWithServicePrincipalID(servicePrincipal)
 
-	passwordCredential, err := c.passwordCredential().add(tx)
-	if err != nil {
-		return nil, fmt.Errorf("adding password credential: %w", err)
-	}
-
-	if err := app.identifierUri().set(tx); err != nil {
+	if err := c.application().identifierUri().set(tx); err != nil {
 		return nil, fmt.Errorf("setting identifier URIs for application: %w", err)
 	}
 
@@ -74,26 +71,9 @@ func (c client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		return nil, err
 	}
 
-	lastPasswordKeyId := string(*passwordCredential.KeyID)
-	lastCertificateKeyId := string(*res.KeyCredential.KeyID)
-
 	return &azure.ApplicationResult{
-		Certificate: azure.Certificate{
-			KeyId: azure.KeyId{
-				Latest:   lastCertificateKeyId,
-				AllInUse: []string{lastCertificateKeyId},
-			},
-			Jwk: res.Jwk,
-		},
-		Password: azure.Password{
-			KeyId: azure.KeyId{
-				Latest:   lastPasswordKeyId,
-				AllInUse: []string{lastPasswordKeyId},
-			},
-			ClientSecret: *passwordCredential.SecretText,
-		},
-		ClientId:           *res.Application.AppID,
-		ObjectId:           *res.Application.ID,
+		ClientId:           *app.AppID,
+		ObjectId:           *app.ID,
 		ServicePrincipalId: *servicePrincipal.ID,
 		PreAuthorizedApps:  preAuthApps,
 		Tenant:             c.config.Tenant.Id,
@@ -143,37 +123,82 @@ func (c client) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePr
 	return sp, nil
 }
 
-// Rotate rotates credentials for an existing AAD application
-func (c client) Rotate(tx azure.Transaction, app azure.ApplicationResult) (*azure.ApplicationResult, error) {
-	existingPasswordKeyIdsInUse := app.Password.KeyId.AllInUse
-	newPasswordCredential, err := c.passwordCredential().rotate(tx, existingPasswordKeyIdsInUse)
-	if err != nil {
-		return nil, fmt.Errorf("rotating password credentials: %w", err)
-	}
-	newPasswordKeyId := string(*newPasswordCredential.KeyID)
+// AddCredentials adds credentials for an existing AAD application
+func (c client) AddCredentials(tx azure.Transaction) (azure.CredentialsSet, error) {
+	time.Sleep(DelayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
 
-	existingCertificateKeyIdsInUse := app.Certificate.KeyId.AllInUse
-	NewCertificateKeyCredential, jwk, err := c.keyCredential().rotate(tx, existingCertificateKeyIdsInUse)
+	currPasswordCredential, err := c.passwordCredential().add(tx)
 	if err != nil {
-		return nil, fmt.Errorf("rotating key credentials: %w", err)
+		return azure.CredentialsSet{}, fmt.Errorf("adding current password credential: %w", err)
 	}
-	newCertificateKeyId := string(*NewCertificateKeyCredential.KeyID)
 
-	app.Password = azure.Password{
-		KeyId: azure.KeyId{
-			Latest:   newPasswordKeyId,
-			AllInUse: append(existingPasswordKeyIdsInUse, newPasswordKeyId),
-		},
-		ClientSecret: *newPasswordCredential.SecretText,
+	time.Sleep(DelayIntervalBetweenModifications)
+
+	nextPasswordCredential, err := c.passwordCredential().add(tx)
+	if err != nil {
+		return azure.CredentialsSet{}, fmt.Errorf("adding next password credential: %w", err)
 	}
-	app.Certificate = azure.Certificate{
-		KeyId: azure.KeyId{
-			Latest:   newCertificateKeyId,
-			AllInUse: append(existingCertificateKeyIdsInUse, newCertificateKeyId),
-		},
-		Jwk: *jwk,
+
+	time.Sleep(DelayIntervalBetweenModifications)
+
+	keyCredentialSet, err := c.keyCredential().add(tx)
+	if err != nil {
+		return azure.CredentialsSet{}, fmt.Errorf("adding key credential set: %w", err)
 	}
-	return &app, nil
+
+	return azure.CredentialsSet{
+		Current: azure.Credentials{
+			Certificate: azure.Certificate{
+				KeyId: string(*keyCredentialSet.Current.KeyCredential.KeyID),
+				Jwk:   keyCredentialSet.Current.Jwk,
+			},
+			Password: azure.Password{
+				KeyId:        string(*currPasswordCredential.KeyID),
+				ClientSecret: *currPasswordCredential.SecretText,
+			},
+		},
+		Next: azure.Credentials{
+			Certificate: azure.Certificate{
+				KeyId: string(*keyCredentialSet.Next.KeyCredential.KeyID),
+				Jwk:   keyCredentialSet.Next.Jwk,
+			},
+			Password: azure.Password{
+				KeyId:        string(*nextPasswordCredential.KeyID),
+				ClientSecret: *nextPasswordCredential.SecretText,
+			},
+		},
+	}, nil
+}
+
+// RotateCredentials rotates credentials for an existing AAD application
+func (c client) RotateCredentials(tx azure.Transaction, existing azure.CredentialsSet, inUse azure.KeyIdsInUse) (azure.CredentialsSet, error) {
+	time.Sleep(DelayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
+
+	nextPasswordCredential, err := c.passwordCredential().rotate(tx, existing.Next, inUse)
+	if err != nil {
+		return azure.CredentialsSet{}, fmt.Errorf("rotating password credential: %w", err)
+	}
+
+	time.Sleep(DelayIntervalBetweenModifications)
+
+	nextKeyCredential, nextJwk, err := c.keyCredential().rotate(tx, existing.Next, inUse)
+	if err != nil {
+		return azure.CredentialsSet{}, fmt.Errorf("rotating key credential: %w", err)
+	}
+
+	return azure.CredentialsSet{
+		Current: existing.Next,
+		Next: azure.Credentials{
+			Certificate: azure.Certificate{
+				KeyId: string(*nextKeyCredential.KeyID),
+				Jwk:   *nextJwk,
+			},
+			Password: azure.Password{
+				KeyId:        string(*nextPasswordCredential.KeyID),
+				ClientSecret: *nextPasswordCredential.SecretText,
+			},
+		},
+	}, nil
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation

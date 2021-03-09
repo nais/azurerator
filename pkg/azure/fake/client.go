@@ -14,7 +14,7 @@ const (
 )
 
 func (a fakeAzureClient) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
-	internalApp := InternalAzureApp(tx.Instance)
+	internalApp := AzureApplicationResult(tx.Instance)
 	return &internalApp, nil
 }
 
@@ -32,22 +32,25 @@ func (a fakeAzureClient) Exists(tx azure.Transaction) (bool, error) {
 }
 
 func (a fakeAzureClient) Get(tx azure.Transaction) (msgraph.Application, error) {
-	return ExternalAzureApp(tx.Instance), nil
+	return MsGraphApplication(tx.Instance), nil
 }
 
 func (a fakeAzureClient) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePrincipal, error) {
 	return ServicePrincipal(tx.Instance), nil
 }
 
-func (a fakeAzureClient) Rotate(tx azure.Transaction, app azure.ApplicationResult) (*azure.ApplicationResult, error) {
-	internalApp := InternalAzureApp(tx.Instance)
-	internalApp.Password.KeyId.AllInUse = append(app.Password.KeyId.AllInUse, internalApp.Password.KeyId.Latest)
-	internalApp.Certificate.KeyId.AllInUse = append(app.Certificate.KeyId.AllInUse, internalApp.Certificate.KeyId.Latest)
-	return &internalApp, nil
+func (a fakeAzureClient) AddCredentials(tx azure.Transaction) (azure.CredentialsSet, error) {
+	return AzureCredentialsSet(tx.Instance), nil
+}
+
+func (a fakeAzureClient) RotateCredentials(tx azure.Transaction, existing azure.CredentialsSet, inUse azure.KeyIdsInUse) (azure.CredentialsSet, error) {
+	newSet := AzureCredentialsSet(tx.Instance)
+	newSet.Current = existing.Next
+	return newSet, nil
 }
 
 func (a fakeAzureClient) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
-	internalApp := InternalAzureApp(tx.Instance)
+	internalApp := AzureApplicationResult(tx.Instance)
 	return &internalApp, nil
 }
 

@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func ExternalAzureApp(instance v1.AzureAdApplication) msgraph.Application {
+func MsGraphApplication(instance v1.AzureAdApplication) msgraph.Application {
 	objectId := getOrGenerate(instance.GetObjectId())
 	clientId := getOrGenerate(instance.GetClientId())
 
@@ -24,40 +24,54 @@ func ExternalAzureApp(instance v1.AzureAdApplication) msgraph.Application {
 	}
 }
 
-func InternalAzureApp(instance v1.AzureAdApplication) azure.ApplicationResult {
-	jwk, err := crypto.GenerateJwk(instance)
-	if err != nil {
-		panic(err)
-	}
-
+func AzureApplicationResult(instance v1.AzureAdApplication) azure.ApplicationResult {
 	objectId := getOrGenerate(instance.GetObjectId())
 	clientId := getOrGenerate(instance.GetClientId())
 	servicePrincipalId := getOrGenerate(instance.GetServicePrincipalId())
 
 	tenantId := uuid.New().String()
-	lastPasswordKeyId := uuid.New().String()
-	lastCertificateKeyId := uuid.New().String()
 
 	return azure.ApplicationResult{
-		Certificate: azure.Certificate{
-			KeyId: azure.KeyId{
-				Latest:   lastCertificateKeyId,
-				AllInUse: []string{lastCertificateKeyId},
-			},
-			Jwk: jwk,
-		},
-		Password: azure.Password{
-			KeyId: azure.KeyId{
-				Latest:   lastPasswordKeyId,
-				AllInUse: []string{lastPasswordKeyId},
-			},
-			ClientSecret: uuid.New().String(),
-		},
 		ClientId:           clientId,
 		ObjectId:           objectId,
 		ServicePrincipalId: servicePrincipalId,
 		PreAuthorizedApps:  mapToInternalPreAuthApps(instance.Spec.PreAuthorizedApplications),
 		Tenant:             tenantId,
+	}
+}
+
+func AzureCredentialsSet(instance v1.AzureAdApplication) azure.CredentialsSet {
+	currJwk, err := crypto.GenerateJwk(instance)
+	if err != nil {
+		panic(err)
+	}
+
+	nextJwk, err := crypto.GenerateJwk(instance)
+	if err != nil {
+		panic(err)
+	}
+
+	return azure.CredentialsSet{
+		Current: azure.Credentials{
+			Certificate: azure.Certificate{
+				KeyId: uuid.New().String(),
+				Jwk:   currJwk,
+			},
+			Password: azure.Password{
+				KeyId:        uuid.New().String(),
+				ClientSecret: uuid.New().String(),
+			},
+		},
+		Next: azure.Credentials{
+			Certificate: azure.Certificate{
+				KeyId: uuid.New().String(),
+				Jwk:   nextJwk,
+			},
+			Password: azure.Password{
+				KeyId:        uuid.New().String(),
+				ClientSecret: uuid.New().String(),
+			},
+		},
 	}
 }
 

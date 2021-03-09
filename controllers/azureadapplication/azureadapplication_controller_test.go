@@ -1,11 +1,12 @@
-package azureadapplication
+package azureadapplication_test
 
 import (
 	"context"
 	"fmt"
+	controller "github.com/nais/azureator/controllers/azureadapplication"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/util/azurerator"
+	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/liberator/pkg/crd"
 	finalizer2 "github.com/nais/liberator/pkg/finalizer"
 	"os"
@@ -32,8 +33,9 @@ import (
 )
 
 const (
-	timeout  = time.Second * 5
-	interval = time.Millisecond * 100
+	timeout      = 5 * time.Second
+	interval     = 100 * time.Millisecond
+	maxSecretAge = 1 * time.Minute
 
 	alreadyInUseSecret = "in-use-by-pod"
 	unusedSecret       = "unused-secret"
@@ -88,6 +90,7 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 
 		t.Run(c.name, func(t *testing.T) {
 			instance := assertApplicationExists(t, "New AzureAdApplication should exist", c.appName)
+			assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
 			assertSecretExists(t, secretName, instance)
 
@@ -122,7 +125,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 		Namespace: sharedNamespace,
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication in shared namespace should not be processed", key)
-	assert.True(t, finalizer2.HasFinalizer(instance, FinalizerName), "AzureAdApplication should contain a finalizer")
+	assert.True(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should contain a finalizer")
 	assert.Equal(t, v1.EventSkipped, instance.Status.SynchronizationState, "AzureAdApplication should be skipped")
 	assertAnnotationExists(t, instance, annotations.SkipKey, annotations.SkipValue)
 }
@@ -147,37 +150,170 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication with tenant should not be processed", key)
 	assert.Empty(t, instance.Status.SynchronizationState, "AzureAdApplication should not be processed")
-	assert.False(t, finalizer2.HasFinalizer(instance, FinalizerName), "AzureAdApplication should not contain a finalizer")
+	assert.False(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should not contain a finalizer")
 }
 
-func TestReconciler_UpdateAzureAdApplication(t *testing.T) {
+func TestReconciler_UpdateAzureAdApplication_SpecChangeAndNotExpiredSecret_ShouldNotRotateSecrets(t *testing.T) {
 	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", fake.ApplicationExists)
+	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
-	// fetch secret name referenced by previous generation
 	previousSecretName := instance.Spec.SecretName
+	previousHash := instance.Status.SynchronizationHash
+	previousSecretRotationTime := instance.Status.SynchronizationSecretRotationTime
+	previousLogoutUrl := instance.Spec.LogoutUrl
 
-	// update with new secret name
-	newSecretName := fmt.Sprintf("%s-%s", instance.GetName(), newSecret)
+	previousSecret := assertSecretExists(t, previousSecretName, instance)
+
+	// only update spec, secretName is unchanged
+	instance.Spec.LogoutUrl = "https://some-url/logout"
+	err := cli.Update(context.Background(), instance)
+	assert.NoError(t, err, "updating existing application should not return error")
+
+	newInstance := assertApplicationExists(t, "Existing AzureAdApplication should still exist and be synchronized", instance.GetName())
+
+	assert.Eventually(t, func() bool {
+		logoutUrlUpdated := previousLogoutUrl != newInstance.Spec.LogoutUrl
+		hashChanged := previousHash != newInstance.Status.SynchronizationHash
+		secretRotationTimeUnchanged := previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
+		secretNameUnchanged := newInstance.Status.SynchronizationSecretName == previousSecretName
+		return logoutUrlUpdated && hashChanged && secretRotationTimeUnchanged && secretNameUnchanged
+	}, timeout, interval, "Status subresource should be updated")
+	assert.NotEmpty(t, newInstance.Status.SynchronizationSecretRotationTime)
+
+	newSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
+
+	assertSecretsAreNotRotated(t, previousSecret, newSecret)
+}
+
+func TestReconciler_UpdateAzureAdApplication_NewSecretNameAndNotExpired_ShouldNotRotateSecrets(t *testing.T) {
+	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", fake.ApplicationExists)
+	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
+
+	previousSecretName := instance.Spec.SecretName
+	previousHash := instance.Status.SynchronizationHash
+	previousSecretRotationTime := instance.Status.SynchronizationSecretRotationTime
+	assert.NotNil(t, previousSecretRotationTime)
+
+	previousSecret := assertSecretExists(t, previousSecretName, instance)
+
+	newSecretName := fmt.Sprintf("%s-%s-new-not-expired", instance.GetName(), newSecret)
 	instance.Spec.SecretName = newSecretName
 	err := cli.Update(context.Background(), instance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
 	newInstance := assertApplicationExists(t, "Existing AzureAdApplication should still exist and be synchronized", instance.GetName())
 
-	// status subresource should contain new IDs for rotated credentials
-	t.Run("AzureAdApplication Status subresource should be updated", func(t *testing.T) {
-		assert.Eventually(t, func() bool {
-			passwordKeyIdsValid := len(newInstance.Status.PasswordKeyIds) == 2
-			certificateKeyIdsValid := len(newInstance.Status.CertificateKeyIds) == 2
-			return passwordKeyIdsValid && certificateKeyIdsValid
-		}, timeout, interval, "should contain new IDs for rotated credentials")
-	})
+	assert.Eventually(t, func() bool {
+		hashChanged := previousHash != newInstance.Status.SynchronizationHash
+		secretRotationTimeUnchanged := previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
+		secretNameChanged := (newInstance.Status.SynchronizationSecretName != previousSecretName) && (newInstance.Status.SynchronizationSecretName == newSecretName)
+		return hashChanged && secretRotationTimeUnchanged && secretNameChanged
+	}, timeout, interval, "Status subresource should be updated")
+	assert.NotEmpty(t, newInstance.Status.SynchronizationSecretRotationTime)
 
-	// new secret should exist
-	assertSecretExists(t, newSecretName, instance)
+	newSecret := assertSecretExists(t, newSecretName, instance)
 
-	// old secret referenced by pod should still exist
-	assertSecretExists(t, previousSecretName, instance)
+	assertSecretsAreNotRotated(t, previousSecret, newSecret)
+}
+
+func TestReconciler_UpdateAzureAdApplication_NewSecretNameAndExpired_ShouldRotateSecrets(t *testing.T) {
+	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", fake.ApplicationExists)
+	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
+
+	previousSecretName := instance.Spec.SecretName
+	previousHash := instance.Status.SynchronizationHash
+	previousSecretRotationTime := instance.Status.SynchronizationSecretRotationTime
+
+	previousSecret := assertSecretExists(t, previousSecretName, instance)
+
+	// only update spec with new secret name, other fields are unchanged
+	newSecretName := fmt.Sprintf("%s-%s-new-expired", instance.GetName(), newSecret)
+	instance.Spec.SecretName = newSecretName
+
+	// set last rotation time to (previous - maxSecretAge) to trigger rotation
+	expiredTime := metav1.NewTime(previousSecretRotationTime.Add(-1 * maxSecretAge))
+	instance.Status.SynchronizationSecretRotationTime = &expiredTime
+
+	err := cli.Update(context.Background(), instance)
+	assert.NoError(t, err, "updating existing application should not return error")
+
+	newInstance := assertApplicationExists(t, "Existing AzureAdApplication should still exist and be synchronized", instance.GetName())
+
+	assert.Eventually(t, func() bool {
+		hashChanged := previousHash != newInstance.Status.SynchronizationHash
+		secretNameUpdated := previousSecretName != newInstance.Status.SynchronizationSecretName
+		secretRotationTimeUpdated := !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
+		passwordKeyIdsValid := len(newInstance.Status.PasswordKeyIds) == 2
+		certificateKeyIdsValid := len(newInstance.Status.CertificateKeyIds) == 2
+
+		return hashChanged && secretNameUpdated && secretRotationTimeUpdated && passwordKeyIdsValid && certificateKeyIdsValid
+	}, timeout, interval, "Status subresource should be updated")
+	assert.NotEmpty(t, newInstance.Status.SynchronizationSecretRotationTime)
+
+	newSecret := assertSecretExists(t, newSecretName, instance)
+
+	assertSecretsAreRotated(t, previousSecret, newSecret)
+}
+
+func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTimeAndNewSecretName_ShouldRotateSecrets(t *testing.T) {
+	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", fake.ApplicationExists)
+	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
+
+	previousSecretName := instance.Spec.SecretName
+	previousHash := instance.Status.SynchronizationHash
+	previousSecretRotationTime := instance.Status.SynchronizationSecretRotationTime
+
+	previousSecret := assertSecretExists(t, previousSecretName, instance)
+
+	newSecretName := fmt.Sprintf("%s-%s-missing-secret-rotation-time", instance.GetName(), newSecret)
+	instance.Spec.SecretName = newSecretName
+	instance.Status.SynchronizationSecretRotationTime = nil
+	err := cli.Update(context.Background(), instance)
+	assert.NoError(t, err, "updating existing application should not return error")
+
+	newInstance := assertApplicationExists(t, "Existing AzureAdApplication should still exist and be synchronized", instance.GetName())
+
+	assert.Eventually(t, func() bool {
+		hashChanged := previousHash != newInstance.Status.SynchronizationHash
+		secretRotationTimeChanged := !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
+		secretNameChanged := (newInstance.Status.SynchronizationSecretName != previousSecretName) && (newInstance.Status.SynchronizationSecretName == newSecretName)
+		return hashChanged && secretRotationTimeChanged && secretNameChanged
+	}, timeout, interval, "Status subresource should be updated")
+	assert.NotEmpty(t, newInstance.Status.SynchronizationSecretRotationTime)
+
+	newSecret := assertSecretExists(t, newSecretName, instance)
+
+	assertSecretsAreRotated(t, previousSecret, newSecret)
+}
+
+func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTime_ShouldNotRotateSecrets(t *testing.T) {
+	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", fake.ApplicationExists)
+	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
+
+	previousSecretName := instance.Spec.SecretName
+	previousHash := instance.Status.SynchronizationHash
+	previousSecretRotationTime := instance.Status.SynchronizationSecretRotationTime
+
+	previousSecret := assertSecretExists(t, previousSecretName, instance)
+
+	instance.Status.SynchronizationSecretRotationTime = nil
+	err := cli.Update(context.Background(), instance)
+	assert.NoError(t, err, "updating existing application should not return error")
+
+	newInstance := assertApplicationExists(t, "Existing AzureAdApplication should still exist and be synchronized", instance.GetName())
+	assert.Empty(t, instance.Status.SynchronizationSecretRotationTime)
+
+	assert.Eventually(t, func() bool {
+		hashUnchanged := previousHash == newInstance.Status.SynchronizationHash
+		secretRotationTimeChanged := !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
+		secretNameUnchanged := newInstance.Status.SynchronizationSecretName == previousSecretName
+		return hashUnchanged && secretRotationTimeChanged && secretNameUnchanged
+	}, timeout, interval, "Status subresource should be updated")
+	assert.Empty(t, newInstance.Status.SynchronizationSecretRotationTime)
+
+	newSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
+
+	assertSecretsAreNotRotated(t, previousSecret, newSecret)
 }
 
 func TestReconciler_DeleteAzureAdApplication(t *testing.T) {
@@ -208,12 +344,15 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1.Azu
 		assert.Eventually(t, func() bool {
 			err := cli.Get(context.Background(), key, instance)
 			assert.NoError(t, err)
-			b, err := azurerator.IsUpToDate(instance)
+
+			isHashChanged, err := customresources.IsHashChanged(instance)
 			assert.NoError(t, err)
-			return b
+
+			shouldUpdateSecrets := customresources.ShouldUpdateSecrets(instance, maxSecretAge)
+			return !isHashChanged && !shouldUpdateSecrets
 		}, timeout, interval, "AzureAdApplication should be synchronized")
 
-		assert.True(t, finalizer2.HasFinalizer(instance, FinalizerName), "AzureAdApplication should contain a finalizer2")
+		assert.True(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should contain a finalizer")
 
 		assert.Empty(t, instance.Annotations[annotations.SkipKey], "AzureAdApplication should not contain skip annotation")
 
@@ -227,6 +366,7 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1.Azu
 			instance.GetServicePrincipalId(),
 			instance.Status.SynchronizationTime,
 			instance.Status.SynchronizationTenant,
+			instance.Status.SynchronizationSecretName,
 		})
 		assert.Equal(t, v1.EventSynchronized, instance.Status.SynchronizationState, "AzureAdApplication should be synchronized")
 	})
@@ -257,19 +397,20 @@ func assertAnnotationExists(t *testing.T, instance *v1.AzureAdApplication, annot
 	assert.Equal(t, instance.Annotations[annotationKey], annotationValue, fmt.Sprintf("AzureAdApplication should contain annotation %s", annotationKey))
 }
 
-func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplication) {
+func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplication) *corev1.Secret {
+	secret := &corev1.Secret{}
+
 	t.Run(fmt.Sprintf("Secret '%s' should exist", name), func(t *testing.T) {
 		key := client.ObjectKey{
 			Namespace: namespace,
 			Name:      name,
 		}
-		a := &corev1.Secret{}
 
-		assert.Eventually(t, resourceExists(key, a), timeout, interval, "Secret should exist")
+		assert.Eventually(t, resourceExists(key, secret), timeout, interval, "Secret should exist")
 
-		assert.True(t, containsOwnerRef(a.GetOwnerReferences(), *instance), "Secret should contain ownerReference")
+		assert.True(t, containsOwnerRef(secret.GetOwnerReferences(), *instance), "Secret should contain ownerReference")
 
-		actualLabels := a.GetLabels()
+		actualLabels := secret.GetLabels()
 		expectedLabels := map[string]string{
 			labels.AppLabelKey:  instance.GetName(),
 			labels.TypeLabelKey: labels.TypeLabelValue,
@@ -277,16 +418,47 @@ func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplicati
 		assert.NotEmpty(t, actualLabels, "Labels should not be empty")
 		assert.Equal(t, expectedLabels, actualLabels, "Labels should be set")
 
-		assert.Equal(t, corev1.SecretTypeOpaque, a.Type, "Secret type should be Opaque")
+		assert.Equal(t, corev1.SecretTypeOpaque, secret.Type, "Secret type should be Opaque")
 
-		test.AssertContainsKeysWithNonEmptyValues(t, a.Data, secrets.AllKeys)
+		test.AssertContainsKeysWithNonEmptyValues(t, secret.Data, secrets.AllKeys)
 
 		azureOpenIdConfig := fake.AzureOpenIdConfig()
-		assert.Equal(t, azureOpenIdConfig.WellKnownEndpoint, string(a.Data[secrets.WellKnownUrlKey]))
-		assert.Equal(t, azureOpenIdConfig.Issuer, string(a.Data[secrets.OpenIDConfigIssuerKey]))
-		assert.Equal(t, azureOpenIdConfig.JwksURI, string(a.Data[secrets.OpenIDConfigJwksUriKey]))
-		assert.Equal(t, azureOpenIdConfig.TokenEndpoint, string(a.Data[secrets.OpenIDConfigTokenEndpointKey]))
+		assert.Equal(t, azureOpenIdConfig.WellKnownEndpoint, string(secret.Data[secrets.WellKnownUrlKey]))
+		assert.Equal(t, azureOpenIdConfig.Issuer, string(secret.Data[secrets.OpenIDConfigIssuerKey]))
+		assert.Equal(t, azureOpenIdConfig.JwksURI, string(secret.Data[secrets.OpenIDConfigJwksUriKey]))
+		assert.Equal(t, azureOpenIdConfig.TokenEndpoint, string(secret.Data[secrets.OpenIDConfigTokenEndpointKey]))
+
 	})
+
+	return secret
+}
+
+var relevantSecretValues = []string{
+	secrets.CertificateIdKey,
+	secrets.ClientSecretKey,
+	secrets.JwkKey,
+	secrets.JwksKey,
+	secrets.NextCertificateIdKey,
+	secrets.NextClientSecretKey,
+	secrets.NextJwkKey,
+	secrets.NextPasswordIdKey,
+	secrets.PasswordIdKey,
+}
+
+func assertSecretsAreRotated(t *testing.T, previous *corev1.Secret, new *corev1.Secret) {
+	for _, key := range relevantSecretValues {
+		assert.NotEqual(t, previous.Data[key], new.Data[key], fmt.Sprintf("%s", key))
+	}
+	assert.Equal(t, previous.Data[secrets.NextCertificateIdKey], new.Data[secrets.CertificateIdKey])
+	assert.Equal(t, previous.Data[secrets.NextClientSecretKey], new.Data[secrets.ClientSecretKey])
+	assert.Equal(t, previous.Data[secrets.NextJwkKey], new.Data[secrets.JwkKey])
+	assert.Equal(t, previous.Data[secrets.NextPasswordIdKey], new.Data[secrets.PasswordIdKey])
+}
+
+func assertSecretsAreNotRotated(t *testing.T, previous *corev1.Secret, new *corev1.Secret) {
+	for _, key := range relevantSecretValues {
+		assert.Equal(t, previous.Data[key], new.Data[key], fmt.Sprintf("%s", key))
+	}
 }
 
 func resourceExists(key client.ObjectKey, instance runtime.Object) func() bool {
@@ -357,10 +529,11 @@ func setup() (*envtest.Environment, error) {
 	if err != nil {
 		return nil, err
 	}
+	azureratorCfg.MaxSecretAge = maxSecretAge
 
 	azureOpenIDConfig := fake.AzureOpenIdConfig()
 
-	err = (&Reconciler{
+	err = (&controller.Reconciler{
 		Client:            cli,
 		Reader:            mgr.GetAPIReader(),
 		Scheme:            mgr.GetScheme(),

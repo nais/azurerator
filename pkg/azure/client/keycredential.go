@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	strings2 "github.com/nais/azureator/pkg/util/strings"
 	"strings"
 	"time"
 
@@ -18,31 +19,82 @@ type keyCredential struct {
 	client
 }
 
+type addedKeyCredentialSet struct {
+	Current addedKeyCredential
+	Next    addedKeyCredential
+}
+
+type addedKeyCredential struct {
+	KeyCredential msgraph.KeyCredential
+	Jwk           crypto.Jwk
+}
+
 func (c client) keyCredential() keyCredential {
 	return keyCredential{c}
 }
 
 // Generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
 // With the exception of new applications, there should always be two active keys available at any given time so that running applications are not interfered with.
-func (k keyCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (*msgraph.KeyCredential, *crypto.Jwk, error) {
-	keysInUse, err := k.mapToKeyCredentials(tx, keyIdsInUse)
+func (k keyCredential) rotate(tx azure.Transaction, next azure.Credentials, keyIdsInUse azure.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error) {
+	keysInUse, err := k.mapToKeyCredentials(tx, append(keyIdsInUse.Certificate, next.Certificate.KeyId))
 	if err != nil {
 		return nil, nil, err
 	}
-	keyCredential, jwkPair, err := k.new(tx.Instance)
+
+	keyCredential, jwk, err := k.new(tx.Instance)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	keysInUse = append(keysInUse, *keyCredential)
+
 	app := util.EmptyApplication().Keys(keysInUse).Build()
 	if err := k.application().patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
-		return nil, nil, fmt.Errorf("failed to update application with keycredential: %w", err)
+		return nil, nil, fmt.Errorf("updating application with keycredential: %w", err)
 	}
-	return keyCredential, jwkPair, nil
+
+	return keyCredential, jwk, nil
+}
+
+func (k keyCredential) add(tx azure.Transaction) (*addedKeyCredentialSet, error) {
+	application, err := k.Get(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	currentKeyCredential, currentJwk, err := k.new(tx.Instance)
+	if err != nil {
+		return nil, err
+	}
+
+	nextKeyCredential, nextJwk, err := k.new(tx.Instance)
+	if err != nil {
+		return nil, err
+	}
+
+	application.KeyCredentials = append(application.KeyCredentials, *currentKeyCredential, *nextKeyCredential)
+
+	app := util.EmptyApplication().Keys(application.KeyCredentials).Build()
+	if err := k.application().patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
+		return nil, fmt.Errorf("updating application with keycredential set: %w", err)
+	}
+
+	return &addedKeyCredentialSet{
+		Current: addedKeyCredential{
+			KeyCredential: *currentKeyCredential,
+			Jwk:           *currentJwk,
+		},
+		Next: addedKeyCredential{
+			KeyCredential: *nextKeyCredential,
+			Jwk:           *nextJwk,
+		},
+	}, nil
 }
 
 // Maps a list of key IDs to a list of KeyCredentials
 func (k keyCredential) mapToKeyCredentials(tx azure.Transaction, keyIdsInUse []string) ([]msgraph.KeyCredential, error) {
+	keyIdsInUse = strings2.RemoveDuplicates(keyIdsInUse)
+
 	application, err := k.Get(tx)
 	if err != nil {
 		return nil, err
@@ -82,7 +134,9 @@ func (k keyCredential) new(resource v1.AzureAdApplication) (*msgraph.KeyCredenti
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate JWK pair for application: %w", err)
 	}
+
 	newKeyCredential := k.toKeyCredential(jwkPair)
+
 	return &newKeyCredential, &jwkPair, nil
 }
 

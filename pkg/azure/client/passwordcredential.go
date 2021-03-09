@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	strings2 "github.com/nais/azureator/pkg/util/strings"
 	"strings"
 	"time"
 
@@ -20,7 +21,7 @@ func (c client) passwordCredential() passwordCredential {
 	return passwordCredential{c}
 }
 
-func (p passwordCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (*msgraph.PasswordCredential, error) {
+func (p passwordCredential) rotate(tx azure.Transaction, next azure.Credentials, keyIdsInUse azure.KeyIdsInUse) (*msgraph.PasswordCredential, error) {
 	app, err := p.Get(tx)
 	if err != nil {
 		return nil, err
@@ -31,7 +32,11 @@ func (p passwordCredential) rotate(tx azure.Transaction, keyIdsInUse []string) (
 		return nil, err
 	}
 
-	revocationCandidates := p.revocationCandidates(app, append(keyIdsInUse, string(*newCred.KeyID)))
+	passwordKeyIdsInUse := append(keyIdsInUse.Password, next.Password.KeyId, string(*newCred.KeyID))
+
+	time.Sleep(DelayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
+
+	revocationCandidates := p.revocationCandidates(app, passwordKeyIdsInUse)
 	for _, cred := range revocationCandidates {
 		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
 			return nil, err
@@ -67,7 +72,7 @@ func (p passwordCredential) remove(tx azure.Transaction, id azure.ClientId, keyI
 
 func (p passwordCredential) toAddRequest() *msgraph.ApplicationAddPasswordRequestParameter {
 	startDateTime := time.Now()
-	endDateTime := time.Now().AddDate(1, 0, 0)
+	endDateTime := time.Now().AddDate(3, 0, 0)
 	keyId := msgraph.UUID(uuid.New().String())
 	return &msgraph.ApplicationAddPasswordRequestParameter{
 		PasswordCredential: &msgraph.PasswordCredential{
@@ -86,6 +91,8 @@ func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.Applic
 }
 
 func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIdsInUse []string) []msgraph.PasswordCredential {
+	keyIdsInUse = strings2.RemoveDuplicates(keyIdsInUse)
+
 	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
 	// This case assumes the possibility of the Azure application being used in applications external to the cluster.
 	// There should always be at least one passwordcredential registered for an application.

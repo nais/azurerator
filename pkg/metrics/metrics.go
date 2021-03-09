@@ -133,7 +133,7 @@ func (m metrics) InitWithNamespaceLabels() {
 
 func (m metrics) Refresh(ctx context.Context) {
 	var err error
-	exp := 10 * time.Second
+	exp := 1 * time.Minute
 
 	mLabels := client.MatchingLabels{
 		labels.TypeLabelKey: labels.TypeLabelValue,

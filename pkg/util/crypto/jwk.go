@@ -43,11 +43,17 @@ func GenerateJwk(application v1.AzureAdApplication) (Jwk, error) {
 		CertificateThumbprintSHA1:   x5tSHA1[:],
 		CertificateThumbprintSHA256: x5tSHA256[:],
 	}
+
+	return FromJwk(jwk), nil
+}
+
+func FromJwk(jwk jose.JSONWebKey) Jwk {
 	jwkPublic := jwk.Public()
+
 	return Jwk{
 		Private:   jwk,
 		PublicPem: ConvertToPem(jwkPublic.Certificates[0]),
-	}, nil
+	}
 }
 
 func (j Jwk) ToPrivateJwks() jose.JSONWebKeySet {

@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/util/azurerator"
+	"github.com/nais/azureator/pkg/customresources"
 	finalizer2 "github.com/nais/liberator/pkg/finalizer"
-	"github.com/nais/liberator/pkg/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -106,20 +105,21 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if upToDate, err := azurerator.IsUpToDate(tx.instance); upToDate {
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		logger.Info("object state already reconciled, nothing to do")
+	hashChanged, err := customresources.IsHashChanged(tx.instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !hashChanged && !customresources.ShouldRotateSecrets(tx.instance, r.Config.MaxSecretAge) {
 		return ctrl.Result{}, nil
 	}
 
-	application, err := r.process(*tx)
-	if err != nil {
+	if err := r.process(*tx); err != nil {
 		return r.handleError(*tx, err)
 	}
 
-	return r.complete(*tx, *application)
+	logger.Info("successfully synchronized AzureAdApplication with Azure")
+	return r.complete(*tx)
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -139,40 +139,64 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 	instance.SetClusterName(r.Config.ClusterName)
 	instance.Status.CorrelationId = correlationId
 
-	logger.WithFields(
-		log.Fields{
-			"CertificateKeyIDs":  instance.Status.CertificateKeyIds,
-			"PasswordKeyIDs":     instance.Status.PasswordKeyIds,
-			"ClientID":           instance.GetClientId(),
-			"ObjectID":           instance.GetObjectId(),
-			"ServicePrincipalID": instance.GetServicePrincipalId(),
-		}).Info("processing AzureAdApplication...")
-
 	return &transaction{ctx, instance, logger}, nil
 }
 
-func (r *Reconciler) process(tx transaction) (*azure.ApplicationResult, error) {
-	managedSecrets, err := secrets.GetManaged(tx.ctx, tx.instance, r.Reader)
+func (r *Reconciler) process(tx transaction) error {
+	applicationResult, err := r.azure().createOrUpdate(tx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	application, err := r.createOrUpdateAzureApp(tx, *managedSecrets)
+	secretClient := r.secrets(&tx)
+
+	managedSecrets, err := secretClient.GetManaged()
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("getting managed secrets: %w", err)
 	}
 
-	if azurerator.ShouldUpdateSecrets(tx.instance) {
-		if err := r.createOrUpdateSecrets(tx, *application); err != nil {
-			return nil, err
-		}
+	keyIdsInUse := secrets.ExtractKeyIdsInUse(*managedSecrets)
+	credentialsSet, validCredentials, err := secrets.ExtractCredentialsSetFromSecretLists(*managedSecrets, tx.instance.Status.SynchronizationSecretName)
+	if err != nil {
+		return fmt.Errorf("extracting credentials set from secret: %w", err)
+	}
 
-		if err := r.deleteUnusedSecrets(tx, managedSecrets.Unused); err != nil {
-			return nil, err
+	shouldRotateSecrets := customresources.ShouldRotateSecrets(tx.instance, r.Config.MaxSecretAge)
+	shouldUpdateSecrets := customresources.ShouldUpdateSecrets(tx.instance, r.Config.MaxSecretAge)
+
+	if validCredentials && !shouldUpdateSecrets {
+		return nil
+	}
+
+	if !validCredentials {
+		credentialsSet, err = r.azure().addCredentials(tx, &keyIdsInUse)
+		if err != nil {
+			return fmt.Errorf("adding azure credentials: %w", err)
+		}
+	} else if shouldRotateSecrets {
+		credentialsSet, err = r.azure().rotateCredentials(tx, *credentialsSet, &keyIdsInUse)
+		if err != nil {
+			return fmt.Errorf("rotating azure credentials: %w", err)
 		}
 	}
 
-	return application, nil
+	if err := secretClient.CreateOrUpdate(*applicationResult, *credentialsSet, r.AzureOpenIDConfig); err != nil {
+		return err
+	}
+
+	if err := secretClient.DeleteUnused(managedSecrets.Unused); err != nil {
+		return err
+	}
+
+	tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
+	tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
+
+	if !validCredentials || shouldRotateSecrets {
+		now := metav1.Now()
+		tx.instance.Status.SynchronizationSecretRotationTime = &now
+	}
+
+	return nil
 }
 
 func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error) {
@@ -184,68 +208,18 @@ func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error)
 	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *Reconciler) complete(tx transaction, application azure.ApplicationResult) (ctrl.Result, error) {
-	if err := r.updateStatus(tx, application); err != nil {
+func (r *Reconciler) complete(tx transaction) (ctrl.Result, error) {
+	if err := r.updateStatus(tx); err != nil {
 		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventFailedStatusUpdate, "Failed to update status")
 		return ctrl.Result{}, err
 	}
 
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.instance.Namespace)
 	r.reportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
-	logger.Info("successfully reconciled")
-
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) createOrUpdateAzureApp(tx transaction, managedSecrets kubernetes.SecretLists) (*azure.ApplicationResult, error) {
-	var application *azure.ApplicationResult
-
-	exists, err := r.azure().exists(tx)
-	if err != nil {
-		return nil, fmt.Errorf("looking up existence of application: %w", err)
-	}
-
-	if !exists {
-		application, err = r.azure().create(tx)
-		if err != nil {
-			return nil, fmt.Errorf("creating azure application: %w", err)
-		}
-		metrics.IncWithNamespaceLabel(metrics.AzureAppsCreatedCount, tx.instance.Namespace)
-		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventCreatedInAzure, "Azure application is created")
-	} else {
-		application, err = r.azure().update(tx)
-		if err != nil {
-			return nil, fmt.Errorf("updating azure application: %w", err)
-		}
-		metrics.IncWithNamespaceLabel(metrics.AzureAppsUpdatedCount, tx.instance.Namespace)
-		r.reportEvent(tx, corev1.EventTypeNormal, v1.EventUpdatedInAzure, "Azure application is updated")
-
-		appWithActiveCredentialKeyIds := secrets.WithIdsFromUsedSecrets(*application, managedSecrets)
-
-		if azurerator.ShouldUpdateSecrets(tx.instance) {
-			application, err = r.azure().rotate(tx, appWithActiveCredentialKeyIds)
-			if err != nil {
-				return nil, fmt.Errorf("rotating azure credentials: %w", err)
-			}
-			metrics.IncWithNamespaceLabel(metrics.AzureAppsRotatedCount, tx.instance.Namespace)
-			r.reportEvent(tx, corev1.EventTypeNormal, v1.EventRotatedInAzure, "Azure credentials is rotated")
-		} else {
-			application = &appWithActiveCredentialKeyIds
-		}
-	}
-
-	logger.Info("successfully synchronized AzureAdApplication with Azure")
-	return application, nil
-}
-
-func (r *Reconciler) updateStatus(tx transaction, application azure.ApplicationResult) error {
-	tx.instance.Status.CertificateKeyIds = application.Certificate.KeyId.AllInUse
-	tx.instance.Status.PasswordKeyIds = application.Password.KeyId.AllInUse
-
-	tx.instance.Status.ClientId = application.ClientId
-	tx.instance.Status.ObjectId = application.ObjectId
-	tx.instance.Status.ServicePrincipalId = application.ServicePrincipalId
-
+func (r *Reconciler) updateStatus(tx transaction) error {
 	tx.instance.Status.SynchronizationSecretName = tx.instance.Spec.SecretName
 	tx.instance.Status.SynchronizationState = v1.EventSynchronized
 	now := metav1.Now()
@@ -259,12 +233,12 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.ApplicationR
 	tx.instance.Status.SynchronizationHash = newHash
 
 	if err := r.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
-		logger.Debug("updating status for AzureAdApplication")
 		existing.Status = tx.instance.Status
-		return r.Update(tx.ctx, existing)
+		return r.Status().Update(tx.ctx, existing)
 	}); err != nil {
 		return fmt.Errorf("updating status fields: %w", err)
 	}
+
 	logger.WithFields(
 		log.Fields{
 			"CertificateKeyIDs":  tx.instance.Status.CertificateKeyIds,
@@ -273,6 +247,7 @@ func (r *Reconciler) updateStatus(tx transaction, application azure.ApplicationR
 			"ObjectID":           tx.instance.GetObjectId(),
 			"ServicePrincipalID": tx.instance.GetServicePrincipalId(),
 		}).Info("status subresource successfully updated")
+
 	return nil
 }
 

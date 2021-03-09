@@ -9,14 +9,16 @@ import (
 	"github.com/spf13/viper"
 	"sort"
 	"strings"
+	"time"
 )
 
 type Config struct {
-	Azure       AzureConfig `json:"azure"`
-	MetricsAddr string      `json:"metrics-address"`
-	ClusterName string      `json:"cluster-name"`
-	Debug       bool        `json:"debug"`
-	Validations Validations `json:"validations"`
+	Azure        AzureConfig   `json:"azure"`
+	MetricsAddr  string        `json:"metrics-address"`
+	ClusterName  string        `json:"cluster-name"`
+	Debug        bool          `json:"debug"`
+	MaxSecretAge time.Duration `json:"max-secret-age"`
+	Validations  Validations   `json:"validations"`
 }
 
 type AzureConfig struct {
@@ -92,6 +94,7 @@ const (
 	ClusterName                                    = "cluster-name"
 	DebugEnabled                                   = "debug"
 	ValidationsTenantRequired                      = "validations.tenant.required"
+	MaxSecretAge                                   = "max-secret-age"
 )
 
 func init() {
@@ -130,6 +133,8 @@ func init() {
 	flag.String(ClusterName, "", "The cluster in which this application should run")
 	flag.Bool(DebugEnabled, false, "Debug mode toggle")
 	flag.Bool(ValidationsTenantRequired, false, "If true, will only process resources that have a tenant defined in the spec")
+
+	flag.Duration(MaxSecretAge, 7*24*time.Hour, "Maximum age of secrets before triggering rotation.")
 }
 
 // Print out all configuration options except secret stuff.

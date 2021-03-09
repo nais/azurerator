@@ -7,7 +7,6 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
-	"github.com/nais/azureator/pkg/util/crypto"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
@@ -24,20 +23,14 @@ type application struct {
 }
 
 type applicationResponse struct {
-	Application   msgraph.Application
-	KeyCredential msgraph.KeyCredential
-	Jwk           crypto.Jwk
+	Application msgraph.Application
 }
 
 func (c client) application() application {
 	return application{c}
 }
 
-func (a application) register(tx azure.Transaction) (applicationResponse, error) {
-	key, jwk, err := a.keyCredential().new(tx.Instance)
-	if err != nil {
-		return applicationResponse{}, err
-	}
+func (a application) register(tx azure.Transaction) (*msgraph.Application, error) {
 	access := []msgraph.RequiredResourceAccess{
 		a.requiredResourceAccess().microsoftGraph(),
 	}
@@ -45,22 +38,18 @@ func (a application) register(tx azure.Transaction) (applicationResponse, error)
 		a.appRoles().defaultRole(),
 	}
 	req := util.Application(a.defaultTemplate(tx.Instance)).
-		Key(*key).
 		ResourceAccess(access).
 		GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup).
 		AppRoles(appRoles).
 		RedirectUris(util.GetReplyUrlsStringSlice(tx.Instance)).
 		Build()
+
 	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
-		return applicationResponse{}, fmt.Errorf("registering application: %w", err)
+		return nil, fmt.Errorf("registering application: %w", err)
 	}
 
-	return applicationResponse{
-		Application:   *app,
-		KeyCredential: *key,
-		Jwk:           *jwk,
-	}, nil
+	return app, nil
 }
 
 func (a application) delete(tx azure.Transaction) error {
