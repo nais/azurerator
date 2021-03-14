@@ -3,9 +3,9 @@ package client
 import (
 	"context"
 	"fmt"
-
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/liberator/pkg/strings"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	"github.com/yaegashi/msgraph.go/ptr"
 )
@@ -69,6 +69,21 @@ func (s servicePrincipal) setAppRoleAssignmentNotRequired(tx azure.Transaction) 
 }
 
 func (s servicePrincipal) setAppRoleAssignment(tx azure.Transaction, required bool) error {
+	exists, sp, err := s.exists(tx.Ctx, tx.Instance.GetClientId())
+	if err != nil {
+		return err
+	}
+
+	if !exists || sp.AppRoleAssignmentRequired == nil {
+		return nil
+	}
+
+	isAlreadySet := *sp.AppRoleAssignmentRequired == required && strings.ContainsString(sp.Tags, ServicePrincipalTagHideApp)
+
+	if isAlreadySet {
+		return nil
+	}
+
 	request := &msgraphbeta.ServicePrincipal{
 		AppRoleAssignmentRequired: ptr.Bool(required),
 		Tags:                      []string{ServicePrincipalTagHideApp},
@@ -77,5 +92,6 @@ func (s servicePrincipal) setAppRoleAssignment(tx azure.Transaction, required bo
 	if err := s.update(tx, request); err != nil {
 		return fmt.Errorf("setting approleassignment requirement for service principal: %w", err)
 	}
+
 	return nil
 }
