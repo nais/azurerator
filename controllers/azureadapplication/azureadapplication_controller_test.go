@@ -226,15 +226,18 @@ func TestReconciler_UpdateAzureAdApplication_NewSecretNameAndExpired_ShouldRotat
 
 	previousSecret := assertSecretExists(t, previousSecretName, instance)
 
-	// only update spec with new secret name, other fields are unchanged
-	newSecretName := fmt.Sprintf("%s-%s-new-expired", instance.GetName(), newSecret)
-	instance.Spec.SecretName = newSecretName
-
 	// set last rotation time to (previous - maxSecretAge) to trigger rotation
 	expiredTime := metav1.NewTime(previousSecretRotationTime.Add(-1 * maxSecretAge))
 	instance.Status.SynchronizationSecretRotationTime = &expiredTime
 
-	err := cli.Update(context.Background(), instance)
+	err := cli.Status().Update(context.Background(), instance)
+	assert.NoError(t, err, "updating existing application status subresource should not return error")
+
+	// only update spec with new secret name, other fields are unchanged
+	newSecretName := fmt.Sprintf("%s-%s-new-expired", instance.GetName(), newSecret)
+	instance.Spec.SecretName = newSecretName
+
+	err = cli.Update(context.Background(), instance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
 	newInstance := assertApplicationExists(t, "Existing AzureAdApplication should still exist and be synchronized", instance.GetName())
@@ -265,10 +268,15 @@ func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTimeAndNewSecr
 
 	previousSecret := assertSecretExists(t, previousSecretName, instance)
 
+	instance.Status.SynchronizationSecretRotationTime = nil
+
+	err := cli.Status().Update(context.Background(), instance)
+	assert.NoError(t, err, "updating existing application status subresource should not return error")
+
 	newSecretName := fmt.Sprintf("%s-%s-missing-secret-rotation-time", instance.GetName(), newSecret)
 	instance.Spec.SecretName = newSecretName
-	instance.Status.SynchronizationSecretRotationTime = nil
-	err := cli.Update(context.Background(), instance)
+
+	err = cli.Update(context.Background(), instance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
 	newInstance := assertApplicationExists(t, "Existing AzureAdApplication should still exist and be synchronized", instance.GetName())
@@ -293,21 +301,29 @@ func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTime_ShouldNot
 	previousSecretName := instance.Spec.SecretName
 	previousHash := instance.Status.SynchronizationHash
 	previousSecretRotationTime := instance.Status.SynchronizationSecretRotationTime
+	previousLogoutUrl := instance.Spec.LogoutUrl
 
 	previousSecret := assertSecretExists(t, previousSecretName, instance)
 
 	instance.Status.SynchronizationSecretRotationTime = nil
-	err := cli.Update(context.Background(), instance)
+
+	err := cli.Status().Update(context.Background(), instance)
+	assert.NoError(t, err, "updating existing application should not return error")
+
+	instance.Spec.LogoutUrl = "some-changed-value"
+
+	err = cli.Update(context.Background(), instance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
 	newInstance := assertApplicationExists(t, "Existing AzureAdApplication should still exist and be synchronized", instance.GetName())
 	assert.Empty(t, instance.Status.SynchronizationSecretRotationTime)
 
 	assert.Eventually(t, func() bool {
-		hashUnchanged := previousHash == newInstance.Status.SynchronizationHash
+		logoutUrlChanged := previousLogoutUrl != newInstance.Spec.LogoutUrl
+		hashChanged := previousHash != newInstance.Status.SynchronizationHash
 		secretRotationTimeChanged := !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
 		secretNameUnchanged := newInstance.Status.SynchronizationSecretName == previousSecretName
-		return hashUnchanged && secretRotationTimeChanged && secretNameUnchanged
+		return logoutUrlChanged && hashChanged && secretRotationTimeChanged && secretNameUnchanged
 	}, timeout, interval, "Status subresource should be updated")
 	assert.Empty(t, newInstance.Status.SynchronizationSecretRotationTime)
 

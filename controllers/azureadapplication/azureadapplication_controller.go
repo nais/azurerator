@@ -98,9 +98,14 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	if inSharedNamespace {
+		if err := r.Client.Status().Update(tx.ctx, tx.instance); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update resource with skip flag: %w", err)
+		}
+
 		if err := r.Client.Update(tx.ctx, tx.instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update resource with skip flag: %w", err)
 		}
+
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsSkippedCount, tx.instance.Namespace)
 		return ctrl.Result{}, nil
 	}
