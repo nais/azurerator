@@ -75,7 +75,7 @@ func (s servicePrincipal) setAppRoleAssignment(tx azure.Transaction, required bo
 	}
 
 	if !exists || sp.AppRoleAssignmentRequired == nil {
-		return nil
+		return fmt.Errorf("service principal not found or unexpected response data")
 	}
 
 	isAlreadySet := *sp.AppRoleAssignmentRequired == required && strings.ContainsString(sp.Tags, ServicePrincipalTagHideApp)
