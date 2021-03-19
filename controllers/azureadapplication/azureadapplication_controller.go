@@ -80,7 +80,6 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	defer cancel()
 
 	if r.shouldSkip(tx) {
-		logger.Info("skipping processing of this resource")
 		return ctrl.Result{}, nil
 	}
 
