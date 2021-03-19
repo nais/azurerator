@@ -12,10 +12,8 @@ import (
 )
 
 func (r *Reconciler) shouldSkip(tx *transaction) bool {
-	if hasSkipFlag(tx) {
-		msg := fmt.Sprintf("Resource contains '%s' annotation. Skipping processing...", annotations.SkipKey)
-		logger.Debug(msg)
-		r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventSkipped, msg)
+	if isNotInTeamNamespace(tx) {
+		logger.Debug(fmt.Sprintf("Resource is annotated with '%s'. Skipping processing...", annotations.NotInTeamNamespaceKey))
 		return true
 	}
 
@@ -53,20 +51,19 @@ func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
 	}
 	for _, ns := range sharedNs.Items {
 		if ns.Name == tx.instance.Namespace {
-			msg := fmt.Sprintf("Resource should not exist in shared namespace '%s'. Skipping...", tx.instance.Namespace)
-			logger.Debug(msg)
-			annotations.SetAnnotation(tx.instance, annotations.SkipKey, annotations.SkipValue)
+			msg := fmt.Sprintf("ERROR: Expected resource in team namespace, but was found in namespace '%s'. Azure application and secrets will not be processed.", tx.instance.Namespace)
+			logger.Error(msg)
+			annotations.SetAnnotation(tx.instance, annotations.NotInTeamNamespaceKey, annotations.NotInTeamNamespaceValue)
 			r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventNotInTeamNamespace, msg)
-			r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventSkipped, msg)
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func hasSkipFlag(tx *transaction) bool {
-	_, found := annotations.HasAnnotation(tx.instance, annotations.SkipKey)
-	return found
+func isNotInTeamNamespace(tx *transaction) bool {
+	value, found := annotations.HasAnnotation(tx.instance, annotations.NotInTeamNamespaceKey)
+	return found && (value == annotations.NotInTeamNamespaceValue)
 }
 
 var appsync sync.Mutex

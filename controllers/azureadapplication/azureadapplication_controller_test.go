@@ -126,8 +126,8 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication in shared namespace should not be processed", key)
 	assert.True(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should contain a finalizer")
-	assert.Equal(t, v1.EventSkipped, instance.Status.SynchronizationState, "AzureAdApplication should be skipped")
-	assertAnnotationExists(t, instance, annotations.SkipKey, annotations.SkipValue)
+	assert.Equal(t, v1.EventNotInTeamNamespace, instance.Status.SynchronizationState, "AzureAdApplication should be skipped")
+	assertAnnotationExists(t, instance, annotations.NotInTeamNamespaceKey, annotations.NotInTeamNamespaceValue)
 }
 
 func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAnnotation(t *testing.T) {
@@ -370,7 +370,7 @@ func assertApplicationExists(t *testing.T, testName string, name string) *v1.Azu
 
 		assert.True(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should contain a finalizer")
 
-		assert.Empty(t, instance.Annotations[annotations.SkipKey], "AzureAdApplication should not contain skip annotation")
+		assert.Empty(t, instance.Annotations[annotations.NotInTeamNamespaceKey], "AzureAdApplication should not contain skip annotation")
 
 		test.AssertAllNotEmpty(t, []interface{}{
 			instance.Status.CertificateKeyIds,

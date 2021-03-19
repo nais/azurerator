@@ -3,8 +3,8 @@ package annotations
 import v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 const (
-	SkipKey   = "azurerator.nais.io/skip"
-	SkipValue = "true"
+	NotInTeamNamespaceKey   = "azurerator.nais.io/not-in-team-namespace"
+	NotInTeamNamespaceValue = "true"
 )
 
 func SetAnnotation(resource v1.ObjectMetaAccessor, key, value string) {
