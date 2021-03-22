@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -167,6 +168,8 @@ func (r *Reconciler) process(tx transaction) error {
 
 	shouldRotateSecrets := customresources.ShouldRotateSecrets(tx.instance, r.Config.MaxSecretAge)
 	shouldUpdateSecrets := customresources.ShouldUpdateSecrets(tx.instance, r.Config.MaxSecretAge)
+
+	validCredentials = validCredentials && strings.Contains(tx.instance.Status.SynchronizationTenant, r.Config.Azure.Tenant.Name)
 
 	if validCredentials && !shouldUpdateSecrets {
 		return nil
