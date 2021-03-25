@@ -104,7 +104,7 @@ func (a azureReconciler) rotateCredentials(tx transaction, existing azure.Creden
 }
 
 func (a azureReconciler) delete(tx transaction) error {
-	logger.Info("deleting Azure application...")
+	logger.Info("deleting application in Azure AD...")
 	exists, err := a.exists(tx)
 	if err != nil {
 		return err

@@ -3,8 +3,8 @@ package annotations
 import v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 const (
-	NotInTeamNamespaceKey   = "azurerator.nais.io/not-in-team-namespace"
-	NotInTeamNamespaceValue = "true"
+	NotInTeamNamespaceKey = "azure.nais.io/not-in-team-namespace"
+	DeleteKey             = "azure.nais.io/delete"
 )
 
 func SetAnnotation(resource v1.ObjectMetaAccessor, key, value string) {

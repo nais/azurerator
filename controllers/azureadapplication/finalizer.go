@@ -45,11 +45,14 @@ func (f finalizer) process(tx transaction) (ctrl.Result, error) {
 	if finalizer2.HasFinalizer(tx.instance, FinalizerName) {
 		logger.Info("finalizer triggered, deleting resources...")
 
-		if err := f.azure().delete(tx); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to delete resources: %w", err)
-		}
+		if shouldDeleteFromAzure(tx) {
+			err := f.azure().delete(tx)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to delete resources: %w", err)
+			}
 
-		f.reportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedInAzure, "Azure application is deleted")
+			f.reportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedInAzure, "Azure application is deleted")
+		}
 
 		err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
 			controllerutil.RemoveFinalizer(existing, FinalizerName)
@@ -59,6 +62,7 @@ func (f finalizer) process(tx transaction) (ctrl.Result, error) {
 			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer from list: %w", err)
 		}
 	}
+
 	f.reportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedFinalizer, "Object finalizer is deleted")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsDeletedCount, tx.instance.Namespace)
 	return ctrl.Result{}, nil

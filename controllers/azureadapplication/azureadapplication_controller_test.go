@@ -10,6 +10,7 @@ import (
 	"github.com/nais/liberator/pkg/crd"
 	finalizer2 "github.com/nais/liberator/pkg/finalizer"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -127,7 +128,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication in shared namespace should not be processed", key)
 	assert.True(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should contain a finalizer")
 	assert.Equal(t, v1.EventNotInTeamNamespace, instance.Status.SynchronizationState, "AzureAdApplication should be skipped")
-	assertAnnotationExists(t, instance, annotations.NotInTeamNamespaceKey, annotations.NotInTeamNamespaceValue)
+	assertAnnotationExists(t, instance, annotations.NotInTeamNamespaceKey, strconv.FormatBool(true))
 }
 
 func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAnnotation(t *testing.T) {

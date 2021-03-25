@@ -8,6 +8,7 @@ import (
 	"github.com/nais/liberator/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strconv"
 	"sync"
 )
 
@@ -53,7 +54,7 @@ func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
 		if ns.Name == tx.instance.Namespace {
 			msg := fmt.Sprintf("ERROR: Expected resource in team namespace, but was found in namespace '%s'. Azure application and secrets will not be processed.", tx.instance.Namespace)
 			logger.Error(msg)
-			annotations.SetAnnotation(tx.instance, annotations.NotInTeamNamespaceKey, annotations.NotInTeamNamespaceValue)
+			annotations.SetAnnotation(tx.instance, annotations.NotInTeamNamespaceKey, strconv.FormatBool(true))
 			r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventNotInTeamNamespace, msg)
 			return true, nil
 		}
@@ -62,8 +63,13 @@ func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
 }
 
 func isNotInTeamNamespace(tx *transaction) bool {
-	value, found := annotations.HasAnnotation(tx.instance, annotations.NotInTeamNamespaceKey)
-	return found && (value == annotations.NotInTeamNamespaceValue)
+	_, found := annotations.HasAnnotation(tx.instance, annotations.NotInTeamNamespaceKey)
+	return found
+}
+
+func shouldDeleteFromAzure(tx transaction) bool {
+	_, found := annotations.HasAnnotation(tx.instance, annotations.DeleteKey)
+	return found
 }
 
 var appsync sync.Mutex
