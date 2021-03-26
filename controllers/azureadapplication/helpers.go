@@ -32,7 +32,6 @@ func (r *Reconciler) shouldSkipForTenant(tx *transaction) bool {
 	tenant := tx.instance.Spec.Tenant
 
 	if len(tenant) > 0 {
-		logger.Debugf("found tenant in spec '%s', comparing with configured value '%s'...", tenant, config)
 		return tenant != config
 	}
 

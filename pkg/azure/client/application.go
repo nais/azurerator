@@ -22,10 +22,6 @@ type application struct {
 	client
 }
 
-type applicationResponse struct {
-	Application msgraph.Application
-}
-
 func (c client) application() application {
 	return application{c}
 }
@@ -92,17 +88,22 @@ func (a application) patch(ctx context.Context, id azure.ObjectId, application i
 	return nil
 }
 
-func (a application) exists(tx azure.Transaction) (bool, error) {
+func (a application) exists(tx azure.Transaction) (*msgraph.Application, bool, error) {
 	name := kubernetes.UniformResourceName(&tx.Instance)
 	return a.existsByFilter(tx.Ctx, util.FilterByName(name))
 }
 
-func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (bool, error) {
+func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (*msgraph.Application, bool, error) {
 	applications, err := a.getAll(ctx, filter)
 	if err != nil {
-		return false, fmt.Errorf("failed to lookup existence of application: %w", err)
+		return nil, false, fmt.Errorf("failed to lookup existence of application: %w", err)
 	}
-	return len(applications) > 0, nil
+
+	if len(applications) == 0 {
+		return nil, false, nil
+	}
+
+	return &applications[0], true, nil
 }
 
 func (a application) getByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {

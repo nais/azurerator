@@ -153,6 +153,10 @@ func (r *Reconciler) process(tx transaction) error {
 		return err
 	}
 
+	r.preauthorizedapps(tx.instance, applicationResult.PreAuthorizedApps).
+		filterInvalid().
+		reportInvalidAsEvents()
+
 	secretClient := r.secrets(&tx)
 
 	managedSecrets, err := secretClient.GetManaged()
@@ -239,11 +243,20 @@ func (r *Reconciler) updateStatus(tx transaction) error {
 	}
 	tx.instance.Status.SynchronizationHash = newHash
 
-	if err := r.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
+	err = r.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
 		existing.Status = tx.instance.Status
 		return r.Status().Update(tx.ctx, existing)
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("updating status fields: %w", err)
+	}
+
+	err = r.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
+		existing.Spec = tx.instance.Spec
+		return r.Update(tx.ctx, existing)
+	})
+	if err != nil {
+		return fmt.Errorf("updating spec: %w", err)
 	}
 
 	logger.WithFields(

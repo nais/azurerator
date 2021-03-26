@@ -22,13 +22,14 @@ func (a fakeAzureClient) Delete(azure.Transaction) error {
 	return nil
 }
 
-func (a fakeAzureClient) Exists(tx azure.Transaction) (bool, error) {
+func (a fakeAzureClient) Exists(tx azure.Transaction) (*msgraph.Application, bool, error) {
 	appExists := tx.Instance.Name == ApplicationExists
 	validStatus := len(tx.Instance.GetObjectId()) > 0 && len(tx.Instance.GetClientId()) > 0
 	if appExists || validStatus {
-		return true, nil
+		app := MsGraphApplication(tx.Instance)
+		return &app, true, nil
 	}
-	return false, nil
+	return nil, false, nil
 }
 
 func (a fakeAzureClient) Get(tx azure.Transaction) (msgraph.Application, error) {

@@ -121,16 +121,12 @@ func (a azureReconciler) delete(tx transaction) error {
 }
 
 func (a azureReconciler) exists(tx transaction) (bool, error) {
-	exists, err := a.AzureClient.Exists(tx.toAzureTx())
+	application, exists, err := a.AzureClient.Exists(tx.toAzureTx())
 	if err != nil {
 		return false, fmt.Errorf("looking up existence of azure application: %w", err)
 	}
 
 	if exists {
-		application, err := a.AzureClient.Get(tx.toAzureTx())
-		if err != nil {
-			return false, fmt.Errorf("getting azure application: %w", err)
-		}
 		tx.instance.Status.ClientId = *application.AppID
 		tx.instance.Status.ObjectId = *application.ID
 

@@ -15,7 +15,7 @@ const AzureratorPrefix = "azurerator"
 type Client interface {
 	Create(tx Transaction) (*ApplicationResult, error)
 	Delete(tx Transaction) error
-	Exists(tx Transaction) (bool, error)
+	Exists(tx Transaction) (*msgraph.Application, bool, error)
 	Get(tx Transaction) (msgraph.Application, error)
 	GetServicePrincipal(tx Transaction) (msgraphbeta.ServicePrincipal, error)
 	AddCredentials(tx Transaction) (CredentialsSet, error)
@@ -45,11 +45,11 @@ func (t Transaction) UpdateWithServicePrincipalID(servicePrincipal msgraphbeta.S
 }
 
 type ApplicationResult struct {
-	ClientId           string     `json:"clientId"`
-	ObjectId           string     `json:"objectId"`
-	ServicePrincipalId string     `json:"servicePrincipalId"`
-	PreAuthorizedApps  []Resource `json:"preAuthorizedApps"`
-	Tenant             string     `json:"tenant"`
+	ClientId           string            `json:"clientId"`
+	ObjectId           string            `json:"objectId"`
+	ServicePrincipalId string            `json:"servicePrincipalId"`
+	PreAuthorizedApps  PreAuthorizedApps `json:"preAuthorizedApps"`
+	Tenant             string            `json:"tenant"`
 }
 
 type CredentialsSet struct {
@@ -75,6 +75,11 @@ type Certificate struct {
 type Password struct {
 	KeyId        string `json:"keyId"`
 	ClientSecret string `json:"clientSecret"`
+}
+
+type PreAuthorizedApps struct {
+	Valid   []Resource `json:"valid"`
+	Invalid []Resource `json:"invalid"`
 }
 
 // Resource contains metadata that identifies a resource (e.g. User, Group, Application, or Service Principal) within Azure AD.

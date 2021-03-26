@@ -3,12 +3,14 @@ package fake
 import (
 	"github.com/google/uuid"
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/util/crypto"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/yaegashi/msgraph.go/ptr"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
 )
 
 func MsGraphApplication(instance v1.AzureAdApplication) msgraph.Application {
@@ -75,12 +77,22 @@ func AzureCredentialsSet(instance v1.AzureAdApplication) azure.CredentialsSet {
 	}
 }
 
-func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) []azure.Resource {
-	as := make([]azure.Resource, 0)
+func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) azure.PreAuthorizedApps {
+	valid := make([]azure.Resource, 0)
+	invalid := make([]azure.Resource, 0)
+
 	for _, app := range apps {
-		as = append(as, mapToInternalPreAuthApp(app))
+		if strings.Contains(customresources.GetUniqueName(app), "invalid") {
+			invalid = append(invalid, mapToInternalPreAuthApp(app))
+		} else {
+			valid = append(valid, mapToInternalPreAuthApp(app))
+		}
 	}
-	return as
+
+	return azure.PreAuthorizedApps{
+		Valid:   valid,
+		Invalid: invalid,
+	}
 }
 
 func mapToInternalPreAuthApp(app v1.AccessPolicyRule) azure.Resource {

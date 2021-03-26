@@ -62,7 +62,7 @@ func SecretData(app azure.ApplicationResult, set azure.CredentialsSet, azureOpen
 		return nil, fmt.Errorf("marshalling private JWKS: %w", err)
 	}
 
-	preAuthAppsJson, err := json.Marshal(app.PreAuthorizedApps)
+	preAuthAppsJson, err := json.Marshal(app.PreAuthorizedApps.Valid)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling preauthorized apps: %w", err)
 	}

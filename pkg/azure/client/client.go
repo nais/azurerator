@@ -75,14 +75,14 @@ func (c client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		ClientId:           *app.AppID,
 		ObjectId:           *app.ID,
 		ServicePrincipalId: *servicePrincipal.ID,
-		PreAuthorizedApps:  preAuthApps,
+		PreAuthorizedApps:  *preAuthApps,
 		Tenant:             c.config.Tenant.Id,
 	}, nil
 }
 
 // Delete deletes the specified AAD application.
 func (c client) Delete(tx azure.Transaction) error {
-	exists, err := c.Exists(tx)
+	_, exists, err := c.Exists(tx)
 	if err != nil {
 		return err
 	}
@@ -93,12 +93,12 @@ func (c client) Delete(tx azure.Transaction) error {
 }
 
 // Exists returns an indication of whether the application exists in AAD or not
-func (c client) Exists(tx azure.Transaction) (bool, error) {
-	exists, err := c.application().exists(tx)
+func (c client) Exists(tx azure.Transaction) (*msgraph.Application, bool, error) {
+	app, exists, err := c.application().exists(tx)
 	if err != nil {
-		return false, fmt.Errorf("looking up existence of application: %w", err)
+		return nil, false, fmt.Errorf("looking up existence of application: %w", err)
 	}
-	return exists, nil
+	return app, exists, nil
 }
 
 // Get returns a Graph API Application entity, which represents an Application in AAD
@@ -224,12 +224,12 @@ func (c client) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		ClientId:           clientId,
 		ObjectId:           objectId,
 		ServicePrincipalId: servicePrincipalId,
-		PreAuthorizedApps:  preAuthApps,
+		PreAuthorizedApps:  *preAuthApps,
 		Tenant:             c.config.Tenant.Id,
 	}, nil
 }
 
-func (c client) process(tx azure.Transaction) ([]azure.Resource, error) {
+func (c client) process(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
 	if err := c.oAuth2PermissionGrant().process(tx); err != nil {
 		return nil, fmt.Errorf("processing oauth2 permission grants: %w", err)
 	}
