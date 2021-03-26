@@ -76,6 +76,8 @@ func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyRule) (*msgr
 }
 
 func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+	seen := make(map[string]bool)
+
 	validResources := make([]azure.Resource, 0)
 	invalidResources := make([]azure.Resource, 0)
 
@@ -99,7 +101,10 @@ func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedA
 			continue
 		}
 
-		validResources = append(validResources, *resource)
+		if !seen[resource.Name] {
+			seen[resource.Name] = true
+			validResources = append(validResources, *resource)
+		}
 	}
 
 	return &azure.PreAuthorizedApps{
