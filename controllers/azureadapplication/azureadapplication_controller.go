@@ -3,8 +3,11 @@ package azureadapplication
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/customresources"
+	nais_io_v1alpha1 "github.com/nais/liberator/pkg/apis/nais.io/v1alpha1"
 	finalizer2 "github.com/nais/liberator/pkg/finalizer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -12,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/secrets"
@@ -64,13 +66,6 @@ var correlationId string
 // +kubebuilder:rbac:groups=*,resources=events,verbs=get;list;watch;create;update
 
 func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	correlationId = uuid.New().String()
-
-	logger = *log.WithFields(log.Fields{
-		"AzureAdApplication": req.NamespacedName,
-		"correlationId":      correlationId,
-	})
-
 	tx, err := r.prepare(req)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -141,10 +136,27 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 	if err := r.Reader.Get(ctx, req.NamespacedName, instance); err != nil {
 		return nil, err
 	}
+
 	instance.SetClusterName(r.Config.ClusterName)
+
+	correlationId = r.getOrGenerateCorrelationId(instance)
+
+	logger = *log.WithFields(log.Fields{
+		"AzureAdApplication": req.NamespacedName,
+		"correlationId":      correlationId,
+	})
+
 	instance.Status.CorrelationId = correlationId
 
 	return &transaction{ctx, instance, logger}, nil
+}
+
+func (r *Reconciler) getOrGenerateCorrelationId(instance *v1.AzureAdApplication) string {
+	value, found := annotations.HasAnnotation(instance, nais_io_v1alpha1.DeploymentCorrelationIDAnnotation)
+	if !found {
+		return uuid.New().String()
+	}
+	return value
 }
 
 func (r *Reconciler) process(tx transaction) error {
