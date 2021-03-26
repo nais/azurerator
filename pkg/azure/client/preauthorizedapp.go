@@ -7,6 +7,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/customresources"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/nais/liberator/pkg/kubernetes"
 	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
 	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
@@ -82,13 +83,7 @@ func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedA
 	invalidResources := make([]azure.Resource, 0)
 
 	for _, app := range tx.Instance.Spec.PreAuthorizedApplications {
-		if len(app.Cluster) == 0 {
-			app.Cluster = tx.Instance.GetClusterName()
-		}
-
-		if len(app.Namespace) == 0 {
-			app.Namespace = tx.Instance.GetNamespace()
-		}
+		app = ensureFieldsAreSet(tx, app)
 
 		resource, exists, err := p.mapToResource(tx, app)
 		if err != nil {
@@ -105,6 +100,10 @@ func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedA
 			seen[resource.Name] = true
 			validResources = append(validResources, *resource)
 		}
+	}
+
+	if !seen[kubernetes.UniformResourceName(&tx.Instance)] {
+		validResources = append(validResources, toResource(tx.Instance))
 	}
 
 	return &azure.PreAuthorizedApps{
@@ -153,4 +152,25 @@ func invalidResource(app v1.AccessPolicyRule) *azure.Resource {
 		ObjectId:      "",
 		PrincipalType: azure.PrincipalTypeServicePrincipal,
 	}
+}
+
+func toResource(instance v1.AzureAdApplication) azure.Resource {
+	return azure.Resource{
+		Name:          kubernetes.UniformResourceName(&instance),
+		ClientId:      instance.Status.ClientId,
+		ObjectId:      instance.Status.ServicePrincipalId,
+		PrincipalType: azure.PrincipalTypeServicePrincipal,
+	}
+}
+
+func ensureFieldsAreSet(tx azure.Transaction, rule v1.AccessPolicyRule) v1.AccessPolicyRule {
+	if len(rule.Cluster) == 0 {
+		rule.Cluster = tx.Instance.GetClusterName()
+	}
+
+	if len(rule.Namespace) == 0 {
+		rule.Namespace = tx.Instance.GetNamespace()
+	}
+
+	return rule
 }
