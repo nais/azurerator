@@ -7,6 +7,15 @@ metadata:
   labels:
     team: myteam
 spec:
+  # required
+  secretName: azuread-myapp
+  # everything below is optional
+  claims:
+    extra:
+      - "NAVident"
+    groups:
+      - id: "00000000-0000-0000-0000-000000000000"
+  logoutUrl: "https://localhost:3000/oauth2/logout"
   preAuthorizedApplications:
     - application: myapp2
       cluster: minikube
@@ -14,13 +23,7 @@ spec:
     - application: some-other-app
       cluster: test-cluster
       namespace: myteam
-  logoutUrl: "https://localhost:3000/oauth2/logout"
   replyUrls:
     - url: "http://localhost:3000/oauth2/callback"
-  secretName: azuread-myapp
+  secretKeyPrefix: "" # defaults to 'AZURE' if empty or undefined
   tenant: local.test
-  claims:
-    groups:
-      - id: "00000000-0000-0000-0000-000000000000"
-    extra:
-      - "NAVident"

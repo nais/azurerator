@@ -44,7 +44,7 @@ func (s secretsClient) CreateOrUpdate(result azure.ApplicationResult, set azure.
 		Type: corev1.SecretTypeOpaque,
 	}
 
-	stringData, err := secrets.SecretData(result, set, azureOpenIDConfig)
+	stringData, err := secrets.SecretData(result, set, azureOpenIDConfig, s.secretDataKeys)
 	if err != nil {
 		return fmt.Errorf("while creating secret data: %w", err)
 	}

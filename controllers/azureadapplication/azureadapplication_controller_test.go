@@ -47,6 +47,7 @@ const (
 
 var cli client.Client
 var azureClient = fake.NewFakeAzureClient()
+var secretDataKeys = secrets.NewSecretDataKeys()
 
 func TestMain(m *testing.M) {
 	testEnv, err := setup()
@@ -473,13 +474,13 @@ func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplicati
 
 		assert.Equal(t, corev1.SecretTypeOpaque, secret.Type, "Secret type should be Opaque")
 
-		test.AssertContainsKeysWithNonEmptyValues(t, secret.Data, secrets.AllKeys)
+		test.AssertContainsKeysWithNonEmptyValues(t, secret.Data, secretDataKeys.AllKeys())
 
 		azureOpenIdConfig := fake.AzureOpenIdConfig()
-		assert.Equal(t, azureOpenIdConfig.WellKnownEndpoint, string(secret.Data[secrets.WellKnownUrlKey]))
-		assert.Equal(t, azureOpenIdConfig.Issuer, string(secret.Data[secrets.OpenIDConfigIssuerKey]))
-		assert.Equal(t, azureOpenIdConfig.JwksURI, string(secret.Data[secrets.OpenIDConfigJwksUriKey]))
-		assert.Equal(t, azureOpenIdConfig.TokenEndpoint, string(secret.Data[secrets.OpenIDConfigTokenEndpointKey]))
+		assert.Equal(t, azureOpenIdConfig.WellKnownEndpoint, string(secret.Data[secretDataKeys.WellKnownUrl]))
+		assert.Equal(t, azureOpenIdConfig.Issuer, string(secret.Data[secretDataKeys.OpenId.Issuer]))
+		assert.Equal(t, azureOpenIdConfig.JwksURI, string(secret.Data[secretDataKeys.OpenId.JwksUri]))
+		assert.Equal(t, azureOpenIdConfig.TokenEndpoint, string(secret.Data[secretDataKeys.OpenId.TokenEndpoint]))
 
 	})
 
@@ -487,25 +488,25 @@ func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplicati
 }
 
 var relevantSecretValues = []string{
-	secrets.CertificateIdKey,
-	secrets.ClientSecretKey,
-	secrets.JwkKey,
-	secrets.JwksKey,
-	secrets.NextCertificateIdKey,
-	secrets.NextClientSecretKey,
-	secrets.NextJwkKey,
-	secrets.NextPasswordIdKey,
-	secrets.PasswordIdKey,
+	secretDataKeys.CurrentCredentials.CertificateKeyId,
+	secretDataKeys.CurrentCredentials.ClientSecret,
+	secretDataKeys.CurrentCredentials.Jwks,
+	secretDataKeys.CurrentCredentials.Jwk,
+	secretDataKeys.CurrentCredentials.PasswordKeyId,
+	secretDataKeys.NextCredentials.CertificateKeyId,
+	secretDataKeys.NextCredentials.ClientSecret,
+	secretDataKeys.NextCredentials.Jwk,
+	secretDataKeys.NextCredentials.PasswordKeyId,
 }
 
 func assertSecretsAreRotated(t *testing.T, previous *corev1.Secret, new *corev1.Secret) {
 	for _, key := range relevantSecretValues {
 		assert.NotEqual(t, previous.Data[key], new.Data[key], fmt.Sprintf("%s", key))
 	}
-	assert.Equal(t, previous.Data[secrets.NextCertificateIdKey], new.Data[secrets.CertificateIdKey])
-	assert.Equal(t, previous.Data[secrets.NextClientSecretKey], new.Data[secrets.ClientSecretKey])
-	assert.Equal(t, previous.Data[secrets.NextJwkKey], new.Data[secrets.JwkKey])
-	assert.Equal(t, previous.Data[secrets.NextPasswordIdKey], new.Data[secrets.PasswordIdKey])
+	assert.Equal(t, previous.Data[secretDataKeys.NextCredentials.CertificateKeyId], new.Data[secretDataKeys.CurrentCredentials.CertificateKeyId])
+	assert.Equal(t, previous.Data[secretDataKeys.NextCredentials.ClientSecret], new.Data[secretDataKeys.CurrentCredentials.ClientSecret])
+	assert.Equal(t, previous.Data[secretDataKeys.NextCredentials.Jwk], new.Data[secretDataKeys.CurrentCredentials.Jwk])
+	assert.Equal(t, previous.Data[secretDataKeys.NextCredentials.PasswordKeyId], new.Data[secretDataKeys.CurrentCredentials.PasswordKeyId])
 }
 
 func assertSecretsAreNotRotated(t *testing.T, previous *corev1.Secret, new *corev1.Secret) {

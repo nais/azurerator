@@ -10,18 +10,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func ExtractKeyIdsInUse(secretLists kubernetes.SecretLists) azure.KeyIdsInUse {
+type Extractor struct {
+	secretLists kubernetes.SecretLists
+	keys        SecretDataKeys
+}
+
+func NewExtractor(secretLists kubernetes.SecretLists, keys SecretDataKeys) *Extractor {
+	return &Extractor{secretLists: secretLists, keys: keys}
+}
+
+func (e Extractor) GetKeyIdsInUse() azure.KeyIdsInUse {
 	passwordIds := make([]string, 0)
 	certificateIds := make([]string, 0)
 
-	for _, sec := range secretLists.Used.Items {
-		certificateId := string(sec.Data[CertificateIdKey])
+	for _, sec := range e.secretLists.Used.Items {
+		certificateId := string(sec.Data[e.keys.CurrentCredentials.CertificateKeyId])
 
 		if len(certificateId) > 0 {
 			certificateIds = append(certificateIds, certificateId)
 		}
 
-		passwordId := string(sec.Data[PasswordIdKey])
+		passwordId := string(sec.Data[e.keys.CurrentCredentials.PasswordKeyId])
 
 		if len(passwordId) > 0 {
 			passwordIds = append(passwordIds, passwordId)
@@ -37,19 +46,19 @@ func ExtractKeyIdsInUse(secretLists kubernetes.SecretLists) azure.KeyIdsInUse {
 // Looks for and attempts to extract credentials matching the provided secretName parameter, otherwise falls back to
 // extracting credentials from the latest in-use secret (if any).
 // Ultimately returns (nil, false, nil) if no secrets match the above or if any matching secret does not contain the expected keys.
-func ExtractCredentialsSetFromSecretLists(secretLists kubernetes.SecretLists, secretName string) (*azure.CredentialsSet, bool, error) {
-	allSecrets := append(secretLists.Unused.Items, secretLists.Used.Items...)
+func (e Extractor) GetPreviousCredentialsSet(secretName string) (*azure.CredentialsSet, bool, error) {
+	allSecrets := append(e.secretLists.Unused.Items, e.secretLists.Used.Items...)
 
 	for _, secret := range allSecrets {
 		if secret.Name == secretName {
-			return extractCredentialsSetFromSecret(secret)
+			return e.extractCredentialsSetFromSecret(secret)
 		}
 	}
 
-	return extractCredentialsSetFromLatestSecret(secretLists.Used.Items)
+	return e.extractCredentialsSetFromLatestSecret(e.secretLists.Used.Items)
 }
 
-func extractCredentialsSetFromLatestSecret(secrets []corev1.Secret) (*azure.CredentialsSet, bool, error) {
+func (e Extractor) extractCredentialsSetFromLatestSecret(secrets []corev1.Secret) (*azure.CredentialsSet, bool, error) {
 	var latestSecret *corev1.Secret
 	var latestSecretCreationTimestamp metav1.Time
 
@@ -69,19 +78,19 @@ func extractCredentialsSetFromLatestSecret(secrets []corev1.Secret) (*azure.Cred
 	}
 
 	if latestSecret != nil {
-		return extractCredentialsSetFromSecret(*latestSecret)
+		return e.extractCredentialsSetFromSecret(*latestSecret)
 	}
 
 	return nil, false, nil
 }
 
-func extractCredentialsSetFromSecret(secret corev1.Secret) (*azure.CredentialsSet, bool, error) {
-	currentCredential, valid, err := extractCurrentcredentials(secret)
+func (e Extractor) extractCredentialsSetFromSecret(secret corev1.Secret) (*azure.CredentialsSet, bool, error) {
+	currentCredential, valid, err := e.extractCurrentCredentials(secret)
 	if err != nil {
 		return nil, valid, fmt.Errorf("extracting current credentials set from secret: %w", err)
 	}
 
-	nextCredential, valid, err := extractNextCredentials(secret)
+	nextCredential, valid, err := e.extractNextCredentials(secret)
 	if err != nil {
 		return nil, valid, fmt.Errorf("extracting next credentials set from secret: %w", err)
 	}
@@ -101,6 +110,28 @@ type extractCredentialsKeys struct {
 	clientSecretKey  string
 	jwkSecretKey     string
 	passwordIdKey    string
+}
+
+func (e Extractor) extractCurrentCredentials(secret corev1.Secret) (*azure.Credentials, bool, error) {
+	keys := extractCredentialsKeys{
+		certificateIdKey: e.keys.CurrentCredentials.CertificateKeyId,
+		clientSecretKey:  e.keys.CurrentCredentials.ClientSecret,
+		jwkSecretKey:     e.keys.CurrentCredentials.Jwk,
+		passwordIdKey:    e.keys.CurrentCredentials.PasswordKeyId,
+	}
+
+	return extractCredentials(secret, keys)
+}
+
+func (e Extractor) extractNextCredentials(secret corev1.Secret) (*azure.Credentials, bool, error) {
+	keys := extractCredentialsKeys{
+		certificateIdKey: e.keys.NextCredentials.CertificateKeyId,
+		clientSecretKey:  e.keys.NextCredentials.ClientSecret,
+		jwkSecretKey:     e.keys.NextCredentials.Jwk,
+		passwordIdKey:    e.keys.NextCredentials.PasswordKeyId,
+	}
+
+	return extractCredentials(secret, keys)
 }
 
 func extractCredentials(secret corev1.Secret, keys extractCredentialsKeys) (*azure.Credentials, bool, error) {
@@ -131,26 +162,4 @@ func extractCredentials(secret corev1.Secret, keys extractCredentialsKeys) (*azu
 			ClientSecret: string(clientSecret),
 		},
 	}, exists, nil
-}
-
-func extractCurrentcredentials(secret corev1.Secret) (*azure.Credentials, bool, error) {
-	keys := extractCredentialsKeys{
-		certificateIdKey: CertificateIdKey,
-		clientSecretKey:  ClientSecretKey,
-		jwkSecretKey:     JwkKey,
-		passwordIdKey:    PasswordIdKey,
-	}
-
-	return extractCredentials(secret, keys)
-}
-
-func extractNextCredentials(secret corev1.Secret) (*azure.Credentials, bool, error) {
-	keys := extractCredentialsKeys{
-		certificateIdKey: NextCertificateIdKey,
-		clientSecretKey:  NextClientSecretKey,
-		jwkSecretKey:     NextJwkKey,
-		passwordIdKey:    NextPasswordIdKey,
-	}
-
-	return extractCredentials(secret, keys)
 }

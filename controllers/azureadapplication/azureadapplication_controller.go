@@ -45,9 +45,10 @@ type Reconciler struct {
 }
 
 type transaction struct {
-	ctx      context.Context
-	instance *v1.AzureAdApplication
-	log      log.Entry
+	ctx            context.Context
+	instance       *v1.AzureAdApplication
+	log            log.Entry
+	secretDataKeys secrets.SecretDataKeys
 }
 
 func (t *transaction) toAzureTx() azure.Transaction {
@@ -148,7 +149,12 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 
 	instance.Status.CorrelationId = correlationId
 
-	return &transaction{ctx, instance, logger}, nil
+	return &transaction{
+		ctx:            ctx,
+		instance:       instance,
+		log:            logger,
+		secretDataKeys: secrets.NewSecretDataKeys(instance.Spec.SecretKeyPrefix),
+	}, nil
 }
 
 func (r *Reconciler) getOrGenerateCorrelationId(instance *v1.AzureAdApplication) string {
@@ -176,8 +182,11 @@ func (r *Reconciler) process(tx transaction) error {
 		return fmt.Errorf("getting managed secrets: %w", err)
 	}
 
-	keyIdsInUse := secrets.ExtractKeyIdsInUse(*managedSecrets)
-	credentialsSet, validCredentials, err := secrets.ExtractCredentialsSetFromSecretLists(*managedSecrets, tx.instance.Status.SynchronizationSecretName)
+	secretsExtractor := secrets.NewExtractor(*managedSecrets, tx.secretDataKeys)
+
+	keyIdsInUse := secretsExtractor.GetKeyIdsInUse()
+
+	credentialsSet, validCredentials, err := secretsExtractor.GetPreviousCredentialsSet(tx.instance.Status.SynchronizationSecretName)
 	if err != nil {
 		return fmt.Errorf("extracting credentials set from secret: %w", err)
 	}
@@ -192,12 +201,12 @@ func (r *Reconciler) process(tx transaction) error {
 	}
 
 	if !validCredentials {
-		credentialsSet, err = r.azure().addCredentials(tx, &keyIdsInUse)
+		credentialsSet, keyIdsInUse, err = r.azure().addCredentials(tx, keyIdsInUse)
 		if err != nil {
 			return fmt.Errorf("adding azure credentials: %w", err)
 		}
 	} else if shouldRotateSecrets {
-		credentialsSet, err = r.azure().rotateCredentials(tx, *credentialsSet, &keyIdsInUse)
+		credentialsSet, keyIdsInUse, err = r.azure().rotateCredentials(tx, *credentialsSet, keyIdsInUse)
 		if err != nil {
 			return fmt.Errorf("rotating azure credentials: %w", err)
 		}

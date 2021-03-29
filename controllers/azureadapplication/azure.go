@@ -70,27 +70,27 @@ func (a azureReconciler) update(tx transaction) (*azure.ApplicationResult, error
 	return applicationResult, nil
 }
 
-func (a azureReconciler) addCredentials(tx transaction, keyIdsInUse *azure.KeyIdsInUse) (*azure.CredentialsSet, error) {
+func (a azureReconciler) addCredentials(tx transaction, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error) {
 	logger.Info("adding credentials for Azure application...")
 
 	credentialsSet, err := a.AzureClient.AddCredentials(tx.toAzureTx())
 	if err != nil {
-		return nil, err
+		return nil, azure.KeyIdsInUse{}, err
 	}
 
 	logger.Info("successfully added credentials for Azure application")
 
 	keyIdsInUse.Certificate = append(keyIdsInUse.Certificate, credentialsSet.Current.Certificate.KeyId)
 	keyIdsInUse.Password = append(keyIdsInUse.Password, credentialsSet.Current.Password.KeyId)
-	return &credentialsSet, nil
+	return &credentialsSet, keyIdsInUse, nil
 }
 
-func (a azureReconciler) rotateCredentials(tx transaction, existing azure.CredentialsSet, keyIdsInUse *azure.KeyIdsInUse) (*azure.CredentialsSet, error) {
+func (a azureReconciler) rotateCredentials(tx transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error) {
 	logger.Info("rotating credentials for Azure application...")
 
-	credentialsSet, err := a.AzureClient.RotateCredentials(tx.toAzureTx(), existing, *keyIdsInUse)
+	credentialsSet, err := a.AzureClient.RotateCredentials(tx.toAzureTx(), existing, keyIdsInUse)
 	if err != nil {
-		return nil, err
+		return nil, azure.KeyIdsInUse{}, err
 	}
 
 	logger.Info("successfully rotated credentials for Azure application")
@@ -100,7 +100,7 @@ func (a azureReconciler) rotateCredentials(tx transaction, existing azure.Creden
 
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsRotatedCount, tx.instance.Namespace)
 	a.reportEvent(tx, corev1.EventTypeNormal, v1.EventRotatedInAzure, "Azure credentials is rotated")
-	return &credentialsSet, nil
+	return &credentialsSet, keyIdsInUse, nil
 }
 
 func (a azureReconciler) delete(tx transaction) error {
