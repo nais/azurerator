@@ -34,7 +34,7 @@ type AzureTenant struct {
 }
 
 func (a AzureTenant) String() string {
-	return fmt.Sprintf("%s (%s)", a.Name, a.Id)
+	return fmt.Sprintf("%s - %s", a.Name, a.Id)
 }
 
 type AzureAuth struct {

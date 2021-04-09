@@ -41,7 +41,7 @@ func (p preAuthorizedAppsBuilder) filterInvalid() preAuthorizedAppsBuilder {
 
 func (p preAuthorizedAppsBuilder) reportInvalidAsEvents() {
 	for _, app := range p.Invalid {
-		p.Recorder.Event(p.AzureAdApplication, corev1.EventTypeWarning, v1.EventSkipped, fmt.Sprintf("Pre-authorized app '%s' does not exist in Azure AD", app.Name))
+		p.Recorder.Event(p.AzureAdApplication, corev1.EventTypeWarning, v1.EventSkipped, fmt.Sprintf("Pre-authorized app '%s' was not found in the Azure AD tenant (%s)", app.Name, p.Config.Azure.Tenant.String()))
 	}
 }
 
