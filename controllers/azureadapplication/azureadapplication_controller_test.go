@@ -155,42 +155,6 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 	assert.False(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should not contain a finalizer")
 }
 
-func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldBeRemovedFromSpec(t *testing.T) {
-	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", fake.ApplicationExists)
-
-	previousHash := instance.Status.SynchronizationHash
-	previousSyncTime := instance.Status.SynchronizationTime
-	previousPreAuthorizedApps := instance.Spec.PreAuthorizedApplications
-
-	invalidPreAuthorizedApp := v1.AccessPolicyRule{
-		Application: "invalid-app",
-		Namespace:   "some-namespace",
-		Cluster:     "some-cluster",
-	}
-	validPreAuthorizedApp := v1.AccessPolicyRule{
-		Application: "valid-app",
-		Namespace:   "some-namespace",
-		Cluster:     "some-cluster",
-	}
-	instance.Spec.PreAuthorizedApplications = append(previousPreAuthorizedApps, invalidPreAuthorizedApp, validPreAuthorizedApp)
-
-	err := cli.Update(context.Background(), instance)
-	assert.NoError(t, err, "updating existing application should not return error")
-
-	newInstance := assertApplicationExists(t, "Existing AzureAdApplication should still exist and be synchronized", instance.GetName())
-
-	assert.Eventually(t, func() bool {
-		syncTimeUpdated := newInstance.Status.SynchronizationTime.After(previousSyncTime.Time)
-		hashChanged := newInstance.Status.SynchronizationHash != previousHash
-		return syncTimeUpdated && hashChanged
-	}, timeout, interval, "Status subresource should be updated")
-
-	assert.Greater(t, len(newInstance.Spec.PreAuthorizedApplications), len(previousPreAuthorizedApps), "preauthorizedapp has been added")
-	assert.Len(t, newInstance.Spec.PreAuthorizedApplications, len(previousPreAuthorizedApps)+1, "only 1 preauthorized app is added")
-	assert.NotContains(t, newInstance.Spec.PreAuthorizedApplications, invalidPreAuthorizedApp, "invalid preauthorized app is not added")
-	assert.Contains(t, newInstance.Spec.PreAuthorizedApplications, validPreAuthorizedApp, "valid preauthorized app has been added")
-}
-
 func TestReconciler_UpdateAzureAdApplication_SpecChangeAndNotExpiredSecret_ShouldNotRotateSecrets(t *testing.T) {
 	instance := assertApplicationExists(t, "Existing AzureAdApplication should exist", fake.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)

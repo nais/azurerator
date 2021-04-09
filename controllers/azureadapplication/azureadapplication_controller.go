@@ -171,8 +171,8 @@ func (r *Reconciler) process(tx transaction) error {
 		return err
 	}
 
+	// TODO(tronghn): we should automatically requeue synchronization if any pre-authorized apps are invalid
 	r.preauthorizedapps(tx.instance, applicationResult.PreAuthorizedApps).
-		filterInvalid().
 		reportInvalidAsEvents()
 
 	secretClient := r.secrets(&tx)
@@ -270,14 +270,6 @@ func (r *Reconciler) updateStatus(tx transaction) error {
 	})
 	if err != nil {
 		return fmt.Errorf("updating status fields: %w", err)
-	}
-
-	err = r.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
-		existing.Spec = tx.instance.Spec
-		return r.Update(tx.ctx, existing)
-	})
-	if err != nil {
-		return fmt.Errorf("updating spec: %w", err)
 	}
 
 	logger.WithFields(
