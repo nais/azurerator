@@ -26,3 +26,7 @@ func (p preAuthorizedAppsBuilder) reportInvalidAsEvents() {
 		p.Recorder.Event(p.AzureAdApplication, corev1.EventTypeWarning, v1.EventSkipped, fmt.Sprintf("Pre-authorized app '%s' was not found in the Azure AD tenant (%s)", app.Name, p.Config.Azure.Tenant.String()))
 	}
 }
+
+func (p preAuthorizedAppsBuilder) shouldRequeueSynchronization() bool {
+	return len(p.Invalid) > 0
+}

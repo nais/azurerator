@@ -69,6 +69,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.AzureAdApplication{}).
 		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(retryMinInterval, retryMaxInterval)}).
+		WithEventFilter(eventFilterPredicate()).
 		Complete(r)
 }
 
@@ -114,13 +115,13 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	err = r.process(*tx)
+	requeue, err := r.process(*tx)
 	if err != nil {
 		return r.handleError(*tx, err)
 	}
 
 	logger.Info("successfully synchronized AzureAdApplication with Azure")
-	return r.complete(*tx)
+	return r.complete(*tx, requeue)
 }
 
 func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
@@ -158,21 +159,26 @@ func (r *Reconciler) getOrGenerateCorrelationId(instance *v1.AzureAdApplication)
 	return value
 }
 
-func (r *Reconciler) process(tx transaction) error {
+func (r *Reconciler) process(tx transaction) (bool, error) {
+	requeue := false
+
 	applicationResult, err := r.azure().createOrUpdate(tx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	// TODO(tronghn): we should automatically requeue synchronization if any pre-authorized apps are invalid
-	r.preauthorizedapps(tx.instance, applicationResult.PreAuthorizedApps).
-		reportInvalidAsEvents()
+	preAuthorizedApps := r.preauthorizedapps(tx.instance, applicationResult.PreAuthorizedApps)
+	preAuthorizedApps.reportInvalidAsEvents()
+
+	if preAuthorizedApps.shouldRequeueSynchronization() {
+		requeue = true
+	}
 
 	secretClient := r.secrets(&tx)
 
 	managedSecrets, err := secretClient.GetManaged()
 	if err != nil {
-		return fmt.Errorf("getting managed secrets: %w", err)
+		return true, fmt.Errorf("getting managed secrets: %w", err)
 	}
 
 	secretsExtractor := secrets.NewExtractor(*managedSecrets, tx.secretDataKeys)
@@ -181,7 +187,7 @@ func (r *Reconciler) process(tx transaction) error {
 
 	credentialsSet, validCredentials, err := secretsExtractor.GetPreviousCredentialsSet(tx.instance.Status.SynchronizationSecretName)
 	if err != nil {
-		return fmt.Errorf("extracting credentials set from secret: %w", err)
+		return true, fmt.Errorf("extracting credentials set from secret: %w", err)
 	}
 
 	shouldRotateSecrets := customresources.ShouldRotateSecrets(tx.instance, r.Config.MaxSecretAge)
@@ -190,27 +196,27 @@ func (r *Reconciler) process(tx transaction) error {
 	validCredentials = validCredentials && strings.Contains(tx.instance.Status.SynchronizationTenant, r.Config.Azure.Tenant.Name)
 
 	if validCredentials && !shouldUpdateSecrets {
-		return nil
+		return requeue, nil
 	}
 
 	if !validCredentials {
 		credentialsSet, keyIdsInUse, err = r.azure().addCredentials(tx, keyIdsInUse)
 		if err != nil {
-			return fmt.Errorf("adding azure credentials: %w", err)
+			return true, fmt.Errorf("adding azure credentials: %w", err)
 		}
 	} else if shouldRotateSecrets {
 		credentialsSet, keyIdsInUse, err = r.azure().rotateCredentials(tx, *credentialsSet, keyIdsInUse)
 		if err != nil {
-			return fmt.Errorf("rotating azure credentials: %w", err)
+			return true, fmt.Errorf("rotating azure credentials: %w", err)
 		}
 	}
 
 	if err := secretClient.CreateOrUpdate(*applicationResult, *credentialsSet, r.AzureOpenIDConfig); err != nil {
-		return err
+		return true, err
 	}
 
 	if err := secretClient.DeleteUnused(managedSecrets.Unused); err != nil {
-		return err
+		return true, err
 	}
 
 	tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
@@ -221,7 +227,7 @@ func (r *Reconciler) process(tx transaction) error {
 		tx.instance.Status.SynchronizationSecretRotationTime = &now
 	}
 
-	return nil
+	return requeue, nil
 }
 
 func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error) {
@@ -233,20 +239,32 @@ func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error)
 	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *Reconciler) complete(tx transaction) (ctrl.Result, error) {
-	if err := r.updateStatus(tx); err != nil {
+func (r *Reconciler) complete(tx transaction, requeue bool) (ctrl.Result, error) {
+	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.instance.Namespace)
+	r.reportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
+
+	if requeue {
+		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventRetrying,
+			"Azure application is up-to-date, but spec contains invalid pre-authorized apps. "+
+				"Retrying synchronization with exponential backoff...",
+		)
+	}
+
+	err := r.updateStatus(tx)
+	if err != nil {
 		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventFailedStatusUpdate, "Failed to update status")
 		return ctrl.Result{}, err
 	}
 
-	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.instance.Namespace)
-	r.reportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
+	if requeue {
+		return ctrl.Result{Requeue: true}, nil
+	}
+
 	return ctrl.Result{}, nil
 }
 
 func (r *Reconciler) updateStatus(tx transaction) error {
 	tx.instance.Status.SynchronizationSecretName = tx.instance.Spec.SecretName
-	tx.instance.Status.SynchronizationState = v1.EventSynchronized
 	now := metav1.Now()
 	tx.instance.Status.SynchronizationTime = &now
 	tx.instance.Status.SynchronizationTenant = r.Config.Azure.Tenant.String()
