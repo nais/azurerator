@@ -3,31 +3,25 @@ package azureadapplication
 import (
 	"context"
 	"fmt"
-	"github.com/nais/azureator/pkg/annotations"
+	"github.com/nais/azureator/pkg/customresources"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	"github.com/nais/liberator/pkg/kubernetes"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
 	"sync"
 )
 
-func (r *Reconciler) shouldSkip(tx *transaction) bool {
-	if isNotInTeamNamespace(tx) {
-		logger.Debug(fmt.Sprintf("Resource is annotated with '%s'. Skipping processing...", annotations.NotInTeamNamespaceKey))
-		return true
+func (r *Reconciler) needsSynchronization(tx *transaction) (bool, error) {
+	hashChanged, err := customresources.IsHashChanged(tx.instance)
+	if err != nil {
+		return false, err
 	}
 
-	if r.shouldSkipForTenant(tx) {
-		logger.Debugf("resource is not addressed to tenant '%s', ignoring...", r.Config.Azure.Tenant.Name)
-		return true
-	} else {
-		logger.Debugf("resource is addressed to tenant '%s', processing...", r.Config.Azure.Tenant.Name)
-		return false
-	}
+	shouldRotateSecrets := customresources.ShouldRotateSecrets(tx.instance, r.Config.MaxSecretAge)
+	isRetrying := tx.instance.Status.SynchronizationState == v1.EventRetrying
+
+	return hashChanged || shouldRotateSecrets || isRetrying, nil
 }
 
-func (r *Reconciler) shouldSkipForTenant(tx *transaction) bool {
+func (r *Reconciler) isNotAddressedToTenant(tx *transaction) bool {
 	config := r.Config.Azure.Tenant.Name
 	tenant := tx.instance.Spec.Tenant
 
@@ -42,33 +36,6 @@ func (r *Reconciler) shouldSkipForTenant(tx *transaction) bool {
 	}
 
 	return tenantRequired
-}
-
-func (r *Reconciler) inSharedNamespace(tx *transaction) (bool, error) {
-	sharedNs, err := kubernetes.ListSharedNamespaces(tx.ctx, r.Reader)
-	if err != nil {
-		return false, err
-	}
-	for _, ns := range sharedNs.Items {
-		if ns.Name == tx.instance.Namespace {
-			msg := fmt.Sprintf("ERROR: Expected resource in team namespace, but was found in namespace '%s'. Azure application and secrets will not be processed.", tx.instance.Namespace)
-			logger.Error(msg)
-			annotations.SetAnnotation(tx.instance, annotations.NotInTeamNamespaceKey, strconv.FormatBool(true))
-			r.reportEvent(*tx, corev1.EventTypeWarning, v1.EventNotInTeamNamespace, msg)
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func isNotInTeamNamespace(tx *transaction) bool {
-	_, found := annotations.HasAnnotation(tx.instance, annotations.NotInTeamNamespaceKey)
-	return found
-}
-
-func shouldDeleteFromAzure(tx transaction) bool {
-	_, found := annotations.HasAnnotation(tx.instance, annotations.DeleteKey)
-	return found
 }
 
 var appsync sync.Mutex

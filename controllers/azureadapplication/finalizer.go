@@ -2,9 +2,9 @@ package azureadapplication
 
 import (
 	"fmt"
+	"github.com/nais/azureator/pkg/annotations"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	finalizer2 "github.com/nais/liberator/pkg/finalizer"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/nais/azureator/pkg/metrics"
@@ -23,47 +23,75 @@ func (r *Reconciler) finalizer() finalizer {
 	return finalizer{r}
 }
 
-func (f finalizer) register(tx transaction) (ctrl.Result, error) {
-	if !finalizer2.HasFinalizer(tx.instance, FinalizerName) {
-		logger.Debug("finalizer for object not found, registering...")
+func (f finalizer) process(tx transaction) (processed bool, err error) {
+	processed = false
 
-		err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
-			controllerutil.AddFinalizer(existing, FinalizerName)
-			return f.Update(tx.ctx, existing)
-		})
-
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("error when registering finalizer: %w", err)
-		}
-
-		f.reportEvent(tx, corev1.EventTypeNormal, v1.EventAddedFinalizer, "Object finalizer is added")
+	if finalizer2.IsBeingDeleted(tx.instance) {
+		err = f.finalize(tx)
+		processed = true
+		return
 	}
-	return ctrl.Result{}, nil
+
+	if !finalizer2.HasFinalizer(tx.instance, FinalizerName) {
+		err = f.register(tx)
+		processed = true
+		return
+	}
+
+	return
 }
 
-func (f finalizer) process(tx transaction) (ctrl.Result, error) {
+func (f finalizer) register(tx transaction) error {
 	if finalizer2.HasFinalizer(tx.instance, FinalizerName) {
-		logger.Debug("finalizer triggered, deleting resources...")
+		return nil
+	}
 
-		if shouldDeleteFromAzure(tx) {
-			err := f.azure().delete(tx)
-			if err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to delete resources: %w", err)
-			}
+	logger.Debug("finalizer for object not found, registering...")
 
-			f.reportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedInAzure, "Azure application is deleted")
-		}
+	err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
+		controllerutil.AddFinalizer(existing, FinalizerName)
+		return f.Update(tx.ctx, existing)
+	})
 
-		err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
-			controllerutil.RemoveFinalizer(existing, FinalizerName)
-			return f.Update(tx.ctx, existing)
-		})
+	if err != nil {
+		return fmt.Errorf("error when registering finalizer: %w", err)
+	}
+
+	f.reportEvent(tx, corev1.EventTypeNormal, v1.EventAddedFinalizer, "Object finalizer is added")
+	return nil
+}
+
+func (f finalizer) finalize(tx transaction) error {
+	if !finalizer2.HasFinalizer(tx.instance, FinalizerName) {
+		return nil
+	}
+
+	logger.Debug("finalizer triggered, deleting resources...")
+
+	if f.shouldDeleteFromAzure(tx) {
+		err := f.azure().delete(tx)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer from list: %w", err)
+			return fmt.Errorf("failed to delete resources: %w", err)
 		}
+
+		f.reportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedInAzure, "Azure application is deleted")
+	}
+
+	err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
+		controllerutil.RemoveFinalizer(existing, FinalizerName)
+		return f.Update(tx.ctx, existing)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to remove finalizer from list: %w", err)
 	}
 
 	f.reportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedFinalizer, "Object finalizer is deleted")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsDeletedCount, tx.instance.Namespace)
-	return ctrl.Result{}, nil
+
+	return nil
+}
+
+func (f finalizer) shouldDeleteFromAzure(tx transaction) bool {
+	_, found := annotations.HasAnnotation(tx.instance, annotations.DeleteKey)
+	return found
 }

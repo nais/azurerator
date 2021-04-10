@@ -8,7 +8,6 @@ import (
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/customresources"
 	nais_io_v1alpha1 "github.com/nais/liberator/pkg/apis/nais.io/v1alpha1"
-	finalizer2 "github.com/nais/liberator/pkg/finalizer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -66,6 +65,13 @@ var correlationId string
 // +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications/status,verbs=get;update;patch;create
 // +kubebuilder:rbac:groups=*,resources=events,verbs=get;list;watch;create;update
 
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&v1.AzureAdApplication{}).
+		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(retryMinInterval, retryMaxInterval)}).
+		Complete(r)
+}
+
 func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	tx, err := r.prepare(req)
 	if err != nil {
@@ -76,58 +82,45 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	tx.ctx = ctx
 	defer cancel()
 
-	if r.shouldSkip(tx) {
+	if r.isNotAddressedToTenant(tx) {
+		logger.Debugf("resource is not addressed to tenant '%s', ignoring...", r.Config.Azure.Tenant.Name)
 		return ctrl.Result{}, nil
 	}
 
-	if finalizer2.IsBeingDeleted(tx.instance) {
-		return r.finalizer().process(*tx)
-	}
+	logger.Debugf("resource is addressed to tenant '%s', processing...", r.Config.Azure.Tenant.Name)
 
-	if !finalizer2.HasFinalizer(tx.instance, FinalizerName) {
-		return r.finalizer().register(*tx)
-	}
-
-	inSharedNamespace, err := r.inSharedNamespace(tx)
+	finalizerProcessed, err := r.finalizer().process(*tx)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	if finalizerProcessed {
+		return ctrl.Result{}, nil
+	}
 
+	inSharedNamespace, err := r.namespaces().process(tx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	if inSharedNamespace {
-		if err := r.Client.Status().Update(tx.ctx, tx.instance); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update resource with skip flag: %w", err)
-		}
-
-		if err := r.Client.Update(tx.ctx, tx.instance); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update resource with skip flag: %w", err)
-		}
-
-		metrics.IncWithNamespaceLabel(metrics.AzureAppsSkippedCount, tx.instance.Namespace)
+		metrics.IncWithNamespaceLabel(metrics.AzureAppsSkippedCount, tx.instance.GetNamespace())
 		return ctrl.Result{}, nil
 	}
 
-	hashChanged, err := customresources.IsHashChanged(tx.instance)
+	needsSynchronization, err := r.needsSynchronization(tx)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
-	if !hashChanged && !customresources.ShouldRotateSecrets(tx.instance, r.Config.MaxSecretAge) {
+	if !needsSynchronization {
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.process(*tx); err != nil {
+	err = r.process(*tx)
+	if err != nil {
 		return r.handleError(*tx, err)
 	}
 
 	logger.Info("successfully synchronized AzureAdApplication with Azure")
 	return r.complete(*tx)
-}
-
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1.AzureAdApplication{}).
-		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(retryMinInterval, retryMaxInterval)}).
-		Complete(r)
 }
 
 func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
