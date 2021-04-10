@@ -144,7 +144,7 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 
 	logger = *log.WithFields(log.Fields{
 		"AzureAdApplication": req.NamespacedName,
-		"correlationId":      correlationId,
+		"correlation_id":     correlationId,
 	})
 
 	instance.Status.CorrelationId = correlationId

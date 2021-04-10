@@ -25,7 +25,7 @@ func (r *Reconciler) finalizer() finalizer {
 
 func (f finalizer) register(tx transaction) (ctrl.Result, error) {
 	if !finalizer2.HasFinalizer(tx.instance, FinalizerName) {
-		logger.Info("finalizer for object not found, registering...")
+		logger.Debug("finalizer for object not found, registering...")
 
 		err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
 			controllerutil.AddFinalizer(existing, FinalizerName)
@@ -43,7 +43,7 @@ func (f finalizer) register(tx transaction) (ctrl.Result, error) {
 
 func (f finalizer) process(tx transaction) (ctrl.Result, error) {
 	if finalizer2.HasFinalizer(tx.instance, FinalizerName) {
-		logger.Info("finalizer triggered, deleting resources...")
+		logger.Debug("finalizer triggered, deleting resources...")
 
 		if shouldDeleteFromAzure(tx) {
 			err := f.azure().delete(tx)
