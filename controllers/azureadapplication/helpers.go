@@ -18,10 +18,11 @@ func (r *Reconciler) needsSynchronization(tx *transaction) (bool, error) {
 		return false, err
 	}
 
-	shouldRotateSecrets := customresources.ShouldRotateSecrets(tx.instance, r.Config.MaxSecretAge)
+	secretNameChanged := customresources.SecretNameChanged(tx.instance)
+	hasExpiredSecrets := customresources.HasExpiredSecrets(tx.instance, r.Config.SecretRotation.MaxAge)
 	isRetrying := tx.instance.Status.SynchronizationState == v1.EventRetrying
 
-	return hashChanged || shouldRotateSecrets || isRetrying, nil
+	return hashChanged || secretNameChanged || hasExpiredSecrets || isRetrying, nil
 }
 
 func (r *Reconciler) isNotAddressedToTenant(tx *transaction) bool {

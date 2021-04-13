@@ -64,6 +64,8 @@ validations:
     required: false
 cluster-name: local
 debug: true
+secret-rotation:
+  max-age: 168h
 ```
 
 Then, assuming you have a Kubernetes cluster running locally (e.g. using [minikube](https://github.com/kubernetes/minikube)):

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/secrets"
 	"github.com/nais/liberator/pkg/kubernetes"
@@ -12,28 +13,27 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strings"
 )
 
 // +kubebuilder:rbac:groups=*,resources=secrets,verbs=get;list;watch;create;delete;update;patch
 
 type secretsClient struct {
-	*transaction
 	Reconciler
-	secretName string
 }
 
-func (r Reconciler) secrets(transaction *transaction) secretsClient {
-	return secretsClient{
-		transaction: transaction,
-		Reconciler:  r,
-		secretName:  transaction.instance.Spec.SecretName,
-	}
+func (r Reconciler) secrets() secretsClient {
+	return secretsClient{Reconciler: r}
 }
 
-func (s secretsClient) CreateOrUpdate(result azure.ApplicationResult, set azure.CredentialsSet, azureOpenIDConfig config.AzureOpenIdConfig) error {
-	s.log.Infof("processing secret with name '%s'...", s.secretName)
-
-	objectMeta := kubernetes.ObjectMeta(s.secretName, s.instance.GetNamespace(), labels.Labels(s.instance))
+func (s secretsClient) createOrUpdate(
+	tx transaction,
+	result azure.ApplicationResult,
+	set azure.CredentialsSet,
+	azureOpenIDConfig config.AzureOpenIdConfig,
+	secretName string,
+) error {
+	objectMeta := kubernetes.ObjectMeta(secretName, tx.instance.GetNamespace(), labels.Labels(tx.instance))
 
 	secret := &corev1.Secret{
 		ObjectMeta: objectMeta,
@@ -44,28 +44,28 @@ func (s secretsClient) CreateOrUpdate(result azure.ApplicationResult, set azure.
 		Type: corev1.SecretTypeOpaque,
 	}
 
-	stringData, err := secrets.SecretData(result, set, azureOpenIDConfig, s.secretDataKeys)
+	stringData, err := secrets.SecretData(result, set, azureOpenIDConfig, tx.secretDataKeys)
 	if err != nil {
 		return fmt.Errorf("while creating secret data: %w", err)
 	}
 
 	secretMutateFn := func() error {
 		secret.StringData = stringData
-		return ctrl.SetControllerReference(s.instance, secret, s.Scheme)
+		return ctrl.SetControllerReference(tx.instance, secret, s.Scheme)
 	}
 
-	res, err := controllerutil.CreateOrUpdate(s.ctx, s.Client, secret, secretMutateFn)
+	res, err := controllerutil.CreateOrUpdate(tx.ctx, s.Client, secret, secretMutateFn)
 	if err != nil {
-		return fmt.Errorf("creating or updating secret %s: %w", s.secretName, err)
+		return fmt.Errorf("creating or updating secret %s: %w", secretName, err)
 	}
 
-	s.log.Infof("secret '%s' %s", s.secretName, res)
+	tx.log.Infof("secret '%s' %s", secretName, res)
 	return nil
 }
 
-func (s secretsClient) GetManaged() (*kubernetes.SecretLists, error) {
+func (s secretsClient) getManaged(tx transaction) (*kubernetes.SecretLists, error) {
 	// fetch all application pods for this app
-	podList, err := kubernetes.ListPodsForApplication(s.ctx, s.Reader, s.instance.GetName(), s.instance.GetNamespace())
+	podList, err := kubernetes.ListPodsForApplication(tx.ctx, s.Reader, tx.instance.GetName(), tx.instance.GetNamespace())
 	if err != nil {
 		return nil, err
 	}
@@ -73,10 +73,10 @@ func (s secretsClient) GetManaged() (*kubernetes.SecretLists, error) {
 	// fetch all managed secrets
 	var allSecrets corev1.SecretList
 	opts := []client.ListOption{
-		client.InNamespace(s.instance.GetNamespace()),
-		client.MatchingLabels(labels.Labels(s.instance)),
+		client.InNamespace(tx.instance.GetNamespace()),
+		client.MatchingLabels(labels.Labels(tx.instance)),
 	}
-	if err := s.Reader.List(s.ctx, &allSecrets, opts...); err != nil {
+	if err := s.Reader.List(tx.ctx, &allSecrets, opts...); err != nil {
 		return nil, err
 	}
 
@@ -85,15 +85,78 @@ func (s secretsClient) GetManaged() (*kubernetes.SecretLists, error) {
 	return &podSecrets, nil
 }
 
-func (s secretsClient) DeleteUnused(unused corev1.SecretList) error {
+func (s secretsClient) deleteUnused(tx transaction, unused corev1.SecretList) error {
 	for i, oldSecret := range unused.Items {
-		if oldSecret.Name == s.secretName {
+		if oldSecret.Name == tx.instance.Spec.SecretName {
 			continue
 		}
-		s.log.Infof("deleting unused secret '%s'...", oldSecret.Name)
-		if err := s.Client.Delete(s.ctx, &unused.Items[i]); err != nil {
+		tx.log.Infof("deleting unused secret '%s'...", oldSecret.Name)
+		if err := s.Client.Delete(tx.ctx, &unused.Items[i]); err != nil {
 			return fmt.Errorf("deleting unused secret: %w", err)
 		}
 	}
+	return nil
+}
+
+func (s secretsClient) process(tx transaction, applicationResult *azure.ApplicationResult) error {
+	secretName := tx.instance.Spec.SecretName
+	secretDataKeys := tx.secretDataKeys
+
+	managedSecrets, err := s.getManaged(tx)
+	if err != nil {
+		return fmt.Errorf("getting managed secrets: %w", err)
+	}
+
+	secretsExtractor := secrets.NewExtractor(*managedSecrets, secretDataKeys)
+
+	keyIdsInUse := func() azure.KeyIdsInUse {
+		keyIdsInUse := secretsExtractor.GetKeyIdsInUse()
+		tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
+		tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
+		return keyIdsInUse
+	}()
+
+	credentialsSet, validCredentials, err := secretsExtractor.GetPreviousCredentialsSet(tx.instance.Status.SynchronizationSecretName)
+	if err != nil {
+		return fmt.Errorf("extracting credentials set from secret: %w", err)
+	}
+
+	secretNameChanged := customresources.SecretNameChanged(tx.instance)
+	hasExpiredSecrets := customresources.HasExpiredSecrets(tx.instance, s.Config.SecretRotation.MaxAge)
+	unchangedTenant := strings.Contains(tx.instance.Status.SynchronizationTenant, s.Config.Azure.Tenant.Name)
+
+	// invalidate previous credentials if tenant was changed
+	validCredentials = validCredentials && unchangedTenant
+
+	if validCredentials && !(secretNameChanged || hasExpiredSecrets) {
+		return nil
+	}
+
+	if !validCredentials || hasExpiredSecrets {
+		credentialsSet, keyIdsInUse, err = s.azure().addCredentials(tx, keyIdsInUse)
+		if err != nil {
+			return fmt.Errorf("adding azure credentials: %w", err)
+		}
+	} else if secretNameChanged {
+		credentialsSet, keyIdsInUse, err = s.azure().rotateCredentials(tx, *credentialsSet, keyIdsInUse)
+		if err != nil {
+			return fmt.Errorf("rotating azure credentials: %w", err)
+		}
+	}
+
+	tx.log.Infof("processing secret with name '%s'...", secretName)
+	if err := s.createOrUpdate(tx, *applicationResult, *credentialsSet, s.AzureOpenIDConfig, secretName); err != nil {
+		return err
+	}
+
+	if err := s.deleteUnused(tx, managedSecrets.Unused); err != nil {
+		return err
+	}
+
+	tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
+	tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
+	now := metav1.Now()
+	tx.instance.Status.SynchronizationSecretRotationTime = &now
+
 	return nil
 }

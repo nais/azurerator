@@ -23,7 +23,7 @@ func IsHashChanged(in *nais_io_v1.AzureAdApplication) (bool, error) {
 	return in.Status.SynchronizationHash != newHash, nil
 }
 
-func IsSecretNameChanged(in *nais_io_v1.AzureAdApplication) bool {
+func SecretNameChanged(in *nais_io_v1.AzureAdApplication) bool {
 	return in.Status.SynchronizationSecretName != in.Spec.SecretName
 }
 
@@ -37,22 +37,4 @@ func HasExpiredSecrets(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Dura
 	secretExpired := diff >= maxSecretAge
 
 	return secretExpired
-}
-
-func ShouldUpdateSecrets(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Duration) bool {
-	return IsSecretNameChanged(in) || HasExpiredSecrets(in, maxSecretAge)
-}
-
-func ShouldRotateSecrets(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Duration) bool {
-	secretNameChanged := IsSecretNameChanged(in)
-
-	if in.Status.SynchronizationSecretRotationTime == nil {
-		return secretNameChanged
-	}
-
-	if len(in.Status.SynchronizationSecretName) == 0 {
-		return false
-	}
-
-	return secretNameChanged && HasExpiredSecrets(in, maxSecretAge)
 }

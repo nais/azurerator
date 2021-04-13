@@ -6,12 +6,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/customresources"
 	nais_io_v1alpha1 "github.com/nais/liberator/pkg/apis/nais.io/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"strings"
 	"time"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -32,7 +30,7 @@ const (
 	retryMaxInterval = 1 * time.Minute
 )
 
-// AzureAdApplicationReconciler reconciles a AzureAdApplication object
+// Reconciler reconciles a AzureAdApplication object
 type Reconciler struct {
 	client.Client
 	Reader            client.Reader
@@ -164,7 +162,7 @@ func (r *Reconciler) process(tx transaction) (bool, error) {
 
 	applicationResult, err := r.azure().createOrUpdate(tx)
 	if err != nil {
-		return false, err
+		return true, err
 	}
 
 	preAuthorizedApps := r.preauthorizedapps(tx.instance, applicationResult.PreAuthorizedApps)
@@ -174,57 +172,9 @@ func (r *Reconciler) process(tx transaction) (bool, error) {
 		requeue = true
 	}
 
-	secretClient := r.secrets(&tx)
-
-	managedSecrets, err := secretClient.GetManaged()
+	err = r.secrets().process(tx, applicationResult)
 	if err != nil {
-		return true, fmt.Errorf("getting managed secrets: %w", err)
-	}
-
-	secretsExtractor := secrets.NewExtractor(*managedSecrets, tx.secretDataKeys)
-
-	keyIdsInUse := secretsExtractor.GetKeyIdsInUse()
-
-	credentialsSet, validCredentials, err := secretsExtractor.GetPreviousCredentialsSet(tx.instance.Status.SynchronizationSecretName)
-	if err != nil {
-		return true, fmt.Errorf("extracting credentials set from secret: %w", err)
-	}
-
-	shouldRotateSecrets := customresources.ShouldRotateSecrets(tx.instance, r.Config.MaxSecretAge)
-	shouldUpdateSecrets := customresources.ShouldUpdateSecrets(tx.instance, r.Config.MaxSecretAge)
-
-	validCredentials = validCredentials && strings.Contains(tx.instance.Status.SynchronizationTenant, r.Config.Azure.Tenant.Name)
-
-	if validCredentials && !shouldUpdateSecrets {
-		return requeue, nil
-	}
-
-	if !validCredentials {
-		credentialsSet, keyIdsInUse, err = r.azure().addCredentials(tx, keyIdsInUse)
-		if err != nil {
-			return true, fmt.Errorf("adding azure credentials: %w", err)
-		}
-	} else if shouldRotateSecrets {
-		credentialsSet, keyIdsInUse, err = r.azure().rotateCredentials(tx, *credentialsSet, keyIdsInUse)
-		if err != nil {
-			return true, fmt.Errorf("rotating azure credentials: %w", err)
-		}
-	}
-
-	if err := secretClient.CreateOrUpdate(*applicationResult, *credentialsSet, r.AzureOpenIDConfig); err != nil {
-		return true, err
-	}
-
-	if err := secretClient.DeleteUnused(managedSecrets.Unused); err != nil {
-		return true, err
-	}
-
-	tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
-	tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
-
-	if !validCredentials || shouldRotateSecrets {
-		now := metav1.Now()
-		tx.instance.Status.SynchronizationSecretRotationTime = &now
+		return true, fmt.Errorf("while processing secrets: %w", err)
 	}
 
 	return requeue, nil

@@ -13,12 +13,12 @@ import (
 )
 
 type Config struct {
-	Azure        AzureConfig   `json:"azure"`
-	MetricsAddr  string        `json:"metrics-address"`
-	ClusterName  string        `json:"cluster-name"`
-	Debug        bool          `json:"debug"`
-	MaxSecretAge time.Duration `json:"max-secret-age"`
-	Validations  Validations   `json:"validations"`
+	Azure          AzureConfig    `json:"azure"`
+	MetricsAddr    string         `json:"metrics-address"`
+	ClusterName    string         `json:"cluster-name"`
+	Debug          bool           `json:"debug"`
+	SecretRotation SecretRotation `json:"secret-rotation"`
+	Validations    Validations    `json:"validations"`
 }
 
 type AzureConfig struct {
@@ -68,6 +68,10 @@ type GroupsAssignment struct {
 	AllUsersGroupId string `json:"all-users-group-id"`
 }
 
+type SecretRotation struct {
+	MaxAge time.Duration `json:"max-age"`
+}
+
 type Validations struct {
 	Tenant Validation `json:"tenant"`
 }
@@ -94,7 +98,7 @@ const (
 	ClusterName                                    = "cluster-name"
 	DebugEnabled                                   = "debug"
 	ValidationsTenantRequired                      = "validations.tenant.required"
-	MaxSecretAge                                   = "max-secret-age"
+	SecretRotationMaxAge                           = "secret-rotation.max-age"
 )
 
 func init() {
@@ -134,7 +138,7 @@ func init() {
 	flag.Bool(DebugEnabled, false, "Debug mode toggle")
 	flag.Bool(ValidationsTenantRequired, false, "If true, will only process resources that have a tenant defined in the spec")
 
-	flag.Duration(MaxSecretAge, 7*24*time.Hour, "Maximum age of secrets before triggering rotation.")
+	flag.Duration(SecretRotationMaxAge, 180*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
 }
 
 // Print out all configuration options except secret stuff.
