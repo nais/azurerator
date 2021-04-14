@@ -16,6 +16,7 @@ type Client interface {
 	Delete(tx Transaction) error
 	Exists(tx Transaction) (*msgraph.Application, bool, error)
 	Get(tx Transaction) (msgraph.Application, error)
+	GetPreAuthorizedApps(tx Transaction) (*PreAuthorizedApps, error)
 	GetServicePrincipal(tx Transaction) (msgraph.ServicePrincipal, error)
 	AddCredentials(tx Transaction) (CredentialsSet, error)
 	RotateCredentials(tx Transaction, existing CredentialsSet, inUse KeyIdsInUse) (CredentialsSet, error)

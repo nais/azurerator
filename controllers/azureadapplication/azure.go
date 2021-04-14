@@ -2,6 +2,7 @@ package azureadapplication
 
 import (
 	"fmt"
+	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/metrics"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
@@ -26,18 +27,22 @@ func (a azureReconciler) createOrUpdate(tx transaction) (*azure.ApplicationResul
 		return nil, fmt.Errorf("looking up existence of application: %w", err)
 	}
 
+	hashChanged, err := customresources.IsHashChanged(tx.instance)
+	if err != nil {
+		return nil, err
+	}
+	shouldResynchronize := customresources.ShouldResynchronize(tx.instance)
+
 	if !exists {
 		applicationResult, err = a.create(tx)
-	} else {
+	} else if hashChanged || shouldResynchronize {
 		applicationResult, err = a.update(tx)
+	} else {
+		applicationResult, err = a.notModified(tx)
 	}
 	if err != nil {
 		return nil, err
 	}
-
-	tx.instance.Status.ClientId = applicationResult.ClientId
-	tx.instance.Status.ObjectId = applicationResult.ObjectId
-	tx.instance.Status.ServicePrincipalId = applicationResult.ServicePrincipalId
 
 	return applicationResult, nil
 }
@@ -52,6 +57,10 @@ func (a azureReconciler) create(tx transaction) (*azure.ApplicationResult, error
 
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsCreatedCount, tx.instance.Namespace)
 	a.reportEvent(tx, corev1.EventTypeNormal, v1.EventCreatedInAzure, "Azure application is created")
+
+	tx.instance.Status.ClientId = applicationResult.ClientId
+	tx.instance.Status.ObjectId = applicationResult.ObjectId
+	tx.instance.Status.ServicePrincipalId = applicationResult.ServicePrincipalId
 
 	return applicationResult, nil
 }
@@ -68,6 +77,20 @@ func (a azureReconciler) update(tx transaction) (*azure.ApplicationResult, error
 	a.reportEvent(tx, corev1.EventTypeNormal, v1.EventUpdatedInAzure, "Azure application is updated")
 
 	return applicationResult, nil
+}
+
+func (a azureReconciler) notModified(tx transaction) (*azure.ApplicationResult, error) {
+	apps, err := a.AzureClient.GetPreAuthorizedApps(tx.toAzureTx())
+	if err != nil {
+		return nil, fmt.Errorf("fetching pre-authorized apps: %w", err)
+	}
+	return &azure.ApplicationResult{
+		ClientId:           tx.instance.Status.ClientId,
+		ObjectId:           tx.instance.Status.ObjectId,
+		ServicePrincipalId: tx.instance.Status.ServicePrincipalId,
+		PreAuthorizedApps:  *apps,
+		Tenant:             a.Config.Azure.Tenant.Id,
+	}, nil
 }
 
 func (a azureReconciler) addCredentials(tx transaction, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error) {

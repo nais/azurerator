@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"strconv"
 	"time"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -27,7 +28,7 @@ import (
 const (
 	contextTimeout   = 1 * time.Minute
 	retryMinInterval = 15 * time.Second
-	retryMaxInterval = 1 * time.Minute
+	retryMaxInterval = 24 * time.Hour
 )
 
 // Reconciler reconciles a AzureAdApplication object
@@ -107,7 +108,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	needsSynchronization, err := r.needsSynchronization(tx)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("needs synchronization: %w", err)
 	}
 	if !needsSynchronization {
 		return ctrl.Result{}, nil
@@ -165,12 +166,9 @@ func (r *Reconciler) process(tx transaction) (bool, error) {
 		return true, err
 	}
 
-	preAuthorizedApps := r.preauthorizedapps(tx.instance, applicationResult.PreAuthorizedApps)
-	preAuthorizedApps.reportInvalidAsEvents()
-
-	if preAuthorizedApps.shouldRequeueSynchronization() {
-		requeue = true
-	}
+	requeue = r.preauthorizedapps(tx, applicationResult.PreAuthorizedApps).
+		reportInvalidAsEvents().
+		shouldRequeueSynchronization()
 
 	err = r.secrets().process(tx, applicationResult)
 	if err != nil {
@@ -198,11 +196,20 @@ func (r *Reconciler) complete(tx transaction, requeue bool) (ctrl.Result, error)
 			"Azure application is up-to-date, but spec contains invalid pre-authorized apps. "+
 				"Retrying synchronization with exponential backoff...",
 		)
+		annotations.SetAnnotation(tx.instance, annotations.ResynchronizeKey, strconv.FormatBool(true))
+	} else {
+		annotations.RemoveAnnotation(tx.instance, annotations.ResynchronizeKey)
 	}
 
 	err := r.updateStatus(tx)
 	if err != nil {
 		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventFailedStatusUpdate, "Failed to update status")
+		return ctrl.Result{}, err
+	}
+
+	err = r.updateAnnotations(tx)
+	if err != nil {
+		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventRetrying, "Failed to update annotations")
 		return ctrl.Result{}, err
 	}
 
@@ -241,6 +248,18 @@ func (r *Reconciler) updateStatus(tx transaction) error {
 			"ObjectID":           tx.instance.GetObjectId(),
 			"ServicePrincipalID": tx.instance.GetServicePrincipalId(),
 		}).Info("status subresource successfully updated")
+
+	return nil
+}
+
+func (r *Reconciler) updateAnnotations(tx transaction) error {
+	err := r.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
+		existing.SetAnnotations(tx.instance.GetAnnotations())
+		return r.Update(tx.ctx, existing)
+	})
+	if err != nil {
+		return fmt.Errorf("updating annotations: %w", err)
+	}
 
 	return nil
 }

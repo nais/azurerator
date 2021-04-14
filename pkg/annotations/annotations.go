@@ -3,8 +3,9 @@ package annotations
 import v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 const (
-	NotInTeamNamespaceKey = "azure.nais.io/not-in-team-namespace"
 	DeleteKey             = "azure.nais.io/delete"
+	NotInTeamNamespaceKey = "azure.nais.io/not-in-team-namespace"
+	ResynchronizeKey      = "azure.nais.io/resync"
 )
 
 func SetAnnotation(resource v1.ObjectMetaAccessor, key, value string) {
@@ -19,4 +20,13 @@ func SetAnnotation(resource v1.ObjectMetaAccessor, key, value string) {
 func HasAnnotation(resource v1.ObjectMetaAccessor, key string) (string, bool) {
 	value, found := resource.GetObjectMeta().GetAnnotations()[key]
 	return value, found
+}
+
+func RemoveAnnotation(resource v1.ObjectMetaAccessor, key string) {
+	_, found := HasAnnotation(resource, key)
+	if found {
+		a := resource.GetObjectMeta().GetAnnotations()
+		delete(a, ResynchronizeKey)
+		resource.GetObjectMeta().SetAnnotations(a)
+	}
 }

@@ -100,14 +100,13 @@ func (s secretsClient) deleteUnused(tx transaction, unused corev1.SecretList) er
 
 func (s secretsClient) process(tx transaction, applicationResult *azure.ApplicationResult) error {
 	secretName := tx.instance.Spec.SecretName
-	secretDataKeys := tx.secretDataKeys
 
 	managedSecrets, err := s.getManaged(tx)
 	if err != nil {
 		return fmt.Errorf("getting managed secrets: %w", err)
 	}
 
-	secretsExtractor := secrets.NewExtractor(*managedSecrets, secretDataKeys)
+	secretsExtractor := secrets.NewExtractor(*managedSecrets, tx.secretDataKeys)
 
 	keyIdsInUse := func() azure.KeyIdsInUse {
 		keyIdsInUse := secretsExtractor.GetKeyIdsInUse()

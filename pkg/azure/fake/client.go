@@ -39,6 +39,10 @@ func (a fakeAzureClient) GetServicePrincipal(tx azure.Transaction) (msgraph.Serv
 	return ServicePrincipal(tx.Instance), nil
 }
 
+func (a fakeAzureClient) GetPreAuthorizedApps(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+	return AzurePreAuthorizedApps(tx.Instance), nil
+}
+
 func (a fakeAzureClient) AddCredentials(tx azure.Transaction) (azure.CredentialsSet, error) {
 	return AzureCredentialsSet(tx.Instance), nil
 }

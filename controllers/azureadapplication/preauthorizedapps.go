@@ -9,22 +9,25 @@ import (
 
 type preAuthorizedAppsBuilder struct {
 	Reconciler
-	*v1.AzureAdApplication
+	transaction
 	azure.PreAuthorizedApps
 }
 
-func (r Reconciler) preauthorizedapps(application *v1.AzureAdApplication, preAuthorizedApps azure.PreAuthorizedApps) preAuthorizedAppsBuilder {
+func (r Reconciler) preauthorizedapps(tx transaction, preAuthorizedApps azure.PreAuthorizedApps) preAuthorizedAppsBuilder {
 	return preAuthorizedAppsBuilder{
-		Reconciler:         r,
-		AzureAdApplication: application,
-		PreAuthorizedApps:  preAuthorizedApps,
+		Reconciler:        r,
+		transaction:       tx,
+		PreAuthorizedApps: preAuthorizedApps,
 	}
 }
 
-func (p preAuthorizedAppsBuilder) reportInvalidAsEvents() {
+func (p preAuthorizedAppsBuilder) reportInvalidAsEvents() preAuthorizedAppsBuilder {
 	for _, app := range p.Invalid {
-		p.Recorder.Event(p.AzureAdApplication, corev1.EventTypeWarning, v1.EventSkipped, fmt.Sprintf("Pre-authorized app '%s' was not found in the Azure AD tenant (%s)", app.Name, p.Config.Azure.Tenant.String()))
+		msg := fmt.Sprintf("Pre-authorized app '%s' was not found in the Azure AD tenant (%s)", app.Name, p.Config.Azure.Tenant.String())
+		p.transaction.log.Warnf(msg)
+		p.Recorder.Event(p.instance, corev1.EventTypeWarning, v1.EventSkipped, msg)
 	}
+	return p
 }
 
 func (p preAuthorizedAppsBuilder) shouldRequeueSynchronization() bool {

@@ -77,6 +77,11 @@ func AzureCredentialsSet(instance v1.AzureAdApplication) azure.CredentialsSet {
 	}
 }
 
+func AzurePreAuthorizedApps(instance v1.AzureAdApplication) *azure.PreAuthorizedApps {
+	preAuthApps := mapToInternalPreAuthApps(instance.Spec.PreAuthorizedApplications)
+	return &preAuthApps
+}
+
 func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) azure.PreAuthorizedApps {
 	valid := make([]azure.Resource, 0)
 	invalid := make([]azure.Resource, 0)

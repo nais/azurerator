@@ -1,10 +1,12 @@
 package customresources_test
 
 import (
+	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/customresources"
 	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -92,6 +94,29 @@ func TestHasExpiredSecrets(t *testing.T) {
 	})
 }
 
+func TestShouldResynchronize(t *testing.T) {
+	t.Run("not set annotation should not resynchronize", func(t *testing.T) {
+		app := minimalApplication()
+
+		shouldResynchronize := customresources.ShouldResynchronize(app)
+		assert.False(t, shouldResynchronize)
+	})
+
+	t.Run("set annotation should synchronize regardless of value", func(t *testing.T) {
+		app := minimalApplication()
+		annotations.SetAnnotation(app, annotations.ResynchronizeKey, strconv.FormatBool(false))
+
+		shouldResynchronize := customresources.ShouldResynchronize(app)
+		assert.True(t, shouldResynchronize)
+
+		app = minimalApplication()
+		annotations.SetAnnotation(app, annotations.ResynchronizeKey, strconv.FormatBool(true))
+
+		shouldResynchronize = customresources.ShouldResynchronize(app)
+		assert.True(t, shouldResynchronize)
+	})
+}
+
 func minimalApplication() *nais_io_v1.AzureAdApplication {
 	now := metav1.Now()
 	return &nais_io_v1.AzureAdApplication{
@@ -112,7 +137,7 @@ func minimalApplication() *nais_io_v1.AzureAdApplication {
 			ClientId:                          "test",
 			ObjectId:                          "test",
 			ServicePrincipalId:                "test",
-			SynchronizationHash:               "3b810bb8df7a4bf1",
+			SynchronizationHash:               "b85f1aaff45fcfc2",
 			SynchronizationSecretName:         "test",
 			SynchronizationSecretRotationTime: &now,
 		},

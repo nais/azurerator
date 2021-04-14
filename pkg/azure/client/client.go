@@ -119,6 +119,11 @@ func (c client) GetServicePrincipal(tx azure.Transaction) (msgraph.ServicePrinci
 	return sp, nil
 }
 
+// GetPreAuthorizedApps transforms a list of wanted pre-authorized applications in the spec to lists of valid and invalid Azure applications.
+func (c client) GetPreAuthorizedApps(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+	return c.preAuthApps().mapToResources(tx)
+}
+
 // AddCredentials adds credentials for an existing AAD application
 func (c client) AddCredentials(tx azure.Transaction) (azure.CredentialsSet, error) {
 	time.Sleep(DelayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
