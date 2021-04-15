@@ -29,7 +29,3 @@ func (p preAuthorizedAppsBuilder) reportInvalidAsEvents() preAuthorizedAppsBuild
 	}
 	return p
 }
-
-func (p preAuthorizedAppsBuilder) shouldRequeueSynchronization() bool {
-	return len(p.Invalid) > 0
-}

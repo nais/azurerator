@@ -26,7 +26,7 @@ func RemoveAnnotation(resource v1.ObjectMetaAccessor, key string) {
 	_, found := HasAnnotation(resource, key)
 	if found {
 		a := resource.GetObjectMeta().GetAnnotations()
-		delete(a, ResynchronizeKey)
+		delete(a, key)
 		resource.GetObjectMeta().SetAnnotations(a)
 	}
 }

@@ -10,7 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"strconv"
 	"time"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -114,13 +113,13 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	requeue, err := r.process(*tx)
+	err = r.process(*tx)
 	if err != nil {
 		return r.handleError(*tx, err)
 	}
 
 	logger.Info("successfully synchronized AzureAdApplication with Azure")
-	return r.complete(*tx, requeue)
+	return r.complete(*tx)
 }
 
 func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
@@ -158,24 +157,21 @@ func (r *Reconciler) getOrGenerateCorrelationId(instance *v1.AzureAdApplication)
 	return value
 }
 
-func (r *Reconciler) process(tx transaction) (bool, error) {
-	requeue := false
-
+func (r *Reconciler) process(tx transaction) error {
 	applicationResult, err := r.azure().createOrUpdate(tx)
 	if err != nil {
-		return true, err
+		return err
 	}
 
-	requeue = r.preauthorizedapps(tx, applicationResult.PreAuthorizedApps).
-		reportInvalidAsEvents().
-		shouldRequeueSynchronization()
+	r.preauthorizedapps(tx, applicationResult.PreAuthorizedApps).
+		reportInvalidAsEvents()
 
 	err = r.secrets().process(tx, applicationResult)
 	if err != nil {
-		return true, fmt.Errorf("while processing secrets: %w", err)
+		return fmt.Errorf("while processing secrets: %w", err)
 	}
 
-	return requeue, nil
+	return nil
 }
 
 func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error) {
@@ -187,19 +183,11 @@ func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error)
 	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *Reconciler) complete(tx transaction, requeue bool) (ctrl.Result, error) {
+func (r *Reconciler) complete(tx transaction) (ctrl.Result, error) {
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.instance.Namespace)
 	r.reportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
 
-	if requeue {
-		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventRetrying,
-			"Azure application is up-to-date, but spec contains invalid pre-authorized apps. "+
-				"Retrying synchronization with exponential backoff...",
-		)
-		annotations.SetAnnotation(tx.instance, annotations.ResynchronizeKey, strconv.FormatBool(true))
-	} else {
-		annotations.RemoveAnnotation(tx.instance, annotations.ResynchronizeKey)
-	}
+	annotations.RemoveAnnotation(tx.instance, annotations.ResynchronizeKey)
 
 	err := r.updateStatus(tx)
 	if err != nil {
@@ -211,10 +199,6 @@ func (r *Reconciler) complete(tx transaction, requeue bool) (ctrl.Result, error)
 	if err != nil {
 		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventRetrying, "Failed to update annotations")
 		return ctrl.Result{}, err
-	}
-
-	if requeue {
-		return ctrl.Result{Requeue: true}, nil
 	}
 
 	return ctrl.Result{}, nil
