@@ -99,7 +99,9 @@ func (a appRoleAssignments) getAllServicePrincipals(ctx context.Context) ([]msgr
 }
 
 func (a appRoleAssignments) revokeFor(tx azure.Transaction, revoked []msgraphbeta.AppRoleAssignment, principalType azure.PrincipalType) error {
-	for _, r := range revoked {
+	return nil
+
+	/*for _, r := range revoked {
 		logFields := a.logFields
 		logFields["assigneeObjectId"] = *r.PrincipalID
 
@@ -110,7 +112,7 @@ func (a appRoleAssignments) revokeFor(tx azure.Transaction, revoked []msgraphbet
 		}
 		tx.Log.WithFields(logFields).Infof("successfully deleted AppRole assignment for %s '%s'", principalType, *r.PrincipalDisplayName)
 	}
-	return nil
+	return nil*/
 }
 
 func (a appRoleAssignments) processFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) error {
