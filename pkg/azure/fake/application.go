@@ -7,8 +7,8 @@ import (
 	"github.com/nais/azureator/pkg/util/crypto"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
-	"github.com/yaegashi/msgraph.go/ptr"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	"github.com/nais/msgraph.go/ptr"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 )

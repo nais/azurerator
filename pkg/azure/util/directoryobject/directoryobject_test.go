@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
 func TestDifference(t *testing.T) {

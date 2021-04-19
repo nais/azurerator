@@ -2,7 +2,7 @@ package claimsmappingpolicy
 
 import (
 	"fmt"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 type Payload struct {
@@ -20,7 +20,7 @@ type ClaimsMappingPolicies struct {
 }
 
 type ClaimsMappingPolicy struct {
-	msgraphbeta.Entity
+	msgraph.Entity
 	DisplayName *string `json:"displayName,omitempty"`
 }
 

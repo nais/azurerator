@@ -6,8 +6,8 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/liberator/pkg/strings"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
-	"github.com/yaegashi/msgraph.go/ptr"
+	"github.com/nais/msgraph.go/ptr"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 const (
@@ -22,37 +22,37 @@ func (c client) servicePrincipal() servicePrincipal {
 	return servicePrincipal{c}
 }
 
-func (s servicePrincipal) register(tx azure.Transaction) (msgraphbeta.ServicePrincipal, error) {
+func (s servicePrincipal) register(tx azure.Transaction) (msgraph.ServicePrincipal, error) {
 	clientId := tx.Instance.GetClientId()
-	request := &msgraphbeta.ServicePrincipal{
+	request := &msgraph.ServicePrincipal{
 		AppID:                     &clientId,
 		AppRoleAssignmentRequired: ptr.Bool(false),
 		Tags:                      []string{ServicePrincipalTagHideApp},
 	}
-	servicePrincipal, err := s.graphBetaClient.ServicePrincipals().Request().Add(tx.Ctx, request)
+	servicePrincipal, err := s.graphClient.ServicePrincipals().Request().Add(tx.Ctx, request)
 	if err != nil {
-		return msgraphbeta.ServicePrincipal{}, fmt.Errorf("failed to register service principal: %w", err)
+		return msgraph.ServicePrincipal{}, fmt.Errorf("failed to register service principal: %w", err)
 	}
 	return *servicePrincipal, nil
 }
 
-func (s servicePrincipal) exists(ctx context.Context, id azure.ClientId) (bool, msgraphbeta.ServicePrincipal, error) {
-	r := s.graphBetaClient.ServicePrincipals().Request()
+func (s servicePrincipal) exists(ctx context.Context, id azure.ClientId) (bool, msgraph.ServicePrincipal, error) {
+	r := s.graphClient.ServicePrincipals().Request()
 	r.Filter(util.FilterByAppId(id))
 	sps, err := r.GetN(ctx, MaxNumberOfPagesToFetch)
 	if err != nil {
-		return false, msgraphbeta.ServicePrincipal{}, fmt.Errorf("failed to lookup service principal: %w", err)
+		return false, msgraph.ServicePrincipal{}, fmt.Errorf("failed to lookup service principal: %w", err)
 	}
 	if len(sps) == 0 {
-		return false, msgraphbeta.ServicePrincipal{}, nil
+		return false, msgraph.ServicePrincipal{}, nil
 	}
 	return true, sps[0], nil
 }
 
-func (s servicePrincipal) update(tx azure.Transaction, request *msgraphbeta.ServicePrincipal) error {
+func (s servicePrincipal) update(tx azure.Transaction, request *msgraph.ServicePrincipal) error {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
-	if err := s.graphBetaClient.ServicePrincipals().ID(servicePrincipalId).Request().Update(tx.Ctx, request); err != nil {
+	if err := s.graphClient.ServicePrincipals().ID(servicePrincipalId).Request().Update(tx.Ctx, request); err != nil {
 		return fmt.Errorf("updating service principal: %w", err)
 	}
 	return nil
@@ -88,7 +88,7 @@ func (s servicePrincipal) setAppRoleAssignment(tx azure.Transaction, required bo
 		tx.Log.Debug("disabling approle assignment requirement")
 	}
 
-	request := &msgraphbeta.ServicePrincipal{
+	request := &msgraph.ServicePrincipal{
 		AppRoleAssignmentRequired: ptr.Bool(required),
 		Tags:                      []string{ServicePrincipalTagHideApp},
 	}

@@ -6,9 +6,8 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/liberator/pkg/kubernetes"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
-	"github.com/yaegashi/msgraph.go/msauth"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	"github.com/nais/msgraph.go/msauth"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 	"golang.org/x/oauth2"
 	"net/http"
 	"time"
@@ -20,10 +19,9 @@ const (
 )
 
 type client struct {
-	config          *config.AzureConfig
-	httpClient      *http.Client
-	graphClient     *msgraph.GraphServiceRequestBuilder
-	graphBetaClient *msgraphbeta.GraphServiceRequestBuilder
+	config      *config.AzureConfig
+	httpClient  *http.Client
+	graphClient *msgraph.GraphServiceRequestBuilder
 }
 
 func New(ctx context.Context, cfg *config.AzureConfig) (azure.Client, error) {
@@ -36,13 +34,11 @@ func New(ctx context.Context, cfg *config.AzureConfig) (azure.Client, error) {
 
 	httpClient := oauth2.NewClient(ctx, ts)
 	graphClient := msgraph.NewClient(httpClient)
-	graphBetaClient := msgraphbeta.NewClient(httpClient)
 
 	return client{
-		config:          cfg,
-		httpClient:      httpClient,
-		graphClient:     graphClient,
-		graphBetaClient: graphBetaClient,
+		config:      cfg,
+		httpClient:  httpClient,
+		graphClient: graphClient,
 	}, nil
 }
 
@@ -107,18 +103,18 @@ func (c client) Get(tx azure.Transaction) (msgraph.Application, error) {
 }
 
 // GetServicePrincipal returns the application's associated Graph ServicePrincipal entity, or registers and returns one if none exist for the application.
-func (c client) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePrincipal, error) {
+func (c client) GetServicePrincipal(tx azure.Transaction) (msgraph.ServicePrincipal, error) {
 	clientId := tx.Instance.GetClientId()
 	exists, sp, err := c.servicePrincipal().exists(tx.Ctx, clientId)
 	if err != nil {
-		return msgraphbeta.ServicePrincipal{}, fmt.Errorf("looking up existence of service principal: %w", err)
+		return msgraph.ServicePrincipal{}, fmt.Errorf("looking up existence of service principal: %w", err)
 	}
 	if exists {
 		return sp, nil
 	}
 	sp, err = c.servicePrincipal().register(tx)
 	if err != nil {
-		return msgraphbeta.ServicePrincipal{}, fmt.Errorf("registering service principal that did not exist: %w", err)
+		return msgraph.ServicePrincipal{}, fmt.Errorf("registering service principal that did not exist: %w", err)
 	}
 	return sp, nil
 }

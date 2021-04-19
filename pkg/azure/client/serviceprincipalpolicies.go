@@ -160,6 +160,6 @@ func (sp *servicePrincipalPolicies) getAssigned(tx azure.Transaction) (*claimsma
 }
 
 func (sp *servicePrincipalPolicies) jsonRequest(tx azure.Transaction, method, path string, payload, response interface{}) error {
-	req := sp.graphBetaClient.ServicePrincipals().ID(sp.servicePrincipalID).Request()
+	req := sp.graphClient.ServicePrincipals().ID(sp.servicePrincipalID).Request()
 	return req.JSONRequest(tx.Ctx, method, path, payload, response)
 }

@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/azureator/pkg/azure"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
-	"github.com/yaegashi/msgraph.go/jsonx"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	"github.com/nais/msgraph.go/jsonx"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 	"io/ioutil"
 	"net/http"
 )
@@ -43,7 +42,7 @@ func (g groups) process(tx azure.Transaction) error {
 		}
 	}
 
-	err = g.appRoleAssignments(msgraphbeta.UUID(DefaultGroupRoleId), servicePrincipalId).
+	err = g.appRoleAssignments(msgraph.UUID(DefaultGroupRoleId), servicePrincipalId).
 		processForGroups(tx, groups)
 	if err != nil {
 		return fmt.Errorf("updating app roles for groups: %w", err)

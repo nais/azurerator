@@ -3,8 +3,7 @@ package directoryobject
 import (
 	"fmt"
 
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 type OwnerPayload struct {
@@ -33,36 +32,4 @@ func Difference(a, b []msgraph.DirectoryObject) []msgraph.DirectoryObject {
 		}
 	}
 	return diff
-}
-
-func MapToMsGraphBeta(owners []msgraph.DirectoryObject) []msgraphbeta.DirectoryObject {
-	betaOwners := make([]msgraphbeta.DirectoryObject, 0)
-	for _, owner := range owners {
-		betaOwners = append(betaOwners, msgraphbeta.DirectoryObject{
-			Entity: msgraphbeta.Entity{
-				Object: msgraphbeta.Object{
-					AdditionalData: owner.AdditionalData,
-				},
-				ID: owner.ID,
-			},
-			DeletedDateTime: owner.DeletedDateTime,
-		})
-	}
-	return betaOwners
-}
-
-func MapToMsGraph(owners []msgraphbeta.DirectoryObject) []msgraph.DirectoryObject {
-	stableOwners := make([]msgraph.DirectoryObject, 0)
-	for _, owner := range owners {
-		stableOwners = append(stableOwners, msgraph.DirectoryObject{
-			Entity: msgraph.Entity{
-				Object: msgraph.Object{
-					AdditionalData: owner.AdditionalData,
-				},
-				ID: owner.ID,
-			},
-			DeletedDateTime: owner.DeletedDateTime,
-		})
-	}
-	return stableOwners
 }

@@ -8,8 +8,7 @@ import (
 	"github.com/nais/azureator/pkg/customresources"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 // Workaround to include empty array of PreAuthorizedApplications in JSON serialization.
@@ -53,7 +52,7 @@ func (p preAuthApps) process(tx azure.Transaction) (*azure.PreAuthorizedApps, er
 		return nil, fmt.Errorf("fetching default app role ID: %w", err)
 	}
 
-	err = p.appRoleAssignments((msgraphbeta.UUID)(*roleID), servicePrincipalId).
+	err = p.appRoleAssignments(*roleID, servicePrincipalId).
 		processForServicePrincipals(tx, preAuthorizedApps.Valid)
 	if err != nil {
 		return nil, fmt.Errorf("updating approle assignments for service principals: %w", err)

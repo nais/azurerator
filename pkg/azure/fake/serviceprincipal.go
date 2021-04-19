@@ -4,14 +4,14 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
-	"github.com/yaegashi/msgraph.go/ptr"
+	"github.com/nais/msgraph.go/ptr"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
-func ServicePrincipal(instance v1.AzureAdApplication) msgraphbeta.ServicePrincipal {
+func ServicePrincipal(instance v1.AzureAdApplication) msgraph.ServicePrincipal {
 	id := uuid.New().String()
-	return msgraphbeta.ServicePrincipal{
-		DirectoryObject: msgraphbeta.DirectoryObject{Entity: msgraphbeta.Entity{ID: &id}},
+	return msgraph.ServicePrincipal{
+		DirectoryObject: msgraph.DirectoryObject{Entity: msgraph.Entity{ID: &id}},
 		DisplayName:     ptr.String(kubernetes.UniformResourceName(&instance)),
 	}
 }

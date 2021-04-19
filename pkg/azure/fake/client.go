@@ -2,8 +2,7 @@ package fake
 
 import (
 	"github.com/nais/azureator/pkg/azure"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 type fakeAzureClient struct{}
@@ -36,7 +35,7 @@ func (a fakeAzureClient) Get(tx azure.Transaction) (msgraph.Application, error) 
 	return MsGraphApplication(tx.Instance), nil
 }
 
-func (a fakeAzureClient) GetServicePrincipal(tx azure.Transaction) (msgraphbeta.ServicePrincipal, error) {
+func (a fakeAzureClient) GetServicePrincipal(tx azure.Transaction) (msgraph.ServicePrincipal, error) {
 	return ServicePrincipal(tx.Instance), nil
 }
 

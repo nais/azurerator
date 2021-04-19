@@ -5,9 +5,8 @@ import (
 
 	"github.com/nais/azureator/pkg/util/crypto"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 	log "github.com/sirupsen/logrus"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
 )
 
 const AzureratorPrefix = "azurerator"
@@ -17,7 +16,7 @@ type Client interface {
 	Delete(tx Transaction) error
 	Exists(tx Transaction) (*msgraph.Application, bool, error)
 	Get(tx Transaction) (msgraph.Application, error)
-	GetServicePrincipal(tx Transaction) (msgraphbeta.ServicePrincipal, error)
+	GetServicePrincipal(tx Transaction) (msgraph.ServicePrincipal, error)
 	AddCredentials(tx Transaction) (CredentialsSet, error)
 	RotateCredentials(tx Transaction, existing CredentialsSet, inUse KeyIdsInUse) (CredentialsSet, error)
 	Update(tx Transaction) (*ApplicationResult, error)
@@ -37,7 +36,7 @@ func (t Transaction) UpdateWithApplicationIDs(application msgraph.Application) T
 	return t
 }
 
-func (t Transaction) UpdateWithServicePrincipalID(servicePrincipal msgraphbeta.ServicePrincipal) Transaction {
+func (t Transaction) UpdateWithServicePrincipalID(servicePrincipal msgraph.ServicePrincipal) Transaction {
 	newInstance := t.Instance
 	newInstance.Status.ServicePrincipalId = *servicePrincipal.ID
 	t.Instance = newInstance

@@ -5,8 +5,7 @@ import (
 	"strings"
 
 	"github.com/nais/azureator/pkg/azure"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 type teamowners struct {
@@ -53,8 +52,8 @@ func (to teamowners) process(tx azure.Transaction) error {
 	return nil
 }
 
-func (to teamowners) getTeamGroup(tx azure.Transaction) (*msgraphbeta.AppRoleAssignment, error) {
-	var group *msgraphbeta.AppRoleAssignment
+func (to teamowners) getTeamGroup(tx azure.Transaction) (*msgraph.AppRoleAssignment, error) {
+	var group *msgraph.AppRoleAssignment
 	groups, err := to.teams().get(tx.Ctx)
 	if err != nil {
 		return group, err

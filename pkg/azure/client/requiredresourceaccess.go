@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/yaegashi/msgraph.go/ptr"
-	msgraph "github.com/yaegashi/msgraph.go/v1.0"
+	"github.com/nais/msgraph.go/ptr"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 type requiredResourceAccess struct {

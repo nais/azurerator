@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
-	msgraphbeta "github.com/yaegashi/msgraph.go/beta"
+	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 type teams struct {
@@ -14,8 +14,8 @@ func (c client) teams() teams {
 	return teams{c}
 }
 
-func (t teams) get(ctx context.Context) ([]msgraphbeta.AppRoleAssignment, error) {
-	groups := make([]msgraphbeta.AppRoleAssignment, 0)
+func (t teams) get(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
+	groups := make([]msgraph.AppRoleAssignment, 0)
 	if len(t.config.Features.TeamsManagement.ServicePrincipalId) == 0 {
 		return groups, nil
 	}
