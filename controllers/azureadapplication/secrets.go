@@ -124,14 +124,15 @@ func (s secretsClient) process(tx transaction, applicationResult *azure.Applicat
 	hasExpiredSecrets := customresources.HasExpiredSecrets(tx.instance, s.Config.SecretRotation.MaxAge)
 	unchangedTenant := strings.Contains(tx.instance.Status.SynchronizationTenant, s.Config.Azure.Tenant.Name)
 
-	// invalidate previous credentials if tenant was changed
-	validCredentials = validCredentials && unchangedTenant
+	// invalidate previous credentials if tenant was changed or secrets are expired
+	validCredentials = validCredentials && unchangedTenant && !hasExpiredSecrets
 
-	if validCredentials && !(secretNameChanged || hasExpiredSecrets) {
+	// return early if no operations needed
+	if validCredentials && !secretNameChanged && applicationResult.IsNotModified() {
 		return nil
 	}
 
-	if !validCredentials || hasExpiredSecrets {
+	if !validCredentials {
 		credentialsSet, keyIdsInUse, err = s.azure().addCredentials(tx, keyIdsInUse)
 		if err != nil {
 			return fmt.Errorf("adding azure credentials: %w", err)
@@ -152,10 +153,12 @@ func (s secretsClient) process(tx transaction, applicationResult *azure.Applicat
 		return err
 	}
 
-	tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
-	tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
-	now := metav1.Now()
-	tx.instance.Status.SynchronizationSecretRotationTime = &now
+	if !validCredentials || secretNameChanged {
+		tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
+		tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
+		now := metav1.Now()
+		tx.instance.Status.SynchronizationSecretRotationTime = &now
+	}
 
 	return nil
 }

@@ -9,7 +9,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const AzureratorPrefix = "azurerator"
+const (
+	AzureratorPrefix = "azurerator"
+)
+
+type OperationResult int
+
+const (
+	OperationResultCreated OperationResult = iota
+	OperationResultUpdated
+	OperationResultNotModified
+)
 
 type Client interface {
 	Create(tx Transaction) (*ApplicationResult, error)
@@ -50,6 +60,11 @@ type ApplicationResult struct {
 	ServicePrincipalId string            `json:"servicePrincipalId"`
 	PreAuthorizedApps  PreAuthorizedApps `json:"preAuthorizedApps"`
 	Tenant             string            `json:"tenant"`
+	Result             OperationResult   `json:"result"`
+}
+
+func (a ApplicationResult) IsNotModified() bool {
+	return a.Result != OperationResultNotModified
 }
 
 type CredentialsSet struct {

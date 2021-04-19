@@ -73,6 +73,7 @@ func (c client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		ServicePrincipalId: *servicePrincipal.ID,
 		PreAuthorizedApps:  *preAuthApps,
 		Tenant:             c.config.Tenant.Id,
+		Result:             azure.OperationResultCreated,
 	}, nil
 }
 
@@ -227,6 +228,7 @@ func (c client) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		ServicePrincipalId: servicePrincipalId,
 		PreAuthorizedApps:  *preAuthApps,
 		Tenant:             c.config.Tenant.Id,
+		Result:             azure.OperationResultUpdated,
 	}, nil
 }
 

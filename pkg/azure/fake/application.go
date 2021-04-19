@@ -26,7 +26,7 @@ func MsGraphApplication(instance v1.AzureAdApplication) msgraph.Application {
 	}
 }
 
-func AzureApplicationResult(instance v1.AzureAdApplication) azure.ApplicationResult {
+func AzureApplicationResult(instance v1.AzureAdApplication, result azure.OperationResult) azure.ApplicationResult {
 	objectId := getOrGenerate(instance.GetObjectId())
 	clientId := getOrGenerate(instance.GetClientId())
 	servicePrincipalId := getOrGenerate(instance.GetServicePrincipalId())
@@ -39,6 +39,7 @@ func AzureApplicationResult(instance v1.AzureAdApplication) azure.ApplicationRes
 		ServicePrincipalId: servicePrincipalId,
 		PreAuthorizedApps:  mapToInternalPreAuthApps(instance.Spec.PreAuthorizedApplications),
 		Tenant:             tenantId,
+		Result:             result,
 	}
 }
 

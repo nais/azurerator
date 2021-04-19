@@ -13,7 +13,7 @@ const (
 )
 
 func (a fakeAzureClient) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
-	internalApp := AzureApplicationResult(tx.Instance)
+	internalApp := AzureApplicationResult(tx.Instance, azure.OperationResultCreated)
 	return &internalApp, nil
 }
 
@@ -54,7 +54,7 @@ func (a fakeAzureClient) RotateCredentials(tx azure.Transaction, existing azure.
 }
 
 func (a fakeAzureClient) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
-	internalApp := AzureApplicationResult(tx.Instance)
+	internalApp := AzureApplicationResult(tx.Instance, azure.OperationResultUpdated)
 	return &internalApp, nil
 }
 

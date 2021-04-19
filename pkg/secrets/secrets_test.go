@@ -34,7 +34,7 @@ func TestSecretData(t *testing.T) {
 			},
 		},
 	}
-	azureApp := fake.AzureApplicationResult(*app)
+	azureApp := fake.AzureApplicationResult(*app, azure.OperationResultCreated)
 	azureOpenIdConfig := fake.AzureOpenIdConfig()
 	azureCredentialsSet := fake.AzureCredentialsSet(*app)
 

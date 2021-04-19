@@ -90,6 +90,7 @@ func (a azureReconciler) notModified(tx transaction) (*azure.ApplicationResult, 
 		ServicePrincipalId: tx.instance.Status.ServicePrincipalId,
 		PreAuthorizedApps:  *apps,
 		Tenant:             a.Config.Azure.Tenant.Id,
+		Result:             azure.OperationResultNotModified,
 	}, nil
 }
 
