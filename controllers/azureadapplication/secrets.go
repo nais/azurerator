@@ -118,10 +118,10 @@ func (s secretsClient) process(tx transaction, applicationResult *azure.Applicat
 		return fmt.Errorf("extracting credentials set from secret: %w", err)
 	}
 
-	validCredentials = validCredentials && tx.options.Secret.Valid
+	validCredentials = validCredentials && tx.options.Process.Secret.Valid
 
 	// return early if no operations needed
-	if validCredentials && !tx.options.Secret.Rotate && applicationResult.IsNotModified() {
+	if validCredentials && !tx.options.Process.Secret.Rotate && applicationResult.IsNotModified() {
 		return nil
 	}
 
@@ -131,7 +131,7 @@ func (s secretsClient) process(tx transaction, applicationResult *azure.Applicat
 		if err != nil {
 			return fmt.Errorf("adding azure credentials: %w", err)
 		}
-	case tx.options.Secret.Rotate:
+	case tx.options.Process.Secret.Rotate:
 		credentialsSet, keyIdsInUse, err = s.azure().rotateCredentials(tx, *credentialsSet, keyIdsInUse)
 		if err != nil {
 			return fmt.Errorf("rotating azure credentials: %w", err)
@@ -147,7 +147,7 @@ func (s secretsClient) process(tx transaction, applicationResult *azure.Applicat
 		return err
 	}
 
-	if !validCredentials || tx.options.Secret.Rotate {
+	if !validCredentials || tx.options.Process.Secret.Rotate {
 		tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
 		tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
 		now := metav1.Now()

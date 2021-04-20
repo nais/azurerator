@@ -3,11 +3,9 @@ package azureadapplication
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/options"
-	nais_io_v1alpha1 "github.com/nais/liberator/pkg/apis/nais.io/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -153,14 +151,6 @@ func (r *Reconciler) Prepare(req ctrl.Request) (*transaction, error) {
 	}, nil
 }
 
-func (r *Reconciler) getOrGenerateCorrelationId(instance *v1.AzureAdApplication) string {
-	value, found := annotations.HasAnnotation(instance, nais_io_v1alpha1.DeploymentCorrelationIDAnnotation)
-	if !found {
-		return uuid.New().String()
-	}
-	return value
-}
-
 func (r *Reconciler) Process(tx transaction) error {
 	applicationResult, err := r.azure().createOrUpdate(tx)
 	if err != nil {
@@ -192,23 +182,6 @@ func (r *Reconciler) Complete(tx transaction) (ctrl.Result, error) {
 	r.reportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
 
 	annotations.RemoveAnnotation(tx.instance, annotations.ResynchronizeKey)
-
-	err := r.updateStatus(tx)
-	if err != nil {
-		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventFailedStatusUpdate, "Failed to update status")
-		return ctrl.Result{}, err
-	}
-
-	err = r.updateAnnotations(tx)
-	if err != nil {
-		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventRetrying, "Failed to update annotations")
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{}, nil
-}
-
-func (r *Reconciler) updateStatus(tx transaction) error {
 	tx.instance.Status.SynchronizationSecretName = tx.instance.Spec.SecretName
 	now := metav1.Now()
 	tx.instance.Status.SynchronizationTime = &now
@@ -216,16 +189,14 @@ func (r *Reconciler) updateStatus(tx transaction) error {
 
 	newHash, err := tx.instance.Hash()
 	if err != nil {
-		return fmt.Errorf("calculating application hash: %w", err)
+		return ctrl.Result{}, fmt.Errorf("calculating application hash: %w", err)
 	}
 	tx.instance.Status.SynchronizationHash = newHash
 
-	err = r.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
-		existing.Status = tx.instance.Status
-		return r.Status().Update(tx.ctx, existing)
-	})
+	err = r.updateStatus(tx)
 	if err != nil {
-		return fmt.Errorf("updating status fields: %w", err)
+		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventFailedStatusUpdate, "Failed to update status")
+		return ctrl.Result{}, err
 	}
 
 	logger.WithFields(
@@ -237,22 +208,11 @@ func (r *Reconciler) updateStatus(tx transaction) error {
 			"ServicePrincipalID": tx.instance.GetServicePrincipalId(),
 		}).Info("status subresource successfully updated")
 
-	return nil
-}
-
-func (r *Reconciler) updateAnnotations(tx transaction) error {
-	err := r.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
-		existing.SetAnnotations(tx.instance.GetAnnotations())
-		return r.Update(tx.ctx, existing)
-	})
+	err = r.updateAnnotations(tx)
 	if err != nil {
-		return fmt.Errorf("updating annotations: %w", err)
+		r.reportEvent(tx, corev1.EventTypeWarning, v1.EventRetrying, "Failed to update annotations")
+		return ctrl.Result{}, err
 	}
 
-	return nil
-}
-
-func (r *Reconciler) reportEvent(tx transaction, eventType, event, message string) {
-	tx.instance.Status.SynchronizationState = event
-	r.Recorder.Event(tx.instance, eventType, event, message)
+	return ctrl.Result{}, nil
 }

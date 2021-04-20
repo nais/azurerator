@@ -28,7 +28,7 @@ func (a azureReconciler) createOrUpdate(tx transaction) (*azure.ApplicationResul
 
 	if !exists {
 		applicationResult, err = a.create(tx)
-	} else if tx.options.Azure.Synchronize {
+	} else if tx.options.Process.Azure.Synchronize {
 		applicationResult, err = a.update(tx)
 	} else {
 		applicationResult, err = a.notModified(tx)
