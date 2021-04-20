@@ -155,7 +155,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 	assert.False(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should not contain a finalizer")
 }
 
-func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldRetry(t *testing.T) {
+func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotRetry(t *testing.T) {
 	instance := assertApplicationExists(t, fake.ApplicationExists)
 
 	previousHash := instance.Status.SynchronizationHash
@@ -177,17 +177,17 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldRetr
 	err := cli.Update(context.Background(), instance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
-	newInstance := assertApplicationExists(t, instance.GetName(), v1.EventRetrying)
+	newInstance := assertApplicationExists(t, instance.GetName())
 
 	assert.Eventually(t, func() bool {
-		syncTimeUpdated := newInstance.Status.SynchronizationTime.After(previousSyncTime.Time)
-		hashChanged := newInstance.Status.SynchronizationHash != previousHash
-		retrying := newInstance.Status.SynchronizationState == v1.EventRetrying
-		return syncTimeUpdated && hashChanged && retrying
-	}, timeout, interval, "Status subresource should be updated")
+		return newInstance.Status.SynchronizationTime.After(previousSyncTime.Time)
+	}, timeout, interval, "Synchronization Time is updated")
+	assert.Eventually(t, func() bool {
+		return newInstance.Status.SynchronizationHash != previousHash
+	}, timeout, interval, "Synchronization Hash is changed")
 
-	newInstance = assertApplicationExists(t, newInstance.GetName(), v1.EventRetrying)
-	assertAnnotationExists(t, newInstance, annotations.ResynchronizeKey, strconv.FormatBool(true))
+	assertApplicationExists(t, newInstance.GetName())
+	assert.NotContains(t, newInstance.Annotations, annotations.ResynchronizeKey, "AzureAdApplication should not contain resync annotation")
 
 	// reset pre-authorized applications to only contain valid applications
 	newInstance.Spec.PreAuthorizedApplications = append(previousPreAuthorizedApps, validPreAuthorizedApp)
@@ -195,7 +195,38 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldRetr
 	assert.NoError(t, err, "updating existing application should not return error")
 
 	assertApplicationExists(t, newInstance.GetName(), v1.EventSynchronized)
-	assert.Empty(t, instance.Annotations[annotations.ResynchronizeKey], "AzureAdApplication should not contain resync annotation")
+}
+
+func TestReconciler_UpdateAzureAdApplication_ResyncAnnotation_ShouldResyncAndNotModifySecrets(t *testing.T) {
+	instance := assertApplicationExists(t, fake.ApplicationExists)
+
+	previousHash := instance.Status.SynchronizationHash
+	previousSyncTime := instance.Status.SynchronizationTime
+	previousSecretRotationTime := instance.Status.SynchronizationSecretRotationTime
+	previousSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
+
+	annotations.SetAnnotation(instance, annotations.ResynchronizeKey, strconv.FormatBool(true))
+
+	err := cli.Update(context.Background(), instance)
+	assert.NoError(t, err, "updating existing application should not return error")
+
+	newInstance := assertApplicationExists(t, instance.GetName())
+
+	assert.Eventually(t, func() bool {
+		return newInstance.Status.SynchronizationTime.After(previousSyncTime.Time)
+	}, timeout, interval, "Synchronization Time is updated")
+	assert.Eventually(t, func() bool {
+		return newInstance.Status.SynchronizationHash == previousHash
+	}, timeout, interval, "Synchronization Hash is unchanged")
+	assert.Eventually(t, func() bool {
+		return previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
+	}, timeout, interval, "Secret Rotation Time is unchanged")
+
+	assertApplicationExists(t, newInstance.GetName())
+	assert.NotContains(t, newInstance.Annotations, annotations.ResynchronizeKey, "AzureAdApplication should not contain resync annotation")
+
+	newSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
+	assert.EqualValues(t, previousSecret, newSecret, "Secrets are unchanged")
 }
 
 func TestReconciler_UpdateAzureAdApplication_NewSecretName_ShouldRotateCredentials(t *testing.T) {
@@ -208,23 +239,24 @@ func TestReconciler_UpdateAzureAdApplication_NewSecretName_ShouldRotateCredentia
 
 	previousSecret := assertSecretExists(t, previousSecretName, instance)
 
-	err := cli.Status().Update(context.Background(), instance)
-	assert.NoError(t, err, "updating existing application status subresource should not return error")
-
-	newSecretName := fmt.Sprintf("%s-%s-missing-secret-rotation-time", instance.GetName(), newSecret)
+	newSecretName := fmt.Sprintf("%s-%s-new-secret-name", instance.GetName(), newSecret)
 	instance.Spec.SecretName = newSecretName
 
-	err = cli.Update(context.Background(), instance)
+	err := cli.Update(context.Background(), instance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
 	newInstance := assertApplicationExists(t, instance.GetName())
 
 	assert.Eventually(t, func() bool {
-		hashUnchanged := previousHash == newInstance.Status.SynchronizationHash
-		secretRotationTimeChanged := !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
-		secretNameChanged := (newInstance.Status.SynchronizationSecretName != previousSecretName) && (newInstance.Status.SynchronizationSecretName == newSecretName)
-		return hashUnchanged && secretRotationTimeChanged && secretNameChanged
-	}, timeout, interval, "Status subresource should be updated")
+		return previousHash == newInstance.Status.SynchronizationHash
+	}, timeout, interval, "Synchronization Hash should be unchanged")
+	assert.Eventually(t, func() bool {
+		return !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
+	}, timeout, interval, "Secret rotation time is changed")
+	assert.Eventually(t, func() bool {
+		return (newInstance.Status.SynchronizationSecretName != previousSecretName) && (newInstance.Status.SynchronizationSecretName == newSecretName)
+	}, timeout, interval, "Secret name is changed")
+
 	assert.NotEmpty(t, newInstance.Status.SynchronizationSecretRotationTime)
 
 	newSecret := assertSecretExists(t, newSecretName, instance)
@@ -251,16 +283,21 @@ func TestReconciler_UpdateAzureAdApplication_SpecChangeAndNotExpiredSecret_Shoul
 	newInstance := assertApplicationExists(t, instance.GetName())
 
 	assert.Eventually(t, func() bool {
-		logoutUrlUpdated := previousLogoutUrl != newInstance.Spec.LogoutUrl
-		hashChanged := previousHash != newInstance.Status.SynchronizationHash
-		secretRotationTimeUnchanged := previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
-		secretNameUnchanged := newInstance.Status.SynchronizationSecretName == previousSecretName
-		return logoutUrlUpdated && hashChanged && secretRotationTimeUnchanged && secretNameUnchanged
-	}, timeout, interval, "Status subresource should be updated")
+		return previousLogoutUrl != newInstance.Spec.LogoutUrl
+	}, timeout, interval, "Logout URL is updated")
+	assert.Eventually(t, func() bool {
+		return previousHash != newInstance.Status.SynchronizationHash
+	}, timeout, interval, "Synchronization hash is changed")
+	assert.Eventually(t, func() bool {
+		return previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
+	}, timeout, interval, "Secret Rotation Time is unchaned")
+	assert.Eventually(t, func() bool {
+		return newInstance.Status.SynchronizationSecretName == previousSecretName
+	}, timeout, interval, "Synchronization Secret Name is unchanged")
+
 	assert.NotEmpty(t, newInstance.Status.SynchronizationSecretRotationTime)
 
 	newSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
-
 	assertSecretsAreNotRotated(t, previousSecret, newSecret)
 }
 
@@ -289,18 +326,24 @@ func TestReconciler_UpdateAzureAdApplication_SpecChangeAndExpiredSecret_ShouldAd
 	newInstance := assertApplicationExists(t, instance.GetName())
 
 	assert.Eventually(t, func() bool {
-		hashChanged := previousHash != newInstance.Status.SynchronizationHash
-		secretNameNotChanged := previousSecretName == newInstance.Status.SynchronizationSecretName
-		secretRotationTimeUpdated := !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
-		passwordKeyIdsValid := len(newInstance.Status.PasswordKeyIds) == 2
-		certificateKeyIdsValid := len(newInstance.Status.CertificateKeyIds) == 2
+		return previousHash != newInstance.Status.SynchronizationHash
+	}, timeout, interval, "Synchronization Hash is changed")
+	assert.Eventually(t, func() bool {
+		return previousSecretName == newInstance.Status.SynchronizationSecretName
+	}, timeout, interval, "Synchronization Secret Name is unchanged")
+	assert.Eventually(t, func() bool {
+		return previousSecretRotationTime.Before(newInstance.Status.SynchronizationSecretRotationTime)
+	}, timeout, interval, "Secret Rotation Time is updated")
+	assert.Eventually(t, func() bool {
+		return len(newInstance.Status.PasswordKeyIds) == 2
+	}, timeout, interval, "Password Key IDs are updated")
+	assert.Eventually(t, func() bool {
+		return len(newInstance.Status.CertificateKeyIds) == 2
+	}, timeout, interval, "Certificate Key IDs are updated")
 
-		return hashChanged && secretNameNotChanged && secretRotationTimeUpdated && passwordKeyIdsValid && certificateKeyIdsValid
-	}, timeout, interval, "Status subresource should be updated")
 	assert.NotEmpty(t, newInstance.Status.SynchronizationSecretRotationTime)
 
 	newSecret := assertSecretExists(t, previousSecretName, instance)
-
 	assertSecretsAreAdded(t, previousSecret, newSecret)
 }
 
@@ -331,14 +374,21 @@ func TestReconciler_UpdateAzureAdApplication_NewSecretNameAndExpired_ShouldAddNe
 	newInstance := assertApplicationExists(t, instance.GetName())
 
 	assert.Eventually(t, func() bool {
-		hashUnchanged := previousHash == newInstance.Status.SynchronizationHash
-		secretNameUpdated := previousSecretName != newInstance.Status.SynchronizationSecretName
-		secretRotationTimeUpdated := !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
-		passwordKeyIdsValid := len(newInstance.Status.PasswordKeyIds) == 2
-		certificateKeyIdsValid := len(newInstance.Status.CertificateKeyIds) == 2
+		return previousHash == newInstance.Status.SynchronizationHash
+	}, timeout, interval, "Synchronization hash is unchanged")
+	assert.Eventually(t, func() bool {
+		return previousSecretName != newInstance.Status.SynchronizationSecretName
+	}, timeout, interval, "Synchronization Secret Name is changed")
+	assert.Eventually(t, func() bool {
+		return previousSecretRotationTime.Before(newInstance.Status.SynchronizationSecretRotationTime)
+	}, timeout, interval, "Secret Rotation Time is updated")
+	assert.Eventually(t, func() bool {
+		return len(newInstance.Status.PasswordKeyIds) == 2
+	}, timeout, interval, "Password Key IDs are updated")
+	assert.Eventually(t, func() bool {
+		return len(newInstance.Status.CertificateKeyIds) == 2
+	}, timeout, interval, "Certificate Key IDs are updated")
 
-		return hashUnchanged && secretNameUpdated && secretRotationTimeUpdated && passwordKeyIdsValid && certificateKeyIdsValid
-	}, timeout, interval, "Status subresource should be updated")
 	assert.NotEmpty(t, newInstance.Status.SynchronizationSecretRotationTime)
 
 	newSecret := assertSecretExists(t, newSecretName, instance)
@@ -370,11 +420,15 @@ func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTimeAndNewSecr
 	newInstance := assertApplicationExists(t, instance.GetName())
 
 	assert.Eventually(t, func() bool {
-		hashUnchanged := previousHash == newInstance.Status.SynchronizationHash
-		secretRotationTimeChanged := !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
-		secretNameChanged := (newInstance.Status.SynchronizationSecretName != previousSecretName) && (newInstance.Status.SynchronizationSecretName == newSecretName)
-		return hashUnchanged && secretRotationTimeChanged && secretNameChanged
-	}, timeout, interval, "Status subresource should be updated")
+		return previousHash == newInstance.Status.SynchronizationHash
+	}, timeout, interval, "Synchronization hash is unchanged")
+	assert.Eventually(t, func() bool {
+		return previousSecretRotationTime.Before(newInstance.Status.SynchronizationSecretRotationTime)
+	}, timeout, interval, "Secret Rotation Time is updated")
+	assert.Eventually(t, func() bool {
+		return (newInstance.Status.SynchronizationSecretName != previousSecretName) && (newInstance.Status.SynchronizationSecretName == newSecretName)
+	}, timeout, interval, "Synchronization Secret Name is updated")
+
 	assert.NotEmpty(t, newInstance.Status.SynchronizationSecretRotationTime)
 
 	newSecret := assertSecretExists(t, newSecretName, instance)
@@ -407,12 +461,18 @@ func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTime_ShouldNot
 	assert.Empty(t, instance.Status.SynchronizationSecretRotationTime)
 
 	assert.Eventually(t, func() bool {
-		logoutUrlChanged := previousLogoutUrl != newInstance.Spec.LogoutUrl
-		hashChanged := previousHash != newInstance.Status.SynchronizationHash
-		secretRotationTimeChanged := !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
-		secretNameUnchanged := newInstance.Status.SynchronizationSecretName == previousSecretName
-		return logoutUrlChanged && hashChanged && secretRotationTimeChanged && secretNameUnchanged
-	}, timeout, interval, "Status subresource should be updated")
+		return previousLogoutUrl != newInstance.Spec.LogoutUrl
+	}, timeout, interval, "Logout URL is changed")
+	assert.Eventually(t, func() bool {
+		return previousHash != newInstance.Status.SynchronizationHash
+	}, timeout, interval, "Synchronization Hash is changed")
+	assert.Eventually(t, func() bool {
+		return !previousSecretRotationTime.Equal(newInstance.Status.SynchronizationSecretRotationTime)
+	}, timeout, interval, "Secret Rotation Time is set")
+	assert.Eventually(t, func() bool {
+		return newInstance.Status.SynchronizationSecretName == previousSecretName
+	}, timeout, interval, "Synchronization Secret Name is unchanged")
+
 	assert.Empty(t, newInstance.Status.SynchronizationSecretRotationTime)
 
 	newSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
