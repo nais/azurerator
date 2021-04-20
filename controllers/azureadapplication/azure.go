@@ -2,7 +2,6 @@ package azureadapplication
 
 import (
 	"fmt"
-	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/metrics"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
@@ -27,15 +26,9 @@ func (a azureReconciler) createOrUpdate(tx transaction) (*azure.ApplicationResul
 		return nil, fmt.Errorf("looking up existence of application: %w", err)
 	}
 
-	hashChanged, err := customresources.IsHashChanged(tx.instance)
-	if err != nil {
-		return nil, err
-	}
-	shouldResynchronize := customresources.ShouldResynchronize(tx.instance)
-
 	if !exists {
 		applicationResult, err = a.create(tx)
-	} else if hashChanged || shouldResynchronize {
+	} else if tx.options.Azure.Synchronize {
 		applicationResult, err = a.update(tx)
 	} else {
 		applicationResult, err = a.notModified(tx)

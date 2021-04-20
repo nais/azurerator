@@ -7,8 +7,9 @@ import (
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/customresources"
+	"github.com/nais/azureator/pkg/finalizers"
 	"github.com/nais/liberator/pkg/crd"
-	finalizer2 "github.com/nais/liberator/pkg/finalizer"
+	"github.com/nais/liberator/pkg/finalizer"
 	"os"
 	"strconv"
 	"testing"
@@ -127,7 +128,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t
 		Namespace: sharedNamespace,
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication in shared namespace should not be processed", key)
-	assert.True(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should contain a finalizer")
+	assert.True(t, finalizer.HasFinalizer(instance, finalizers.Name), "AzureAdApplication should contain a finalizer")
 	assert.Equal(t, v1.EventNotInTeamNamespace, instance.Status.SynchronizationState, "AzureAdApplication should be skipped")
 	assertAnnotationExists(t, instance, annotations.NotInTeamNamespaceKey, strconv.FormatBool(true))
 }
@@ -152,7 +153,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication with tenant should not be processed", key)
 	assert.Empty(t, instance.Status.SynchronizationState, "AzureAdApplication should not be processed")
-	assert.False(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should not contain a finalizer")
+	assert.False(t, finalizer.HasFinalizer(instance, finalizers.Name), "AzureAdApplication should not contain a finalizer")
 }
 
 func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotRetry(t *testing.T) {
@@ -186,15 +187,29 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotR
 		return newInstance.Status.SynchronizationHash != previousHash
 	}, timeout, interval, "Synchronization Hash is changed")
 
-	assertApplicationExists(t, newInstance.GetName())
+	newInstance = assertApplicationExists(t, newInstance.GetName())
+
 	assert.NotContains(t, newInstance.Annotations, annotations.ResynchronizeKey, "AzureAdApplication should not contain resync annotation")
 
 	// reset pre-authorized applications to only contain valid applications
 	newInstance.Spec.PreAuthorizedApplications = append(previousPreAuthorizedApps, validPreAuthorizedApp)
+	previousHash = newInstance.Status.SynchronizationHash
+	previousSyncTime = newInstance.Status.SynchronizationTime
+
+	// sleep to ensure synchronization time is actually updated
+	time.Sleep(time.Second)
+
 	err = cli.Update(context.Background(), newInstance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
-	assertApplicationExists(t, newInstance.GetName(), v1.EventSynchronized)
+	newInstance = assertApplicationExists(t, newInstance.GetName(), v1.EventSynchronized)
+
+	assert.Eventually(t, func() bool {
+		return newInstance.Status.SynchronizationTime.After(previousSyncTime.Time)
+	}, timeout, interval, "Synchronization Time is updated")
+	assert.Eventually(t, func() bool {
+		return newInstance.Status.SynchronizationHash != previousHash
+	}, timeout, interval, "Synchronization Hash is changed")
 }
 
 func TestReconciler_UpdateAzureAdApplication_ResyncAnnotation_ShouldResyncAndNotModifySecrets(t *testing.T) {
@@ -206,6 +221,9 @@ func TestReconciler_UpdateAzureAdApplication_ResyncAnnotation_ShouldResyncAndNot
 	previousSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
 
 	annotations.SetAnnotation(instance, annotations.ResynchronizeKey, strconv.FormatBool(true))
+
+	// sleep to ensure synchronization time is actually updated
+	time.Sleep(time.Second)
 
 	err := cli.Update(context.Background(), instance)
 	assert.NoError(t, err, "updating existing application should not return error")
@@ -516,7 +534,7 @@ func assertApplicationExists(t *testing.T, name string, state ...string) *v1.Azu
 		return !isHashChanged && !hasExpiredSecrets && !secretNameChanged
 	}, timeout, interval, "AzureAdApplication should be synchronized")
 
-	assert.True(t, finalizer2.HasFinalizer(instance, controller.FinalizerName), "AzureAdApplication should contain a finalizer")
+	assert.True(t, finalizer.HasFinalizer(instance, finalizers.Name), "AzureAdApplication should contain a finalizer")
 
 	assert.Empty(t, instance.Annotations[annotations.NotInTeamNamespaceKey], "AzureAdApplication should not contain skip annotation")
 

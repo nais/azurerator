@@ -27,7 +27,7 @@ func (r *Reconciler) namespaces() namespaces {
 }
 
 func (n namespaces) process(tx *transaction) (bool, error) {
-	if n.hasNotInTeamNamespaceAnnotation(tx) {
+	if tx.options.Namespace.HasIgnoreAnnotation {
 		logger.Debug(fmt.Sprintf("Resource is annotated with '%s'. Skipping processing...", annotations.NotInTeamNamespaceKey))
 		return true, nil
 	}
@@ -40,6 +40,11 @@ func (n namespaces) process(tx *transaction) (bool, error) {
 	if !inSharedNamespace {
 		return false, nil
 	}
+
+	msg := fmt.Sprintf("ERROR: Expected resource in team namespace, but was found in namespace '%s'. Azure application and secrets will not be processed.", tx.instance.Namespace)
+	logger.Error(msg)
+	annotations.SetAnnotation(tx.instance, annotations.NotInTeamNamespaceKey, strconv.FormatBool(true))
+	n.reportEvent(*tx, corev1.EventTypeWarning, v1.EventNotInTeamNamespace, msg)
 
 	if err := n.Client.Status().Update(tx.ctx, tx.instance); err != nil {
 		return inSharedNamespace, fmt.Errorf("failed to update resource with skip flag: %w", err)
@@ -66,19 +71,7 @@ func (n namespaces) inSharedNamespace(tx *transaction) (bool, error) {
 		return false, fmt.Errorf("fetching namespace: %w", err)
 	}
 
-	isShared, err := n.isSharedNamespace(namespace)
-	if err != nil {
-		return false, fmt.Errorf("checking if namespace is shared: %w", err)
-	}
-	if !isShared {
-		return false, nil
-	}
-
-	msg := fmt.Sprintf("ERROR: Expected resource in team namespace, but was found in namespace '%s'. Azure application and secrets will not be processed.", tx.instance.Namespace)
-	logger.Error(msg)
-	annotations.SetAnnotation(tx.instance, annotations.NotInTeamNamespaceKey, strconv.FormatBool(true))
-	n.reportEvent(*tx, corev1.EventTypeWarning, v1.EventNotInTeamNamespace, msg)
-	return true, nil
+	return n.isSharedNamespace(namespace)
 }
 
 func (n namespaces) getNamespace(ctx context.Context, namespaceName string) (corev1.Namespace, error) {
@@ -107,9 +100,4 @@ func (n namespaces) isSharedNamespace(namespace corev1.Namespace) (bool, error) 
 	}
 
 	return shared, nil
-}
-
-func (n namespaces) hasNotInTeamNamespaceAnnotation(tx *transaction) bool {
-	_, found := annotations.HasAnnotation(tx.instance, annotations.NotInTeamNamespaceKey)
-	return found
 }

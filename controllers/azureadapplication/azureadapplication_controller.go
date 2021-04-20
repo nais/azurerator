@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/options"
 	nais_io_v1alpha1 "github.com/nais/liberator/pkg/apis/nais.io/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -46,6 +47,7 @@ type transaction struct {
 	instance       *v1.AzureAdApplication
 	log            log.Entry
 	secretDataKeys secrets.SecretDataKeys
+	options        options.TransactionOptions
 }
 
 func (t *transaction) toAzureTx() azure.Transaction {
@@ -72,7 +74,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	tx, err := r.prepare(req)
+	tx, err := r.Prepare(req)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -81,7 +83,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	tx.ctx = ctx
 	defer cancel()
 
-	if r.isNotAddressedToTenant(tx) {
+	if tx.options.Tenant.Ignore {
 		logger.Debugf("resource is not addressed to tenant '%s', ignoring...", r.Config.Azure.Tenant.Name)
 		return ctrl.Result{}, nil
 	}
@@ -105,24 +107,20 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	needsSynchronization, err := r.needsSynchronization(tx)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("needs synchronization: %w", err)
-	}
-	if !needsSynchronization {
+	if !tx.options.Process.Synchronize {
 		return ctrl.Result{}, nil
 	}
 
-	err = r.process(*tx)
+	err = r.Process(*tx)
 	if err != nil {
-		return r.handleError(*tx, err)
+		return r.HandleError(*tx, err)
 	}
 
 	logger.Info("successfully synchronized AzureAdApplication with Azure")
-	return r.complete(*tx)
+	return r.Complete(*tx)
 }
 
-func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
+func (r *Reconciler) Prepare(req ctrl.Request) (*transaction, error) {
 	ctx := context.Background()
 
 	instance := &v1.AzureAdApplication{}
@@ -141,11 +139,17 @@ func (r *Reconciler) prepare(req ctrl.Request) (*transaction, error) {
 
 	instance.Status.CorrelationId = correlationId
 
+	opts, err := options.NewOptions(*instance, *r.Config)
+	if err != nil {
+		return nil, fmt.Errorf("preparing options: %w", err)
+	}
+
 	return &transaction{
 		ctx:            ctx,
 		instance:       instance,
 		log:            logger,
 		secretDataKeys: secrets.NewSecretDataKeys(instance.Spec.SecretKeyPrefix),
+		options:        opts,
 	}, nil
 }
 
@@ -157,7 +161,7 @@ func (r *Reconciler) getOrGenerateCorrelationId(instance *v1.AzureAdApplication)
 	return value
 }
 
-func (r *Reconciler) process(tx transaction) error {
+func (r *Reconciler) Process(tx transaction) error {
 	applicationResult, err := r.azure().createOrUpdate(tx)
 	if err != nil {
 		return err
@@ -174,7 +178,7 @@ func (r *Reconciler) process(tx transaction) error {
 	return nil
 }
 
-func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error) {
+func (r *Reconciler) HandleError(tx transaction, err error) (ctrl.Result, error) {
 	logger.Error(fmt.Errorf("failed to process Azure application: %w", err))
 	r.reportEvent(tx, corev1.EventTypeWarning, v1.EventFailedSynchronization, "Failed to synchronize Azure application")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.instance.Namespace)
@@ -183,7 +187,7 @@ func (r *Reconciler) handleError(tx transaction, err error) (ctrl.Result, error)
 	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *Reconciler) complete(tx transaction) (ctrl.Result, error) {
+func (r *Reconciler) Complete(tx transaction) (ctrl.Result, error) {
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.instance.Namespace)
 	r.reportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
 

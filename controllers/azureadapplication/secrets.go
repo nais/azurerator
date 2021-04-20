@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/secrets"
 	"github.com/nais/liberator/pkg/kubernetes"
@@ -13,7 +12,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strings"
 )
 
 // +kubebuilder:rbac:groups=*,resources=secrets,verbs=get;list;watch;create;delete;update;patch
@@ -120,24 +118,20 @@ func (s secretsClient) process(tx transaction, applicationResult *azure.Applicat
 		return fmt.Errorf("extracting credentials set from secret: %w", err)
 	}
 
-	secretNameChanged := customresources.SecretNameChanged(tx.instance)
-	hasExpiredSecrets := customresources.HasExpiredSecrets(tx.instance, s.Config.SecretRotation.MaxAge)
-	unchangedTenant := strings.Contains(tx.instance.Status.SynchronizationTenant, s.Config.Azure.Tenant.Name)
-
-	// invalidate previous credentials if tenant was changed or secrets are expired
-	validCredentials = validCredentials && unchangedTenant && !hasExpiredSecrets
+	validCredentials = validCredentials && tx.options.Secret.Valid
 
 	// return early if no operations needed
-	if validCredentials && !secretNameChanged && applicationResult.IsNotModified() {
+	if validCredentials && !tx.options.Secret.Rotate && applicationResult.IsNotModified() {
 		return nil
 	}
 
-	if !validCredentials {
+	switch {
+	case !validCredentials:
 		credentialsSet, keyIdsInUse, err = s.azure().addCredentials(tx, keyIdsInUse)
 		if err != nil {
 			return fmt.Errorf("adding azure credentials: %w", err)
 		}
-	} else if secretNameChanged {
+	case tx.options.Secret.Rotate:
 		credentialsSet, keyIdsInUse, err = s.azure().rotateCredentials(tx, *credentialsSet, keyIdsInUse)
 		if err != nil {
 			return fmt.Errorf("rotating azure credentials: %w", err)
@@ -153,7 +147,7 @@ func (s secretsClient) process(tx transaction, applicationResult *azure.Applicat
 		return err
 	}
 
-	if !validCredentials || secretNameChanged {
+	if !validCredentials || tx.options.Secret.Rotate {
 		tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
 		tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
 		now := metav1.Now()

@@ -3,7 +3,6 @@ package azureadapplication
 import (
 	"context"
 	"fmt"
-	"github.com/nais/azureator/pkg/customresources"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -11,36 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sync"
 )
-
-func (r *Reconciler) needsSynchronization(tx *transaction) (bool, error) {
-	hashChanged, err := customresources.IsHashChanged(tx.instance)
-	if err != nil {
-		return false, err
-	}
-
-	secretNameChanged := customresources.SecretNameChanged(tx.instance)
-	hasExpiredSecrets := customresources.HasExpiredSecrets(tx.instance, r.Config.SecretRotation.MaxAge)
-	shouldResynchronize := customresources.ShouldResynchronize(tx.instance)
-
-	return hashChanged || secretNameChanged || hasExpiredSecrets || shouldResynchronize, nil
-}
-
-func (r *Reconciler) isNotAddressedToTenant(tx *transaction) bool {
-	config := r.Config.Azure.Tenant.Name
-	tenant := tx.instance.Spec.Tenant
-
-	if len(tenant) > 0 {
-		return tenant != config
-	}
-
-	tenantRequired := r.Config.Validations.Tenant.Required
-
-	if tenantRequired {
-		logger.Debugf("required tenant not found in spec, skipping...")
-	}
-
-	return tenantRequired
-}
 
 var appsync sync.Mutex
 

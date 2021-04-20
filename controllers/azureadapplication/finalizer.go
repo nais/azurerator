@@ -2,16 +2,13 @@ package azureadapplication
 
 import (
 	"fmt"
-	"github.com/nais/azureator/pkg/annotations"
+	finalizer2 "github.com/nais/azureator/pkg/finalizers"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	finalizer2 "github.com/nais/liberator/pkg/finalizer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/nais/azureator/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 )
-
-const FinalizerName string = "finalizer.azurerator.nais.io"
 
 // Finalizers allow the controller to implement an asynchronous pre-delete hook
 
@@ -26,13 +23,13 @@ func (r *Reconciler) finalizer() finalizer {
 func (f finalizer) process(tx transaction) (processed bool, err error) {
 	processed = false
 
-	if finalizer2.IsBeingDeleted(tx.instance) {
+	if tx.options.Finalizer.Finalize {
 		err = f.finalize(tx)
 		processed = true
 		return
 	}
 
-	if !finalizer2.HasFinalizer(tx.instance, FinalizerName) {
+	if tx.options.Finalizer.Register {
 		err = f.register(tx)
 		processed = true
 		return
@@ -42,14 +39,10 @@ func (f finalizer) process(tx transaction) (processed bool, err error) {
 }
 
 func (f finalizer) register(tx transaction) error {
-	if finalizer2.HasFinalizer(tx.instance, FinalizerName) {
-		return nil
-	}
-
 	logger.Debug("finalizer for object not found, registering...")
 
 	err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
-		controllerutil.AddFinalizer(existing, FinalizerName)
+		controllerutil.AddFinalizer(existing, finalizer2.Name)
 		return f.Update(tx.ctx, existing)
 	})
 
@@ -62,13 +55,13 @@ func (f finalizer) register(tx transaction) error {
 }
 
 func (f finalizer) finalize(tx transaction) error {
-	if !finalizer2.HasFinalizer(tx.instance, FinalizerName) {
+	if tx.options.Finalizer.Register {
 		return nil
 	}
 
 	logger.Debug("finalizer triggered, deleting resources...")
 
-	if f.shouldDeleteFromAzure(tx) {
+	if tx.options.Finalizer.DeleteFromAzure {
 		err := f.azure().delete(tx)
 		if err != nil {
 			return fmt.Errorf("failed to delete resources: %w", err)
@@ -78,7 +71,7 @@ func (f finalizer) finalize(tx transaction) error {
 	}
 
 	err := f.updateApplication(tx.ctx, tx.instance, func(existing *v1.AzureAdApplication) error {
-		controllerutil.RemoveFinalizer(existing, FinalizerName)
+		controllerutil.RemoveFinalizer(existing, finalizer2.Name)
 		return f.Update(tx.ctx, existing)
 	})
 	if err != nil {
@@ -89,9 +82,4 @@ func (f finalizer) finalize(tx transaction) error {
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsDeletedCount, tx.instance.Namespace)
 
 	return nil
-}
-
-func (f finalizer) shouldDeleteFromAzure(tx transaction) bool {
-	_, found := annotations.HasAnnotation(tx.instance, annotations.DeleteKey)
-	return found
 }
