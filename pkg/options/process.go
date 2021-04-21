@@ -15,14 +15,15 @@ func (b optionsBuilder) Process() (ProcessOptions, error) {
 
 	secretNameChanged := customresources.SecretNameChanged(instance)
 	hasExpiredSecrets := customresources.HasExpiredSecrets(instance, b.Config.SecretRotation.MaxAge)
-	shouldResynchronize := customresources.ShouldResynchronize(instance)
+	hasResynchronizeAnnotation := customresources.HasResynchronizeAnnotation(instance)
+	hasRotateAnnotation := customresources.HasRotateAnnotation(instance)
 	hasNonExpiredSecrets := !customresources.HasExpiredSecrets(instance, b.Config.SecretRotation.MaxAge)
 	tenantUnchanged := strings.Contains(instance.Status.SynchronizationTenant, b.Config.Azure.Tenant.Name)
 
-	needsSynchronization := hashChanged || secretNameChanged || hasExpiredSecrets || shouldResynchronize
-	needsAzureSynchronization := hashChanged || shouldResynchronize
+	needsSynchronization := hashChanged || secretNameChanged || hasExpiredSecrets || hasResynchronizeAnnotation || hasRotateAnnotation
+	needsAzureSynchronization := hashChanged || hasResynchronizeAnnotation
 	hasValidSecrets := hasNonExpiredSecrets && tenantUnchanged
-	needsSecretRotation := secretNameChanged
+	needsSecretRotation := secretNameChanged || hasRotateAnnotation
 
 	return ProcessOptions{
 		Synchronize: needsSynchronization,

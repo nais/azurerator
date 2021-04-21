@@ -40,7 +40,12 @@ func HasExpiredSecrets(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Dura
 	return secretExpired
 }
 
-func ShouldResynchronize(in *nais_io_v1.AzureAdApplication) bool {
+func HasResynchronizeAnnotation(in *nais_io_v1.AzureAdApplication) bool {
 	_, found := annotations.HasAnnotation(in, annotations.ResynchronizeKey)
+	return found
+}
+
+func HasRotateAnnotation(in *nais_io_v1.AzureAdApplication) bool {
+	_, found := annotations.HasAnnotation(in, annotations.RotateKey)
 	return found
 }

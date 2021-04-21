@@ -94,26 +94,49 @@ func TestHasExpiredSecrets(t *testing.T) {
 	})
 }
 
-func TestShouldResynchronize(t *testing.T) {
+func TestHasResynchronizeAnnotation(t *testing.T) {
 	t.Run("not set annotation should not resynchronize", func(t *testing.T) {
 		app := minimalApplication()
 
-		shouldResynchronize := customresources.ShouldResynchronize(app)
-		assert.False(t, shouldResynchronize)
+		hasAnnotation := customresources.HasResynchronizeAnnotation(app)
+		assert.False(t, hasAnnotation)
 	})
 
 	t.Run("set annotation should synchronize regardless of value", func(t *testing.T) {
 		app := minimalApplication()
 		annotations.SetAnnotation(app, annotations.ResynchronizeKey, strconv.FormatBool(false))
 
-		shouldResynchronize := customresources.ShouldResynchronize(app)
-		assert.True(t, shouldResynchronize)
+		hasAnnotation := customresources.HasResynchronizeAnnotation(app)
+		assert.True(t, hasAnnotation)
 
 		app = minimalApplication()
 		annotations.SetAnnotation(app, annotations.ResynchronizeKey, strconv.FormatBool(true))
 
-		shouldResynchronize = customresources.ShouldResynchronize(app)
-		assert.True(t, shouldResynchronize)
+		hasAnnotation = customresources.HasResynchronizeAnnotation(app)
+		assert.True(t, hasAnnotation)
+	})
+}
+
+func TestHasRotateAnnotation(t *testing.T) {
+	t.Run("not set annotation should not rotate", func(t *testing.T) {
+		app := minimalApplication()
+
+		hasAnnotation := customresources.HasRotateAnnotation(app)
+		assert.False(t, hasAnnotation)
+	})
+
+	t.Run("set annotation should rotate regardless of value", func(t *testing.T) {
+		app := minimalApplication()
+		annotations.SetAnnotation(app, annotations.RotateKey, strconv.FormatBool(false))
+
+		hasAnnotation := customresources.HasRotateAnnotation(app)
+		assert.True(t, hasAnnotation)
+
+		app = minimalApplication()
+		annotations.SetAnnotation(app, annotations.RotateKey, strconv.FormatBool(true))
+
+		hasAnnotation = customresources.HasRotateAnnotation(app)
+		assert.True(t, hasAnnotation)
 	})
 }
 

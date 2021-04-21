@@ -182,6 +182,8 @@ func (r *Reconciler) Complete(tx transaction) (ctrl.Result, error) {
 	r.reportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
 
 	annotations.RemoveAnnotation(tx.instance, annotations.ResynchronizeKey)
+	annotations.RemoveAnnotation(tx.instance, annotations.RotateKey)
+
 	tx.instance.Status.SynchronizationSecretName = tx.instance.Spec.SecretName
 	now := metav1.Now()
 	tx.instance.Status.SynchronizationTime = &now

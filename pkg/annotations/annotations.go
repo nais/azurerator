@@ -6,6 +6,7 @@ const (
 	DeleteKey             = "azure.nais.io/delete"
 	NotInTeamNamespaceKey = "azure.nais.io/not-in-team-namespace"
 	ResynchronizeKey      = "azure.nais.io/resync"
+	RotateKey             = "azure.nais.io/rotate"
 )
 
 func SetAnnotation(resource v1.ObjectMetaAccessor, key, value string) {

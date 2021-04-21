@@ -175,6 +175,9 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotR
 	}
 	instance.Spec.PreAuthorizedApplications = append(previousPreAuthorizedApps, invalidPreAuthorizedApp, validPreAuthorizedApp)
 
+	// sleep to allow sync time to elapse (non-millisecond precision)
+	time.Sleep(time.Second)
+
 	err := cli.Update(context.Background(), instance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
@@ -196,7 +199,7 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotR
 	previousHash = newInstance.Status.SynchronizationHash
 	previousSyncTime = newInstance.Status.SynchronizationTime
 
-	// sleep to ensure synchronization time is actually updated
+	// sleep to allow sync time to elapse (non-millisecond precision)
 	time.Sleep(time.Second)
 
 	err = cli.Update(context.Background(), newInstance)
@@ -222,7 +225,7 @@ func TestReconciler_UpdateAzureAdApplication_ResyncAnnotation_ShouldResyncAndNot
 
 	annotations.SetAnnotation(instance, annotations.ResynchronizeKey, strconv.FormatBool(true))
 
-	// sleep to ensure synchronization time is actually updated
+	// sleep to allow sync time to elapse (non-millisecond precision)
 	time.Sleep(time.Second)
 
 	err := cli.Update(context.Background(), instance)
@@ -245,6 +248,41 @@ func TestReconciler_UpdateAzureAdApplication_ResyncAnnotation_ShouldResyncAndNot
 
 	newSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
 	assert.EqualValues(t, previousSecret, newSecret, "Secrets are unchanged")
+}
+
+func TestReconciler_UpdateAzureAdApplication_RotateAnnotation_ShouldRotateSecrets(t *testing.T) {
+	instance := assertApplicationExists(t, fake.ApplicationExists)
+
+	previousHash := instance.Status.SynchronizationHash
+	previousSyncTime := instance.Status.SynchronizationTime
+	previousSecretRotationTime := instance.Status.SynchronizationSecretRotationTime
+	previousSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
+
+	annotations.SetAnnotation(instance, annotations.RotateKey, strconv.FormatBool(true))
+
+	// sleep to allow sync time to elapse (non-millisecond precision)
+	time.Sleep(time.Second)
+
+	err := cli.Update(context.Background(), instance)
+	assert.NoError(t, err, "updating existing application should not return error")
+
+	newInstance := assertApplicationExists(t, instance.GetName())
+
+	assert.Eventually(t, func() bool {
+		return newInstance.Status.SynchronizationTime.After(previousSyncTime.Time)
+	}, timeout, interval, "Synchronization Time is updated")
+	assert.Eventually(t, func() bool {
+		return newInstance.Status.SynchronizationHash == previousHash
+	}, timeout, interval, "Synchronization Hash is unchanged")
+	assert.Eventually(t, func() bool {
+		return previousSecretRotationTime.Before(newInstance.Status.SynchronizationSecretRotationTime)
+	}, timeout, interval, "Secret Rotation Time is changed")
+
+	assertApplicationExists(t, newInstance.GetName())
+	assert.NotContains(t, newInstance.Annotations, annotations.RotateKey, "AzureAdApplication should not contain rotate annotation")
+
+	newSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
+	assertSecretsAreRotated(t, previousSecret, newSecret)
 }
 
 func TestReconciler_UpdateAzureAdApplication_NewSecretName_ShouldRotateCredentials(t *testing.T) {
@@ -531,7 +569,9 @@ func assertApplicationExists(t *testing.T, name string, state ...string) *v1.Azu
 
 		hasExpiredSecrets := customresources.HasExpiredSecrets(instance, maxSecretAge)
 		secretNameChanged := customresources.SecretNameChanged(instance)
-		return !isHashChanged && !hasExpiredSecrets && !secretNameChanged
+		hasSynchronizeAnnotation := customresources.HasResynchronizeAnnotation(instance)
+		hasRotateAnnotation := customresources.HasRotateAnnotation(instance)
+		return !isHashChanged && !hasExpiredSecrets && !secretNameChanged && !hasSynchronizeAnnotation && !hasRotateAnnotation
 	}, timeout, interval, "AzureAdApplication should be synchronized")
 
 	assert.True(t, finalizer.HasFinalizer(instance, finalizers.Name), "AzureAdApplication should contain a finalizer")
