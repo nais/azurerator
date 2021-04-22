@@ -55,8 +55,10 @@ type TeamsManagement struct {
 }
 
 type ClaimsMappingPolicies struct {
-	Enabled  bool   `json:"enabled"`
-	NavIdent string `json:"navident"`
+	Enabled         bool   `json:"enabled"`
+	NavIdent        string `json:"navident"`
+	AzpName         string `json:"azp_name"`
+	AllCustomClaims string `json:"all-custom-claims"`
 }
 
 type AppRoleAssignmentRequired struct {
@@ -82,23 +84,25 @@ type Validation struct {
 
 // Configuration options
 const (
-	AzureClientId                                  = "azure.auth.client-id"
-	AzureClientSecret                              = "azure.auth.client-secret"
-	AzureTenantId                                  = "azure.tenant.id"
-	AzureTenantName                                = "azure.tenant.name"
-	AzurePermissionGrantResourceId                 = "azure.permissiongrant-resource-id"
-	AzureFeaturesClaimsMappingPoliciesEnabled      = "azure.features.claims-mapping-policies.enabled"
-	AzureFeaturesClaimsMappingPoliciesNavIdent     = "azure.features.claims-mapping-policies.navident"
-	AzureFeaturesTeamsManagementEnabled            = "azure.features.teams-management.enabled"
-	AzureFeaturesTeamsManagementServicePrincipalId = "azure.features.teams-management.service-principal-id"
-	AzureFeaturesGroupsAssignmentEnabled           = "azure.features.groups-assignment.enabled"
-	AzureFeaturesGroupsAllUsersGroupId             = "azure.features.groups-assignment.all-users-group-id"
-	AzureFeaturesAppRoleAssignmentRequiredEnabled  = "azure.features.app-role-assignment-required.enabled"
-	MetricsAddress                                 = "metrics-address"
-	ClusterName                                    = "cluster-name"
-	DebugEnabled                                   = "debug"
-	ValidationsTenantRequired                      = "validations.tenant.required"
-	SecretRotationMaxAge                           = "secret-rotation.max-age"
+	AzureClientId                                     = "azure.auth.client-id"
+	AzureClientSecret                                 = "azure.auth.client-secret"
+	AzureTenantId                                     = "azure.tenant.id"
+	AzureTenantName                                   = "azure.tenant.name"
+	AzurePermissionGrantResourceId                    = "azure.permissiongrant-resource-id"
+	AzureFeaturesClaimsMappingPoliciesEnabled         = "azure.features.claims-mapping-policies.enabled"
+	AzureFeaturesClaimsMappingPoliciesNavIdent        = "azure.features.claims-mapping-policies.navident"
+	AzureFeaturesClaimsMappingPoliciesAzpName         = "azure.features.claims-mapping-policies.azp_name"
+	AzureFeaturesClaimsMappingPoliciesAllCustomClaims = "azure.features.claims-mapping-policies.all-custom-claims"
+	AzureFeaturesTeamsManagementEnabled               = "azure.features.teams-management.enabled"
+	AzureFeaturesTeamsManagementServicePrincipalId    = "azure.features.teams-management.service-principal-id"
+	AzureFeaturesGroupsAssignmentEnabled              = "azure.features.groups-assignment.enabled"
+	AzureFeaturesGroupsAllUsersGroupId                = "azure.features.groups-assignment.all-users-group-id"
+	AzureFeaturesAppRoleAssignmentRequiredEnabled     = "azure.features.app-role-assignment-required.enabled"
+	MetricsAddress                                    = "metrics-address"
+	ClusterName                                       = "cluster-name"
+	DebugEnabled                                      = "debug"
+	ValidationsTenantRequired                         = "validations.tenant.required"
+	SecretRotationMaxAge                              = "secret-rotation.max-age"
 )
 
 func init() {
@@ -124,6 +128,8 @@ func init() {
 
 	flag.Bool(AzureFeaturesClaimsMappingPoliciesEnabled, false, "Feature toggle for assigning custom claims-mapping policies to a service principal")
 	flag.String(AzureFeaturesClaimsMappingPoliciesNavIdent, "", "Claims-mapping policy ID for NavIdent")
+	flag.String(AzureFeaturesClaimsMappingPoliciesAzpName, "", "Claims-mapping policy ID for azp_name (authorized party name, i.e. displayName for the requesting application)")
+	flag.String(AzureFeaturesClaimsMappingPoliciesAllCustomClaims, "", "Claims-mapping policy ID for all custom claims, i.e. NavIdent and azp_name")
 
 	flag.Bool(AzureFeaturesTeamsManagementEnabled, false, "Feature toggle for assigning owners of matching teams to owners of applications")
 	flag.String(AzureFeaturesTeamsManagementServicePrincipalId, "", "Service Principal ID for teams management application containing team groups")
