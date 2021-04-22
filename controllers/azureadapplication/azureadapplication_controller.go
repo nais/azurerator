@@ -25,8 +25,8 @@ import (
 
 const (
 	contextTimeout   = 1 * time.Minute
-	retryMinInterval = 15 * time.Second
-	retryMaxInterval = 24 * time.Hour
+	retryMinInterval = 1 * time.Second
+	retryMaxInterval = 15 * time.Minute
 )
 
 // Reconciler reconciles a AzureAdApplication object
