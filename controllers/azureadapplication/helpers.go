@@ -76,8 +76,7 @@ func eventFilterPredicate() predicate.Funcs {
 		labelsChanged := !reflect.DeepEqual(objectOld.GetLabels(), objectNew.GetLabels())
 		finalizersChanged := !reflect.DeepEqual(objectOld.GetFinalizers(), objectNew.GetFinalizers())
 		deletionTimestampChanged := !objectOld.GetDeletionTimestamp().Equal(objectNew.GetDeletionTimestamp())
-		hashChanged := objectOld.Status.SynchronizationHash != objectNew.Status.SynchronizationHash
 
-		return specChanged || annotationsChanged || labelsChanged || finalizersChanged || deletionTimestampChanged || hashChanged
+		return specChanged || annotationsChanged || labelsChanged || finalizersChanged || deletionTimestampChanged
 	}}
 }
