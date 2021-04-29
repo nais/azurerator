@@ -35,8 +35,14 @@ func (c client) keyCredential() keyCredential {
 
 // Generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
 // With the exception of new applications, there should always be two active keys available at any given time so that running applications are not interfered with.
-func (k keyCredential) rotate(tx azure.Transaction, next azure.Credentials, keyIdsInUse azure.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error) {
-	keysInUse, err := k.mapToKeyCredentials(tx, append(keyIdsInUse.Certificate, next.Certificate.KeyId))
+func (k keyCredential) rotate(tx azure.Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error) {
+	keyCredentialIdsInUse := append(
+		keyIdsInUse.Certificate,
+		existing.Current.Certificate.KeyId,
+		existing.Next.Certificate.KeyId,
+	)
+
+	keysInUse, err := k.mapToKeyCredentials(tx, keyCredentialIdsInUse)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -150,6 +156,26 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.Jwk) msgraph.KeyCredential
 		Usage:       ptr.String("Verify"),
 		Key:         &keyBase64,
 	}
+}
+
+func (k keyCredential) validate(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+	app, err := k.Get(tx)
+	if err != nil {
+		return false, err
+	}
+
+	currentIsValid := false
+	nextIsValid := false
+	for _, credentials := range app.KeyCredentials {
+		if string(*credentials.KeyID) == existing.Current.Certificate.KeyId {
+			currentIsValid = true
+		}
+		if string(*credentials.KeyID) == existing.Next.Certificate.KeyId {
+			nextIsValid = true
+		}
+	}
+
+	return currentIsValid && nextIsValid, nil
 }
 
 func keyCredentialInUse(key msgraph.KeyCredential, keyIdsInUse []string) bool {

@@ -118,7 +118,18 @@ func (s secretsClient) process(tx transaction, applicationResult *azure.Applicat
 		return fmt.Errorf("extracting credentials set from secret: %w", err)
 	}
 
+	// invalidate credentials if cluster resource status/spec conditions are not met
 	validCredentials = validCredentials && tx.options.Process.Secret.Valid
+
+	// ensure that existing credentials set are in sync with Azure
+	if validCredentials {
+		validInAzure, err := s.azure().validateCredentials(tx, *credentialsSet)
+		if err != nil {
+			return fmt.Errorf("validating azure credentials: %w", err)
+		}
+
+		validCredentials = validCredentials && validInAzure
+	}
 
 	// return early if no operations needed
 	if validCredentials && !tx.options.Process.Secret.Rotate && applicationResult.IsNotModified() {

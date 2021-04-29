@@ -42,7 +42,7 @@ func (e Extractor) GetKeyIdsInUse() azure.KeyIdsInUse {
 	}
 }
 
-// Extract the previous (if any) credential set from all the secrets matching this AzureAdApplication.
+// GetPreviousCredentialsSet extracts the previous (if any) credential set from all the secrets matching this AzureAdApplication.
 // Looks for and attempts to extract credentials matching the provided secretName parameter, otherwise falls back to
 // extracting credentials from the latest in-use secret (if any).
 // Ultimately returns (nil, false, nil) if no secrets match the above or if any matching secret does not contain the expected keys.

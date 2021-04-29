@@ -53,6 +53,10 @@ func (a fakeAzureClient) RotateCredentials(tx azure.Transaction, existing azure.
 	return newSet, nil
 }
 
+func (a fakeAzureClient) ValidateCredentials(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+	return true, nil
+}
+
 func (a fakeAzureClient) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
 	internalApp := AzureApplicationResult(tx.Instance, azure.OperationResultUpdated)
 	return &internalApp, nil

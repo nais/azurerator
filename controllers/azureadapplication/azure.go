@@ -120,6 +120,22 @@ func (a azureReconciler) rotateCredentials(tx transaction, existing azure.Creden
 	return &credentialsSet, keyIdsInUse, nil
 }
 
+func (a azureReconciler) validateCredentials(tx transaction, existing azure.CredentialsSet) (bool, error) {
+	logger.Debug("validating existing credentials for Azure application...")
+	valid, err := a.AzureClient.ValidateCredentials(tx.toAzureTx(), existing)
+	if err != nil {
+		return false, err
+	}
+
+	if valid {
+		logger.Debug("existing credentials are valid and in sync with Azure")
+	} else {
+		logger.Warnf("existing credentials are not in sync with Azure")
+	}
+
+	return valid, nil
+}
+
 func (a azureReconciler) delete(tx transaction) error {
 	logger.Info("deleting application in Azure AD...")
 	exists, err := a.exists(tx)

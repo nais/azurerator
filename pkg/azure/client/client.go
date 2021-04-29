@@ -176,14 +176,14 @@ func (c client) AddCredentials(tx azure.Transaction) (azure.CredentialsSet, erro
 func (c client) RotateCredentials(tx azure.Transaction, existing azure.CredentialsSet, inUse azure.KeyIdsInUse) (azure.CredentialsSet, error) {
 	time.Sleep(DelayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
 
-	nextPasswordCredential, err := c.passwordCredential().rotate(tx, existing.Next, inUse)
+	nextPasswordCredential, err := c.passwordCredential().rotate(tx, existing, inUse)
 	if err != nil {
 		return azure.CredentialsSet{}, fmt.Errorf("rotating password credential: %w", err)
 	}
 
 	time.Sleep(DelayIntervalBetweenModifications)
 
-	nextKeyCredential, nextJwk, err := c.keyCredential().rotate(tx, existing.Next, inUse)
+	nextKeyCredential, nextJwk, err := c.keyCredential().rotate(tx, existing, inUse)
 	if err != nil {
 		return azure.CredentialsSet{}, fmt.Errorf("rotating key credential: %w", err)
 	}
@@ -201,6 +201,21 @@ func (c client) RotateCredentials(tx azure.Transaction, existing azure.Credentia
 			},
 		},
 	}, nil
+}
+
+// ValidateCredentials validates the given credentials set against the actual state for the application in Azure AD.
+func (c client) ValidateCredentials(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+	validPasswordCredentials, err := c.passwordCredential().validate(tx, existing)
+	if err != nil {
+		return false, fmt.Errorf("validating password credentials: %w", err)
+	}
+
+	validateKeyCredentials, err := c.keyCredential().validate(tx, existing)
+	if err != nil {
+		return false, fmt.Errorf("validating key credentials: %w", err)
+	}
+
+	return validPasswordCredentials && validateKeyCredentials, nil
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation

@@ -30,6 +30,7 @@ type Client interface {
 	GetServicePrincipal(tx Transaction) (msgraph.ServicePrincipal, error)
 	AddCredentials(tx Transaction) (CredentialsSet, error)
 	RotateCredentials(tx Transaction, existing CredentialsSet, inUse KeyIdsInUse) (CredentialsSet, error)
+	ValidateCredentials(tx Transaction, existing CredentialsSet) (bool, error)
 	Update(tx Transaction) (*ApplicationResult, error)
 }
 

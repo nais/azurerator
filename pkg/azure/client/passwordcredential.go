@@ -21,7 +21,7 @@ func (c client) passwordCredential() passwordCredential {
 	return passwordCredential{c}
 }
 
-func (p passwordCredential) rotate(tx azure.Transaction, next azure.Credentials, keyIdsInUse azure.KeyIdsInUse) (*msgraph.PasswordCredential, error) {
+func (p passwordCredential) rotate(tx azure.Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*msgraph.PasswordCredential, error) {
 	app, err := p.Get(tx)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,12 @@ func (p passwordCredential) rotate(tx azure.Transaction, next azure.Credentials,
 		return nil, err
 	}
 
-	passwordKeyIdsInUse := append(keyIdsInUse.Password, next.Password.KeyId, string(*newCred.KeyID))
+	passwordKeyIdsInUse := append(
+		keyIdsInUse.Password,
+		existing.Current.Password.KeyId,
+		existing.Next.Password.KeyId,
+		string(*newCred.KeyID),
+	)
 
 	time.Sleep(DelayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
 
@@ -124,6 +129,26 @@ func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIds
 		revoked = append(revoked, passwordCredential)
 	}
 	return revoked
+}
+
+func (p passwordCredential) validate(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+	app, err := p.Get(tx)
+	if err != nil {
+		return false, err
+	}
+
+	currentIsValid := false
+	nextIsValid := false
+	for _, credentials := range app.PasswordCredentials {
+		if string(*credentials.KeyID) == existing.Current.Password.KeyId {
+			currentIsValid = true
+		}
+		if string(*credentials.KeyID) == existing.Next.Password.KeyId {
+			nextIsValid = true
+		}
+	}
+
+	return currentIsValid && nextIsValid, nil
 }
 
 func isPasswordInUse(cred msgraph.PasswordCredential, idsInUse []string) bool {
