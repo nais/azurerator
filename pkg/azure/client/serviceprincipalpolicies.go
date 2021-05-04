@@ -121,7 +121,7 @@ func (sp *servicePrincipalPolicies) assign(tx azure.Transaction, policy claimsma
 func (sp *servicePrincipalPolicies) revokeNonDesired(tx azure.Transaction) error {
 	for _, validPolicy := range sp.validPolicies.All() {
 		if validPolicy.Assigned && !validPolicy.Desired {
-			err := sp.removeForPolicy(tx, validPolicy.ID)
+			err := sp.removeForPolicy(tx, validPolicy)
 			if err != nil {
 				return err
 			}
@@ -133,7 +133,7 @@ func (sp *servicePrincipalPolicies) revokeNonDesired(tx azure.Transaction) error
 func (sp *servicePrincipalPolicies) revokeAllManagedPolicies(tx azure.Transaction) error {
 	for _, policy := range sp.validPolicies.All() {
 		if policy.Assigned {
-			err := sp.removeForPolicy(tx, policy.ID)
+			err := sp.removeForPolicy(tx, policy)
 			if err != nil {
 				return err
 			}
@@ -152,26 +152,26 @@ func (sp *servicePrincipalPolicies) assignForPolicy(tx azure.Transaction, policy
 
 	err := req.JSONRequest(tx.Ctx, http.MethodPost, "/$ref", body, nil)
 	if err != nil {
-		return fmt.Errorf("assigning claims-mapping policy '%s' to service principal '%s': %w", policy.ID, sp.servicePrincipalID, err)
+		return fmt.Errorf("assigning claims-mapping policy '%s' (%s) to service principal '%s': %w", policy.Name, policy.ID, sp.servicePrincipalID, err)
 	}
 
-	tx.Log.Infof("successfully assigned claims-mapping policy '%s' to service principal '%s'", policy.ID, sp.servicePrincipalID)
+	tx.Log.Infof("successfully assigned claims-mapping policy '%s' (%s) to service principal '%s'", policy.Name, policy.ID, sp.servicePrincipalID)
 	return nil
 }
 
-func (sp *servicePrincipalPolicies) removeForPolicy(tx azure.Transaction, policyID string) error {
-	if len(policyID) == 0 {
+func (sp *servicePrincipalPolicies) removeForPolicy(tx azure.Transaction, policy claimsmappingpolicy.ValidPolicy) error {
+	if len(policy.ID) == 0 {
 		return nil
 	}
 
-	req := sp.graphClient.ServicePrincipals().ID(sp.servicePrincipalID).ClaimsMappingPolicies().ID(policyID).Request()
+	req := sp.graphClient.ServicePrincipals().ID(sp.servicePrincipalID).ClaimsMappingPolicies().ID(policy.ID).Request()
 
 	err := req.JSONRequest(tx.Ctx, http.MethodDelete, "/$ref", nil, nil)
 	if err != nil {
-		return fmt.Errorf("removing claims-mapping policy '%s' from service principal '%s'", policyID, sp.servicePrincipalID)
+		return fmt.Errorf("removing claims-mapping policy '%s' (%s) from service principal '%s'", policy.Name, policy.ID, sp.servicePrincipalID)
 	}
 
-	tx.Log.Infof("successfully removed claims-mapping policy '%s' from service principal '%s'", policyID, sp.servicePrincipalID)
+	tx.Log.Infof("successfully removed claims-mapping policy '%s' (%s) from service principal '%s'", policy.Name, policy.ID, sp.servicePrincipalID)
 	return nil
 }
 
