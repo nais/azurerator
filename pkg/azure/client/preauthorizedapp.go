@@ -90,7 +90,6 @@ func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedA
 		}
 
 		if !exists {
-			tx.Log.Debugf("skipping PreAuthorizedApp assignment: '%s' does not exist", customresources.GetUniqueName(app))
 			invalidResources = append(invalidResources, *resource)
 			continue
 		}

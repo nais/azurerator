@@ -150,9 +150,6 @@ func (r *Reconciler) Process(tx transaction) error {
 		return err
 	}
 
-	r.preauthorizedapps(tx, applicationResult.PreAuthorizedApps).
-		reportInvalidAsEvents()
-
 	err = r.secrets().process(tx, applicationResult)
 	if err != nil {
 		return fmt.Errorf("while processing secrets: %w", err)

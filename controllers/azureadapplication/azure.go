@@ -37,6 +37,8 @@ func (a azureReconciler) createOrUpdate(tx transaction) (*azure.ApplicationResul
 		return nil, err
 	}
 
+	a.reportInvalid(tx, applicationResult.PreAuthorizedApps)
+
 	return applicationResult, nil
 }
 
@@ -177,4 +179,12 @@ func (a azureReconciler) exists(tx transaction) (bool, error) {
 	}
 
 	return exists, nil
+}
+
+func (a azureReconciler) reportInvalid(tx transaction, preAuthApps azure.PreAuthorizedApps) {
+	for _, app := range preAuthApps.Invalid {
+		msg := fmt.Sprintf("Pre-authorized app '%s' was not found in the Azure AD tenant (%s)", app.Name, a.Config.Azure.Tenant.String())
+		tx.log.Warnf(msg)
+		a.Recorder.Event(tx.instance, corev1.EventTypeWarning, v1.EventSkipped, msg)
+	}
 }
