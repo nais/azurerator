@@ -7,7 +7,6 @@ import (
 	"github.com/nais/liberator/pkg/kubernetes"
 	"gopkg.in/square/go-jose.v2"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Extractor struct {
@@ -53,32 +52,6 @@ func (e Extractor) GetPreviousCredentialsSet(secretName string) (*azure.Credenti
 		if secret.Name == secretName {
 			return e.extractCredentialsSetFromSecret(secret)
 		}
-	}
-
-	return e.extractCredentialsSetFromLatestSecret(e.secretLists.Used.Items)
-}
-
-func (e Extractor) extractCredentialsSetFromLatestSecret(secrets []corev1.Secret) (*azure.CredentialsSet, bool, error) {
-	var latestSecret *corev1.Secret
-	var latestSecretCreationTimestamp metav1.Time
-
-	for i, secret := range secrets {
-		if latestSecret == nil {
-			latestSecret = &secrets[i]
-			latestSecretCreationTimestamp = latestSecret.GetCreationTimestamp()
-			continue
-		}
-
-		secretCreationTimestamp := secret.GetCreationTimestamp()
-
-		if secretCreationTimestamp.After(latestSecretCreationTimestamp.Time) {
-			latestSecret = &secrets[i]
-			latestSecretCreationTimestamp = secretCreationTimestamp
-		}
-	}
-
-	if latestSecret != nil {
-		return e.extractCredentialsSetFromSecret(*latestSecret)
 	}
 
 	return nil, false, nil
