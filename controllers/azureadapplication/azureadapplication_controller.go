@@ -72,14 +72,13 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	tx, err := r.Prepare(req)
+	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
+	defer cancel()
+
+	tx, err := r.Prepare(ctx, req)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
-	tx.ctx = ctx
-	defer cancel()
 
 	if tx.options.Tenant.Ignore {
 		logger.Debugf("resource is not addressed to tenant '%s', ignoring...", r.Config.Azure.Tenant.Name)
@@ -105,10 +104,6 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if !tx.options.Process.Synchronize {
-		return ctrl.Result{}, nil
-	}
-
 	err = r.Process(*tx)
 	if err != nil {
 		return r.HandleError(*tx, err)
@@ -118,9 +113,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return r.Complete(*tx)
 }
 
-func (r *Reconciler) Prepare(req ctrl.Request) (*transaction, error) {
-	ctx := context.Background()
-
+func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transaction, error) {
 	instance := &v1.AzureAdApplication{}
 	if err := r.Reader.Get(ctx, req.NamespacedName, instance); err != nil {
 		return nil, err
