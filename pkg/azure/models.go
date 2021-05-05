@@ -65,7 +65,7 @@ type ApplicationResult struct {
 }
 
 func (a ApplicationResult) IsNotModified() bool {
-	return a.Result != OperationResultNotModified
+	return a.Result == OperationResultNotModified
 }
 
 type CredentialsSet struct {

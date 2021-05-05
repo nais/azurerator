@@ -247,7 +247,7 @@ func TestReconciler_UpdateAzureAdApplication_ResyncAnnotation_ShouldResyncAndNot
 	assert.NotContains(t, newInstance.Annotations, annotations.ResynchronizeKey, "AzureAdApplication should not contain resync annotation")
 
 	newSecret := assertSecretExists(t, instance.Spec.SecretName, instance)
-	assert.EqualValues(t, previousSecret, newSecret, "Secrets are unchanged")
+	assertSecretsAreNotRotated(t, previousSecret, newSecret)
 }
 
 func TestReconciler_UpdateAzureAdApplication_RotateAnnotation_ShouldRotateSecrets(t *testing.T) {
