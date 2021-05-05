@@ -139,17 +139,28 @@ func extractCredentials(secret corev1.Secret, keys extractCredentialsKeys) (*azu
 	var err error
 
 	clientSecret, exists := secret.Data[keys.clientSecretKey]
-	passwordId, exists := secret.Data[keys.passwordIdKey]
-	jwkSecret, exists := secret.Data[keys.jwkSecretKey]
-	certificateId, exists := secret.Data[keys.certificateIdKey]
+	if !isValidSecretData(clientSecret, exists) {
+		return nil, false, nil
+	}
 
-	if !exists {
+	passwordId, exists := secret.Data[keys.passwordIdKey]
+	if !isValidSecretData(passwordId, exists) {
+		return nil, false, nil
+	}
+
+	jwkSecret, exists := secret.Data[keys.jwkSecretKey]
+	if !isValidSecretData(jwkSecret, exists) {
+		return nil, false, nil
+	}
+
+	certificateId, exists := secret.Data[keys.certificateIdKey]
+	if !isValidSecretData(certificateId, exists) {
 		return nil, false, nil
 	}
 
 	err = clientJwk.UnmarshalJSON(jwkSecret)
 	if err != nil {
-		return nil, exists, err
+		return nil, false, err
 	}
 
 	return &azure.Credentials{
@@ -161,5 +172,13 @@ func extractCredentials(secret corev1.Secret, keys extractCredentialsKeys) (*azu
 			KeyId:        string(passwordId),
 			ClientSecret: string(clientSecret),
 		},
-	}, exists, nil
+	}, true, nil
+}
+
+func isValidSecretData(data []byte, found bool) bool {
+	if !found || len(data) == 0 {
+		return false
+	}
+
+	return true
 }
