@@ -187,8 +187,9 @@ func (a azureReconciler) exists(tx transaction) (bool, error) {
 
 func (a azureReconciler) reportInvalid(tx transaction, preAuthApps azure.PreAuthorizedApps) {
 	for _, app := range preAuthApps.Invalid {
-		msg := fmt.Sprintf("Pre-authorized app '%s' was not found in the Azure AD tenant (%s), skipping assignment...", app.Name, a.Config.Azure.Tenant.String())
-		tx.log.Warnf(msg)
-		a.Recorder.Event(tx.instance, corev1.EventTypeWarning, v1.EventSkipped, msg)
+		a.Recorder.Eventf(
+			tx.instance, corev1.EventTypeNormal, v1.EventSkipped,
+			"Pre-authorized app '%s' was not found in the Azure AD tenant (%s), skipping assignment...", app.Name, a.Config.Azure.Tenant.String(),
+		)
 	}
 }
