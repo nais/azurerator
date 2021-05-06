@@ -13,7 +13,6 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/metrics"
-	"github.com/nais/azureator/pkg/secrets"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -41,11 +40,11 @@ type Reconciler struct {
 }
 
 type transaction struct {
-	ctx            context.Context
-	instance       *v1.AzureAdApplication
-	log            log.Entry
-	secretDataKeys secrets.SecretDataKeys
-	options        options.TransactionOptions
+	ctx      context.Context
+	instance *v1.AzureAdApplication
+	log      log.Entry
+	options  options.TransactionOptions
+	secrets  transactionSecrets
 }
 
 func (t *transaction) toAzureTx() azure.Transaction {
@@ -104,6 +103,21 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	// ensure that existing credentials set are in sync with Azure
+	validCredentials, err := r.azure().validateCredentials(*tx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if !validCredentials {
+		tx.options.Process.Synchronize = true
+		tx.options.Process.Secret.Valid = false
+	}
+
+	// return early if no operations needed
+	if !tx.options.Process.Synchronize {
+		return ctrl.Result{}, nil
+	}
+
 	err = r.Process(*tx)
 	if err != nil {
 		return r.HandleError(*tx, err)
@@ -132,15 +146,23 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 
 	opts, err := options.NewOptions(*instance, *r.Config)
 	if err != nil {
-		return nil, fmt.Errorf("preparing options: %w", err)
+		return nil, fmt.Errorf("preparing transaction options: %w", err)
 	}
 
+	secrets, err := r.secrets().prepare(ctx, instance)
+	if err != nil {
+		return nil, fmt.Errorf("preparing transaction secrets: %w", err)
+	}
+
+	// invalidate credentials if cluster resource status/spec conditions are not met
+	opts.Process.Secret.Valid = opts.Process.Secret.Valid && secrets.credentials.valid
+
 	return &transaction{
-		ctx:            ctx,
-		instance:       instance,
-		log:            logger,
-		secretDataKeys: secrets.NewSecretDataKeys(instance.Spec.SecretKeyPrefix),
-		options:        opts,
+		ctx:      ctx,
+		instance: instance,
+		log:      logger,
+		secrets:  *secrets,
+		options:  opts,
 	}, nil
 }
 

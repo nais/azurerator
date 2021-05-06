@@ -1,11 +1,12 @@
 package azureadapplication
 
 import (
+	"context"
 	"fmt"
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/secrets"
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,17 +21,99 @@ type secretsClient struct {
 	Reconciler
 }
 
+type transactionSecrets struct {
+	credentials    credentials
+	dataKeys       secrets.SecretDataKeys
+	keyIdsInUse    azure.KeyIdsInUse
+	managedSecrets kubernetes.SecretLists
+}
+
+type credentials struct {
+	set   *azure.CredentialsSet
+	valid bool
+}
+
 func (r Reconciler) secrets() secretsClient {
 	return secretsClient{Reconciler: r}
 }
 
-func (s secretsClient) createOrUpdate(
-	tx transaction,
-	result azure.ApplicationResult,
-	set azure.CredentialsSet,
-	azureOpenIDConfig config.AzureOpenIdConfig,
-	secretName string,
-) error {
+func (s secretsClient) prepare(ctx context.Context, instance *v1.AzureAdApplication) (*transactionSecrets, error) {
+	dataKeys := secrets.NewSecretDataKeys(instance.Spec.SecretKeyPrefix)
+
+	managedSecrets, err := s.getManaged(ctx, instance)
+	if err != nil {
+		return nil, fmt.Errorf("getting managed secrets: %w", err)
+	}
+
+	secretsExtractor := secrets.NewExtractor(*managedSecrets, dataKeys)
+
+	keyIdsInUse := func() azure.KeyIdsInUse {
+		keyIdsInUse := secretsExtractor.GetKeyIdsInUse()
+		instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
+		instance.Status.PasswordKeyIds = keyIdsInUse.Password
+		return keyIdsInUse
+	}()
+
+	credentialsSet, validCredentials, err := secretsExtractor.GetPreviousCredentialsSet(instance.Status.SynchronizationSecretName)
+	if err != nil {
+		return nil, fmt.Errorf("extracting credentials set from secret: %w", err)
+	}
+
+	return &transactionSecrets{
+		credentials: credentials{
+			set:   credentialsSet,
+			valid: validCredentials,
+		},
+		dataKeys:       dataKeys,
+		keyIdsInUse:    keyIdsInUse,
+		managedSecrets: *managedSecrets,
+	}, nil
+}
+
+func (s secretsClient) process(tx transaction, applicationResult *azure.ApplicationResult) error {
+	// return early if no operations needed
+	if tx.options.Process.Secret.Valid && !tx.options.Process.Secret.Rotate && applicationResult.IsNotModified() {
+		return nil
+	}
+
+	var err error
+
+	credentialsSet := tx.secrets.credentials.set
+	keyIdsInUse := tx.secrets.keyIdsInUse
+
+	switch {
+	case !tx.options.Process.Secret.Valid:
+		credentialsSet, keyIdsInUse, err = s.azure().addCredentials(tx, keyIdsInUse)
+		if err != nil {
+			return fmt.Errorf("adding azure credentials: %w", err)
+		}
+	case tx.options.Process.Secret.Rotate:
+		credentialsSet, keyIdsInUse, err = s.azure().rotateCredentials(tx, *credentialsSet, keyIdsInUse)
+		if err != nil {
+			return fmt.Errorf("rotating azure credentials: %w", err)
+		}
+	}
+
+	if err := s.createOrUpdate(tx, *applicationResult, *credentialsSet); err != nil {
+		return err
+	}
+
+	if err := s.deleteUnused(tx); err != nil {
+		return err
+	}
+
+	if !tx.options.Process.Secret.Valid || tx.options.Process.Secret.Rotate {
+		tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
+		tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
+		now := metav1.Now()
+		tx.instance.Status.SynchronizationSecretRotationTime = &now
+	}
+
+	return nil
+}
+
+func (s secretsClient) createOrUpdate(tx transaction, result azure.ApplicationResult, set azure.CredentialsSet) error {
+	secretName := tx.instance.Spec.SecretName
 	objectMeta := kubernetes.ObjectMeta(secretName, tx.instance.GetNamespace(), labels.Labels(tx.instance))
 
 	secret := &corev1.Secret{
@@ -42,9 +125,9 @@ func (s secretsClient) createOrUpdate(
 		Type: corev1.SecretTypeOpaque,
 	}
 
-	stringData, err := secrets.SecretData(result, set, azureOpenIDConfig, tx.secretDataKeys)
+	stringData, err := secrets.SecretData(result, set, s.AzureOpenIDConfig, tx.secrets.dataKeys)
 	if err != nil {
-		return fmt.Errorf("while creating secret data: %w", err)
+		return fmt.Errorf("while creating secret data for secret '%s': %w", secretName, err)
 	}
 
 	secretMutateFn := func() error {
@@ -61,9 +144,9 @@ func (s secretsClient) createOrUpdate(
 	return nil
 }
 
-func (s secretsClient) getManaged(tx transaction) (*kubernetes.SecretLists, error) {
+func (s secretsClient) getManaged(ctx context.Context, instance *v1.AzureAdApplication) (*kubernetes.SecretLists, error) {
 	// fetch all application pods for this app
-	podList, err := kubernetes.ListPodsForApplication(tx.ctx, s.Reader, tx.instance.GetName(), tx.instance.GetNamespace())
+	podList, err := kubernetes.ListPodsForApplication(ctx, s.Reader, instance.GetName(), instance.GetNamespace())
 	if err != nil {
 		return nil, err
 	}
@@ -71,10 +154,10 @@ func (s secretsClient) getManaged(tx transaction) (*kubernetes.SecretLists, erro
 	// fetch all managed secrets
 	var allSecrets corev1.SecretList
 	opts := []client.ListOption{
-		client.InNamespace(tx.instance.GetNamespace()),
-		client.MatchingLabels(labels.Labels(tx.instance)),
+		client.InNamespace(instance.GetNamespace()),
+		client.MatchingLabels(labels.Labels(instance)),
 	}
-	if err := s.Reader.List(tx.ctx, &allSecrets, opts...); err != nil {
+	if err := s.Reader.List(ctx, &allSecrets, opts...); err != nil {
 		return nil, err
 	}
 
@@ -83,7 +166,9 @@ func (s secretsClient) getManaged(tx transaction) (*kubernetes.SecretLists, erro
 	return &podSecrets, nil
 }
 
-func (s secretsClient) deleteUnused(tx transaction, unused corev1.SecretList) error {
+func (s secretsClient) deleteUnused(tx transaction) error {
+	unused := tx.secrets.managedSecrets.Unused
+
 	for i, oldSecret := range unused.Items {
 		if oldSecret.Name == tx.instance.Spec.SecretName {
 			continue
@@ -93,77 +178,5 @@ func (s secretsClient) deleteUnused(tx transaction, unused corev1.SecretList) er
 			return fmt.Errorf("deleting unused secret: %w", err)
 		}
 	}
-	return nil
-}
-
-func (s secretsClient) process(tx transaction, applicationResult *azure.ApplicationResult) error {
-	secretName := tx.instance.Spec.SecretName
-
-	managedSecrets, err := s.getManaged(tx)
-	if err != nil {
-		return fmt.Errorf("getting managed secrets: %w", err)
-	}
-
-	secretsExtractor := secrets.NewExtractor(*managedSecrets, tx.secretDataKeys)
-
-	keyIdsInUse := func() azure.KeyIdsInUse {
-		keyIdsInUse := secretsExtractor.GetKeyIdsInUse()
-		tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
-		tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
-		return keyIdsInUse
-	}()
-
-	credentialsSet, validCredentials, err := secretsExtractor.GetPreviousCredentialsSet(tx.instance.Status.SynchronizationSecretName)
-	if err != nil {
-		return fmt.Errorf("extracting credentials set from secret: %w", err)
-	}
-
-	// invalidate credentials if cluster resource status/spec conditions are not met
-	validCredentials = validCredentials && tx.options.Process.Secret.Valid
-
-	// ensure that existing credentials set are in sync with Azure
-	if validCredentials {
-		validInAzure, err := s.azure().validateCredentials(tx, *credentialsSet)
-		if err != nil {
-			return fmt.Errorf("validating azure credentials: %w", err)
-		}
-
-		validCredentials = validCredentials && validInAzure
-	}
-
-	// return early if no operations needed
-	if validCredentials && !tx.options.Process.Secret.Rotate && applicationResult.IsNotModified() {
-		return nil
-	}
-
-	switch {
-	case !validCredentials:
-		credentialsSet, keyIdsInUse, err = s.azure().addCredentials(tx, keyIdsInUse)
-		if err != nil {
-			return fmt.Errorf("adding azure credentials: %w", err)
-		}
-	case tx.options.Process.Secret.Rotate:
-		credentialsSet, keyIdsInUse, err = s.azure().rotateCredentials(tx, *credentialsSet, keyIdsInUse)
-		if err != nil {
-			return fmt.Errorf("rotating azure credentials: %w", err)
-		}
-	}
-
-	tx.log.Infof("processing secret with name '%s'...", secretName)
-	if err := s.createOrUpdate(tx, *applicationResult, *credentialsSet, s.AzureOpenIDConfig, secretName); err != nil {
-		return err
-	}
-
-	if err := s.deleteUnused(tx, managedSecrets.Unused); err != nil {
-		return err
-	}
-
-	if !validCredentials || tx.options.Process.Secret.Rotate {
-		tx.instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
-		tx.instance.Status.PasswordKeyIds = keyIdsInUse.Password
-		now := metav1.Now()
-		tx.instance.Status.SynchronizationSecretRotationTime = &now
-	}
-
 	return nil
 }

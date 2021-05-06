@@ -46,6 +46,10 @@ func (e Extractor) GetKeyIdsInUse() azure.KeyIdsInUse {
 // extracting credentials from the latest in-use secret (if any).
 // Ultimately returns (nil, false, nil) if no secrets match the above or if any matching secret does not contain the expected keys.
 func (e Extractor) GetPreviousCredentialsSet(secretName string) (*azure.CredentialsSet, bool, error) {
+	if len(secretName) == 0 {
+		return nil, false, nil
+	}
+
 	allSecrets := append(e.secretLists.Unused.Items, e.secretLists.Used.Items...)
 
 	for _, secret := range allSecrets {
@@ -61,6 +65,10 @@ func (e Extractor) extractCredentialsSetFromSecret(secret corev1.Secret) (*azure
 	currentCredential, valid, err := e.extractCurrentCredentials(secret)
 	if err != nil {
 		return nil, valid, fmt.Errorf("extracting current credentials set from secret: %w", err)
+	}
+
+	if !valid {
+		return nil, false, nil
 	}
 
 	nextCredential, valid, err := e.extractNextCredentials(secret)

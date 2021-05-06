@@ -122,9 +122,13 @@ func (a azureReconciler) rotateCredentials(tx transaction, existing azure.Creden
 	return &credentialsSet, keyIdsInUse, nil
 }
 
-func (a azureReconciler) validateCredentials(tx transaction, existing azure.CredentialsSet) (bool, error) {
+func (a azureReconciler) validateCredentials(tx transaction) (bool, error) {
+	if !tx.secrets.credentials.valid || tx.secrets.credentials.set == nil {
+		return false, nil
+	}
+
 	logger.Debug("validating existing credentials for Azure application...")
-	valid, err := a.AzureClient.ValidateCredentials(tx.toAzureTx(), existing)
+	valid, err := a.AzureClient.ValidateCredentials(tx.toAzureTx(), *tx.secrets.credentials.set)
 	if err != nil {
 		return false, err
 	}
@@ -183,7 +187,7 @@ func (a azureReconciler) exists(tx transaction) (bool, error) {
 
 func (a azureReconciler) reportInvalid(tx transaction, preAuthApps azure.PreAuthorizedApps) {
 	for _, app := range preAuthApps.Invalid {
-		msg := fmt.Sprintf("Pre-authorized app '%s' was not found in the Azure AD tenant (%s)", app.Name, a.Config.Azure.Tenant.String())
+		msg := fmt.Sprintf("Pre-authorized app '%s' was not found in the Azure AD tenant (%s), skipping assignment...", app.Name, a.Config.Azure.Tenant.String())
 		tx.log.Warnf(msg)
 		a.Recorder.Event(tx.instance, corev1.EventTypeWarning, v1.EventSkipped, msg)
 	}
