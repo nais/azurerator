@@ -109,7 +109,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return r.HandleError(*tx, err)
 	}
 
-	logger.Info("successfully synchronized AzureAdApplication with Azure")
+	logger.Debug("successfully synchronized AzureAdApplication with Azure")
 	return r.Complete(*tx)
 }
 
@@ -125,7 +125,7 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 
 	logger = *log.WithFields(log.Fields{
 		"AzureAdApplication": req.NamespacedName,
-		"correlation_id":     correlationId,
+		"CorrelationID":      correlationId,
 	})
 
 	instance.Status.CorrelationId = correlationId
@@ -198,7 +198,7 @@ func (r *Reconciler) Complete(tx transaction) (ctrl.Result, error) {
 			"ClientID":           tx.instance.GetClientId(),
 			"ObjectID":           tx.instance.GetObjectId(),
 			"ServicePrincipalID": tx.instance.GetServicePrincipalId(),
-		}).Info("status subresource successfully updated")
+		}).Debugf("status subresource successfully updated")
 
 	err = r.updateAnnotations(tx)
 	if err != nil {
