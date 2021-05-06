@@ -111,7 +111,7 @@ func (sp *servicePrincipalPolicies) prepare(tx azure.Transaction) error {
 
 func (sp *servicePrincipalPolicies) assign(tx azure.Transaction, policy claimsmappingpolicy.ValidPolicy) error {
 	if policy.Assigned {
-		tx.Log.Debugf("claims-mapping policy '%s' already assigned to service principal '%s', skipping assignment", policy.ID, sp.servicePrincipalID)
+		tx.Log.Debugf("claims-mapping policy '%s' (%s) already assigned to service principal '%s', skipping assignment", policy.Name, policy.ID, sp.servicePrincipalID)
 		return nil
 	}
 
