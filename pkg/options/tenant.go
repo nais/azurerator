@@ -1,6 +1,8 @@
 package options
 
-import v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+import (
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+)
 
 type TenantOptions struct {
 	Ignore bool

@@ -1,6 +1,8 @@
 package annotations
 
-import v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 const (
 	DeleteKey             = "azure.nais.io/delete"

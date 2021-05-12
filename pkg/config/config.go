@@ -3,13 +3,14 @@ package config
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
+	"time"
+
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"sort"
-	"strings"
-	"time"
 )
 
 type Config struct {

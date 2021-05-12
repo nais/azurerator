@@ -3,14 +3,16 @@ package secrets
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/fake"
+	"strings"
+	"testing"
+
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/square/go-jose.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
-	"testing"
+
+	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/fake"
 )
 
 const (

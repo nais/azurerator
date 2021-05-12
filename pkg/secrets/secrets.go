@@ -3,9 +3,10 @@ package secrets
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/config"
-	"strings"
 )
 
 const (

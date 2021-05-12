@@ -3,9 +3,10 @@ package client
 import (
 	"fmt"
 
+	msgraph "github.com/nais/msgraph.go/v1.0"
+
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util/directoryobject"
-	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 type applicationOwners struct {

@@ -1,10 +1,11 @@
 package options
 
 import (
-	"github.com/nais/azureator/pkg/annotations"
-	"github.com/nais/azureator/pkg/finalizers"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/finalizer"
+
+	"github.com/nais/azureator/pkg/annotations"
+	"github.com/nais/azureator/pkg/finalizers"
 )
 
 type FinalizerOptions struct {

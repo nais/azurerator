@@ -2,12 +2,13 @@ package azureadapplication
 
 import (
 	"fmt"
-	"github.com/nais/azureator/pkg/metrics"
+
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/metrics"
 )
 
 type azureReconciler struct {

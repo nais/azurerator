@@ -2,6 +2,7 @@ package claimsmappingpolicy
 
 import (
 	"fmt"
+
 	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 

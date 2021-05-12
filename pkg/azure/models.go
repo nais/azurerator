@@ -3,10 +3,11 @@ package azure
 import (
 	"context"
 
-	"github.com/nais/azureator/pkg/util/crypto"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/nais/azureator/pkg/util/crypto"
 )
 
 const (

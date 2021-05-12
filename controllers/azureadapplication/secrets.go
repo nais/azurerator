@@ -3,9 +3,7 @@ package azureadapplication
 import (
 	"context"
 	"fmt"
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/labels"
-	"github.com/nais/azureator/pkg/secrets"
+
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
@@ -13,6 +11,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/labels"
+	"github.com/nais/azureator/pkg/secrets"
 )
 
 // +kubebuilder:rbac:groups=*,resources=secrets,verbs=get;list;watch;create;delete;update;patch

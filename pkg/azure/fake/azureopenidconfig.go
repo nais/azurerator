@@ -1,6 +1,8 @@
 package fake
 
-import "github.com/nais/azureator/pkg/config"
+import (
+	"github.com/nais/azureator/pkg/config"
+)
 
 func AzureOpenIdConfig() config.AzureOpenIdConfig {
 	return config.AzureOpenIdConfig{

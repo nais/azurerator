@@ -3,23 +3,24 @@ package azureadapplication
 import (
 	"context"
 	"fmt"
-	"github.com/nais/azureator/pkg/annotations"
-	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/options"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/workqueue"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"time"
 
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/metrics"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+
+	"github.com/nais/azureator/pkg/annotations"
+	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/metrics"
+	"github.com/nais/azureator/pkg/options"
 )
 
 const (

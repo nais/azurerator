@@ -1,9 +1,11 @@
 package strings_test
 
 import (
-	"github.com/nais/azureator/pkg/util/strings"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/nais/azureator/pkg/util/strings"
 )
 
 func TestRemoveDuplicates(t *testing.T) {

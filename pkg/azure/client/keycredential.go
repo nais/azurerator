@@ -2,17 +2,18 @@ package client
 
 import (
 	"fmt"
-	strings2 "github.com/nais/azureator/pkg/util/strings"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/util"
-	"github.com/nais/azureator/pkg/util/crypto"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
+
+	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/util/crypto"
+	strings2 "github.com/nais/azureator/pkg/util/strings"
 )
 
 type keyCredential struct {

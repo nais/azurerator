@@ -2,8 +2,8 @@ package client
 
 import (
 	"fmt"
-	"github.com/nais/azureator/pkg/azure"
 
+	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
 )
 

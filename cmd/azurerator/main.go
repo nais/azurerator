@@ -9,10 +9,6 @@ import (
 	"time"
 
 	"github.com/go-logr/zapr"
-	"github.com/nais/azureator/controllers/azureadapplication"
-	"github.com/nais/azureator/pkg/azure/client"
-	"github.com/nais/azureator/pkg/config"
-	azureMetrics "github.com/nais/azureator/pkg/metrics"
 	log "github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -21,6 +17,11 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+
+	"github.com/nais/azureator/controllers/azureadapplication"
+	"github.com/nais/azureator/pkg/azure/client"
+	"github.com/nais/azureator/pkg/config"
+	azureMetrics "github.com/nais/azureator/pkg/metrics"
 
 	naisiov1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	// +kubebuilder:scaffold:imports

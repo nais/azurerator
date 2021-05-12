@@ -2,15 +2,16 @@ package client
 
 import (
 	"fmt"
-	strings2 "github.com/nais/azureator/pkg/util/strings"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
+
+	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/util"
+	strings2 "github.com/nais/azureator/pkg/util/strings"
 )
 
 type passwordCredential struct {

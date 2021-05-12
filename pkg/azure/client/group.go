@@ -3,11 +3,13 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/msgraph.go/jsonx"
-	msgraph "github.com/nais/msgraph.go/v1.0"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/nais/msgraph.go/jsonx"
+	msgraph "github.com/nais/msgraph.go/v1.0"
+
+	"github.com/nais/azureator/pkg/azure"
 )
 
 type groups struct {

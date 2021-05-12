@@ -3,12 +3,14 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/util"
-	"github.com/nais/azureator/pkg/customresources"
+
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	msgraph "github.com/nais/msgraph.go/v1.0"
+
+	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/customresources"
 )
 
 // Workaround to include empty array of PreAuthorizedApplications in JSON serialization.

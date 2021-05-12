@@ -2,12 +2,13 @@ package azureadapplication
 
 import (
 	"fmt"
-	finalizer2 "github.com/nais/azureator/pkg/finalizers"
+
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	finalizer2 "github.com/nais/azureator/pkg/finalizers"
 	"github.com/nais/azureator/pkg/metrics"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // Finalizers allow the controller to implement an asynchronous pre-delete hook

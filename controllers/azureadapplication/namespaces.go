@@ -3,11 +3,13 @@ package azureadapplication
 import (
 	"context"
 	"fmt"
-	"github.com/nais/azureator/pkg/annotations"
+	"strconv"
+
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
+
+	"github.com/nais/azureator/pkg/annotations"
 )
 
 type namespaces struct {

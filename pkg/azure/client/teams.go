@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+
 	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 

@@ -1,8 +1,9 @@
 package options
 
 import (
-	"github.com/nais/azureator/pkg/annotations"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+
+	"github.com/nais/azureator/pkg/annotations"
 )
 
 type NamespaceOptions struct {

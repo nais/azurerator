@@ -1,8 +1,9 @@
 package options
 
 import (
-	"github.com/nais/azureator/pkg/config"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+
+	"github.com/nais/azureator/pkg/config"
 )
 
 type TransactionOptions struct {

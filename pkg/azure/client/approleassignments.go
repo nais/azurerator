@@ -3,11 +3,12 @@ package client
 import (
 	"context"
 	"fmt"
+
+	msgraph "github.com/nais/msgraph.go/v1.0"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util/approleassignment"
-	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 type appRoleAssignments struct {

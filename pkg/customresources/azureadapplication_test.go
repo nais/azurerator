@@ -1,14 +1,16 @@
 package customresources_test
 
 import (
-	"github.com/nais/azureator/pkg/annotations"
-	"github.com/nais/azureator/pkg/customresources"
-	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 	"testing"
 	"time"
+
+	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/nais/azureator/pkg/annotations"
+	"github.com/nais/azureator/pkg/customresources"
 )
 
 func TestAzureAdApplication_IsHashChanged(t *testing.T) {

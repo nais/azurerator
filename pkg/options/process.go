@@ -1,8 +1,9 @@
 package options
 
 import (
-	"github.com/nais/azureator/pkg/customresources"
 	"strings"
+
+	"github.com/nais/azureator/pkg/customresources"
 )
 
 func (b optionsBuilder) Process() (ProcessOptions, error) {

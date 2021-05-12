@@ -3,15 +3,17 @@ package azureadapplication
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"sync"
+
 	"github.com/google/uuid"
-	"github.com/nais/azureator/pkg/annotations"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	nais_io_v1alpha1 "github.com/nais/liberator/pkg/apis/nais.io/v1alpha1"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sync"
+
+	"github.com/nais/azureator/pkg/annotations"
 )
 
 var appsync sync.Mutex

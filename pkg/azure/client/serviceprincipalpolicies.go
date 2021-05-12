@@ -2,11 +2,13 @@ package client
 
 import (
 	"fmt"
+	"net/http"
+
+	msgraph "github.com/nais/msgraph.go/v1.0"
+
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util/claimsmappingpolicy"
 	"github.com/nais/azureator/pkg/customresources"
-	msgraph "github.com/nais/msgraph.go/v1.0"
-	"net/http"
 )
 
 const (

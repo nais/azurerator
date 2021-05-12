@@ -3,14 +3,16 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/config"
+	"net/http"
+	"time"
+
 	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/nais/msgraph.go/msauth"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"golang.org/x/oauth2"
-	"net/http"
-	"time"
+
+	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/config"
 )
 
 const (

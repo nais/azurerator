@@ -2,11 +2,13 @@ package secrets
 
 import (
 	"fmt"
-	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/util/crypto"
+
 	"github.com/nais/liberator/pkg/kubernetes"
 	"gopkg.in/square/go-jose.v2"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/util/crypto"
 )
 
 type Extractor struct {

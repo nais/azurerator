@@ -2,9 +2,11 @@ package customresources
 
 import (
 	"fmt"
-	"github.com/nais/azureator/pkg/annotations"
-	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"time"
+
+	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+
+	"github.com/nais/azureator/pkg/annotations"
 )
 
 func HasExtraPolicy(in *nais_io_v1.AzureAdClaims, policyName nais_io_v1.AzureAdExtraClaim) bool {

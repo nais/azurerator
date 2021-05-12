@@ -3,9 +3,10 @@ package client
 import (
 	"fmt"
 
+	msgraph "github.com/nais/msgraph.go/v1.0"
+
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
-	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
 // Workaround to include empty array of RedirectUris in JSON serialization.

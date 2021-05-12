@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nais/azureator/pkg/azure"
 	msgraph "github.com/nais/msgraph.go/v1.0"
+
+	"github.com/nais/azureator/pkg/azure"
 )
 
 type teamowners struct {
