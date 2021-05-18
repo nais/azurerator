@@ -68,6 +68,7 @@ func (n namespaces) inSharedNamespace(tx *transaction) (bool, error) {
 
 	if !found {
 		namespace, err = n.getNamespace(tx.ctx, namespaceName)
+		namespaceCache[namespaceName] = namespace
 	}
 	if err != nil {
 		return false, fmt.Errorf("fetching namespace: %w", err)
