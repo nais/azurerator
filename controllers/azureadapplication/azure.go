@@ -38,7 +38,7 @@ func (a azureReconciler) createOrUpdate(tx transaction) (*azure.ApplicationResul
 		return nil, err
 	}
 
-	a.reportInvalid(tx, applicationResult.PreAuthorizedApps)
+	a.reportPreAuthorizedApplicationStatus(tx, applicationResult.PreAuthorizedApps)
 
 	return applicationResult, nil
 }
@@ -186,11 +186,37 @@ func (a azureReconciler) exists(tx transaction) (bool, error) {
 	return exists, nil
 }
 
-func (a azureReconciler) reportInvalid(tx transaction, preAuthApps azure.PreAuthorizedApps) {
+func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction, preAuthApps azure.PreAuthorizedApps) {
+	invalid := make([]v1.AzureAdPreAuthorizedApp, 0)
+	valid := make([]v1.AzureAdPreAuthorizedApp, 0)
+
+	for _, app := range preAuthApps.Valid {
+		valid = append(valid, v1.AzureAdPreAuthorizedApp{
+			Name:                     app.Name,
+			ClientID:                 app.ClientId,
+			ServicePrincipalObjectID: app.ObjectId,
+		})
+	}
+
 	for _, app := range preAuthApps.Invalid {
-		a.Recorder.Eventf(
-			tx.instance, corev1.EventTypeNormal, v1.EventSkipped,
-			"Pre-authorized app '%s' was not found in the Azure AD tenant (%s), skipping assignment...", app.Name, a.Config.Azure.Tenant.String(),
+		message := fmt.Sprintf(
+			"WARNING: Application '%s' was not found in the Azure AD tenant (%s) and will _NOT_ be pre-authorized.",
+			app.Name, a.Config.Azure.Tenant.String(),
 		)
+
+		tx.log.Warnf(message)
+		a.Recorder.Eventf(tx.instance, corev1.EventTypeNormal, v1.EventSkipped, message)
+
+		invalid = append(invalid, v1.AzureAdPreAuthorizedApp{
+			Name:                     app.Name,
+			ClientID:                 app.ClientId,
+			ServicePrincipalObjectID: app.ObjectId,
+			Reason:                   message,
+		})
+	}
+
+	tx.instance.Status.PreAuthorizedApps = v1.AzureAdPreAuthorizedAppsStatus{
+		Valid:   valid,
+		Invalid: invalid,
 	}
 }
