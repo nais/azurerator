@@ -93,11 +93,7 @@ func (c client) Delete(tx azure.Transaction) error {
 
 // Exists returns an indication of whether the application exists in AAD or not
 func (c client) Exists(tx azure.Transaction) (*msgraph.Application, bool, error) {
-	app, exists, err := c.application().exists(tx)
-	if err != nil {
-		return nil, false, fmt.Errorf("looking up existence of application: %w", err)
-	}
-	return app, exists, nil
+	return c.application().exists(tx)
 }
 
 // Get returns a Graph API Application entity, which represents an Application in AAD
@@ -122,9 +118,10 @@ func (c client) GetServicePrincipal(tx azure.Transaction) (msgraph.ServicePrinci
 	return sp, nil
 }
 
-// GetPreAuthorizedApps transforms a list of wanted pre-authorized applications in the spec to lists of valid and invalid Azure applications.
+// GetPreAuthorizedApps transforms a list of desired pre-authorized applications in the spec to lists of valid and invalid
+// Azure applications, where the validity indicates whether a desired application is pre-authorized or not.
 func (c client) GetPreAuthorizedApps(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
-	return c.preAuthApps().mapToResources(tx)
+	return c.preAuthApps().get(tx)
 }
 
 // AddCredentials adds credentials for an existing AAD application

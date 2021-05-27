@@ -97,7 +97,7 @@ func (a application) exists(tx azure.Transaction) (*msgraph.Application, bool, e
 func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (*msgraph.Application, bool, error) {
 	applications, err := a.getAll(ctx, filter)
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to lookup existence of application: %w", err)
+		return nil, false, fmt.Errorf("looking up existence of application: %w", err)
 	}
 
 	if len(applications) == 0 {

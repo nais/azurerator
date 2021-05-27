@@ -38,7 +38,9 @@ func (a azureReconciler) createOrUpdate(tx transaction) (*azure.ApplicationResul
 		return nil, err
 	}
 
-	a.reportPreAuthorizedApplicationStatus(tx, applicationResult.PreAuthorizedApps)
+	if !applicationResult.IsNotModified() {
+		a.reportPreAuthorizedApplicationStatus(tx, applicationResult.PreAuthorizedApps)
+	}
 
 	return applicationResult, nil
 }
@@ -187,11 +189,11 @@ func (a azureReconciler) exists(tx transaction) (bool, error) {
 }
 
 func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction, preAuthApps azure.PreAuthorizedApps) {
-	invalid := make([]v1.AzureAdPreAuthorizedApp, 0)
-	valid := make([]v1.AzureAdPreAuthorizedApp, 0)
+	unassigned := make([]v1.AzureAdPreAuthorizedApp, 0)
+	assigned := make([]v1.AzureAdPreAuthorizedApp, 0)
 
 	for _, app := range preAuthApps.Valid {
-		valid = append(valid, v1.AzureAdPreAuthorizedApp{
+		assigned = append(assigned, v1.AzureAdPreAuthorizedApp{
 			Name:                     app.Name,
 			ClientID:                 app.ClientId,
 			ServicePrincipalObjectID: app.ObjectId,
@@ -207,7 +209,7 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction, pr
 		tx.log.Warnf(message)
 		a.Recorder.Eventf(tx.instance, corev1.EventTypeNormal, v1.EventSkipped, message)
 
-		invalid = append(invalid, v1.AzureAdPreAuthorizedApp{
+		unassigned = append(unassigned, v1.AzureAdPreAuthorizedApp{
 			Name:                     app.Name,
 			ClientID:                 app.ClientId,
 			ServicePrincipalObjectID: app.ObjectId,
@@ -215,8 +217,8 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction, pr
 		})
 	}
 
-	tx.instance.Status.PreAuthorizedApps = v1.AzureAdPreAuthorizedAppsStatus{
-		Valid:   valid,
-		Invalid: invalid,
+	tx.instance.Status.PreAuthorizedApps = &v1.AzureAdPreAuthorizedAppsStatus{
+		Assigned:   assigned,
+		Unassigned: unassigned,
 	}
 }

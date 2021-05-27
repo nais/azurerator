@@ -30,6 +30,16 @@ func (c client) appRoleAssignments(roleId msgraph.UUID, targetId azure.ObjectId)
 	}
 }
 
+func (c client) appRoleAssignmentsNoRoleId(targetId azure.ObjectId) appRoleAssignments {
+	return appRoleAssignments{
+		client:   c,
+		targetId: targetId,
+		logFields: log.Fields{
+			"targetId": targetId,
+		},
+	}
+}
+
 func (a appRoleAssignments) request() *msgraph.ServicePrincipalAppRoleAssignedToCollectionRequest {
 	return a.graphClient.ServicePrincipals().ID(a.targetId).AppRoleAssignedTo().Request()
 }
@@ -46,20 +56,30 @@ func (a appRoleAssignments) assignFor(tx azure.Transaction, assignees []azure.Re
 		logFields := a.logFields
 		logFields["assigneeClientId"] = assignee.ClientId
 		logFields["assigneeObjectId"] = assignee.ObjectId
+		logFields["assigneePrincipalType"] = assignee.PrincipalType
 
 		if len(assignee.ObjectId) == 0 {
 			tx.Log.WithFields(logFields).Debugf("skipping AppRole assignment: object ID for %s '%s' is not set", assignee.PrincipalType, assignee.Name)
 			continue
 		}
 
-		assignment := a.toAssignment(assignee.ObjectId, principalType)
-		if assignmentInAssignments(*assignment, existing) {
+		if principalType != assignee.PrincipalType {
+			tx.Log.WithFields(logFields).Debugf("skipping AppRole assignment: principal type %s (object ID '%s') does not match expected principal type %s", assignee.PrincipalType, assignee.ObjectId, principalType)
+			continue
+		}
+
+		assignment, err := a.toAssignment(assignee)
+		if err != nil {
+			return nil, err
+		}
+
+		if approleassignment.AssignmentInAssignments(*assignment, existing) {
 			tx.Log.WithFields(logFields).Infof("skipping AppRole assignment: already assigned for %s '%s'", assignee.PrincipalType, assignee.Name)
 			assignments = append(assignments, *assignment)
 			continue
 		}
 
-		tx.Log.WithFields(logFields).Debugf("assigning AppRole for %s '%s'...", principalType, assignee.Name)
+		tx.Log.WithFields(logFields).Debugf("assigning AppRole for %s '%s'...", assignee.PrincipalType, assignee.Name)
 		result, err := a.request().Add(tx.Ctx, assignment)
 		if err != nil {
 			return nil, fmt.Errorf("assigning AppRole for %s '%s' (%s) to target service principal ID '%s': %w", assignee.PrincipalType, assignee.Name, assignee.ObjectId, a.targetId, err)
@@ -86,7 +106,7 @@ func (a appRoleAssignments) getAllGroups(ctx context.Context) ([]msgraph.AppRole
 	if err != nil {
 		return nil, err
 	}
-	groups := filterByType(assignments, azure.PrincipalTypeGroup)
+	groups := approleassignment.FilterByType(assignments, azure.PrincipalTypeGroup)
 	return groups, nil
 }
 
@@ -95,7 +115,7 @@ func (a appRoleAssignments) getAllServicePrincipals(ctx context.Context) ([]msgr
 	if err != nil {
 		return nil, err
 	}
-	servicePrincipals := filterByType(assignments, azure.PrincipalTypeServicePrincipal)
+	servicePrincipals := approleassignment.FilterByType(assignments, azure.PrincipalTypeServicePrincipal)
 	return servicePrincipals, nil
 }
 
@@ -144,35 +164,6 @@ func (a appRoleAssignments) processForServicePrincipals(tx azure.Transaction, as
 	return a.processFor(tx, assignees, azure.PrincipalTypeServicePrincipal)
 }
 
-func (a appRoleAssignments) toAssignment(assignee azure.ObjectId, principalType azure.PrincipalType) *msgraph.AppRoleAssignment {
-	appRoleAssignment := &msgraph.AppRoleAssignment{
-		AppRoleID:     &a.roleId,
-		PrincipalID:   (*msgraph.UUID)(&assignee),   // Service Principal ID for the assignee, i.e. the principal that should be assigned to the app role
-		ResourceID:    (*msgraph.UUID)(&a.targetId), // Service Principal ID for the target resource, i.e. the application/service principal that owns the app role
-		PrincipalType: &principalType,
-	}
-	return appRoleAssignment
-}
-
-func assignmentInAssignments(assignment msgraph.AppRoleAssignment, assignments []msgraph.AppRoleAssignment) bool {
-	for _, a := range assignments {
-		equalPrincipalID := *a.PrincipalID == *assignment.PrincipalID
-		equalAppRoleID := *a.AppRoleID == *assignment.AppRoleID
-		equalPrincipalType := *a.PrincipalType == *assignment.PrincipalType
-
-		if equalPrincipalID && equalAppRoleID && equalPrincipalType {
-			return true
-		}
-	}
-	return false
-}
-
-func filterByType(assignments []msgraph.AppRoleAssignment, principalType azure.PrincipalType) []msgraph.AppRoleAssignment {
-	filtered := make([]msgraph.AppRoleAssignment, 0)
-	for _, assignment := range assignments {
-		if *assignment.PrincipalType == principalType {
-			filtered = append(filtered, assignment)
-		}
-	}
-	return filtered
+func (a appRoleAssignments) toAssignment(assignee azure.Resource) (*msgraph.AppRoleAssignment, error) {
+	return approleassignment.ToAssignment(a.roleId, assignee.ObjectId, a.targetId, assignee.PrincipalType)
 }

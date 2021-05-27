@@ -10,6 +10,8 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/azure/util/approleassignment"
+	"github.com/nais/azureator/pkg/azure/util/preauthorizedapplication"
 	"github.com/nais/azureator/pkg/customresources"
 )
 
@@ -75,6 +77,44 @@ func (p preAuthApps) patchApplication(tx azure.Transaction, resources []azure.Re
 
 func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyRule) (*msgraph.Application, bool, error) {
 	return p.application().existsByFilter(ctx, util.FilterByName(customresources.GetUniqueName(app)))
+}
+
+func (p preAuthApps) get(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+	// lookup desired apps in Azure AD to check for existence
+	desired, err := p.mapToResources(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	assigned := make([]azure.Resource, 0)
+	unassigned := desired.Invalid
+
+	// fetch currently pre-authorized applications from the Application resource
+	application, err := p.Get(tx)
+	if err != nil {
+		return nil, err
+	}
+	actual := application.API.PreAuthorizedApplications
+
+	// fetch current AppRole assignments from the ServicePrincipal resource
+	allAssignments, err := p.appRoleAssignmentsNoRoleId(tx.Instance.GetServicePrincipalId()).
+		getAllServicePrincipals(tx.Ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, resource := range desired.Valid {
+		if !preauthorizedapplication.ResourceInPreAuthorizedApps(resource, actual) || !approleassignment.ResourceInAssignments(resource, allAssignments) {
+			unassigned = append(unassigned, resource)
+			continue
+		}
+		assigned = append(assigned, resource)
+	}
+
+	return &azure.PreAuthorizedApps{
+		Valid:   assigned,
+		Invalid: unassigned,
+	}, nil
 }
 
 func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {

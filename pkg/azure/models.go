@@ -95,7 +95,9 @@ type Password struct {
 }
 
 type PreAuthorizedApps struct {
-	Valid   []Resource `json:"valid"`
+	// Valid is the list of apps that either are or can be assigned to an application in Azure AD.
+	Valid []Resource `json:"valid"`
+	// Invalid is the list of apps that cannot be assigned to the application in Azure AD (e.g. apps that do not exist).
 	Invalid []Resource `json:"invalid"`
 }
 
@@ -137,7 +139,7 @@ const (
 	GroupMembershipClaimNone GroupMembershipClaim = "None"
 )
 
-type PrincipalType = string
+type PrincipalType string
 
 const (
 	PrincipalTypeGroup            PrincipalType = "Group"
