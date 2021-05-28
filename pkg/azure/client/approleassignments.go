@@ -71,7 +71,31 @@ func (a appRoleAssignments) getAllServicePrincipals(ctx context.Context) ([]msgr
 	return servicePrincipals, nil
 }
 
-func (a appRoleAssignments) revokeFor(tx azure.Transaction, revoked []msgraph.AppRoleAssignment, principalType azure.PrincipalType) error {
+func (a appRoleAssignmentsWithRoleId) getAll(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
+	assignments, err := a.appRoleAssignments.getAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return approleassignment.FilterByRoleID(assignments, a.roleId), nil
+}
+
+func (a appRoleAssignmentsWithRoleId) getAllGroups(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
+	groups, err := a.appRoleAssignments.getAllGroups(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return approleassignment.FilterByRoleID(groups, a.roleId), nil
+}
+
+func (a appRoleAssignmentsWithRoleId) getAllServicePrincipals(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
+	servicePrincipals, err := a.appRoleAssignments.getAllServicePrincipals(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return approleassignment.FilterByRoleID(servicePrincipals, a.roleId), nil
+}
+
+func (a appRoleAssignmentsWithRoleId) revokeFor(tx azure.Transaction, revoked []msgraph.AppRoleAssignment, principalType azure.PrincipalType) error {
 	for _, r := range revoked {
 		logFields := a.logFields
 		logFields["assigneeObjectId"] = *r.PrincipalID

@@ -87,3 +87,13 @@ func FilterByType(assignments []msgraph.AppRoleAssignment, principalType azure.P
 	}
 	return filtered
 }
+
+func FilterByRoleID(assignments []msgraph.AppRoleAssignment, roleId msgraph.UUID) []msgraph.AppRoleAssignment {
+	filtered := make([]msgraph.AppRoleAssignment, 0)
+	for _, assignment := range assignments {
+		if *assignment.AppRoleID == roleId {
+			filtered = append(filtered, assignment)
+		}
+	}
+	return filtered
+}
