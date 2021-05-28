@@ -17,7 +17,8 @@ import (
 
 const (
 	MaxNumberOfPagesToFetch           = 1000
-	DelayIntervalBetweenModifications = 2 * time.Second
+	DelayIntervalBetweenModifications = 3 * time.Second
+	DelayIntervalBetweenCreations     = 5 * time.Second
 )
 
 type client struct {
@@ -53,12 +54,17 @@ func (c client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 
 	tx = tx.UpdateWithApplicationIDs(*app)
 
+	// sleep to allow replication across Microsoft's systems...
+	time.Sleep(DelayIntervalBetweenCreations)
+
 	servicePrincipal, err := c.servicePrincipal().register(tx)
 	if err != nil {
 		return nil, fmt.Errorf("registering service principal for application: %w", err)
 	}
 
 	tx = tx.UpdateWithServicePrincipalID(servicePrincipal)
+
+	time.Sleep(DelayIntervalBetweenCreations)
 
 	if err := c.application().identifierUri().set(tx); err != nil {
 		return nil, fmt.Errorf("setting identifier URIs for application: %w", err)
@@ -126,7 +132,8 @@ func (c client) GetPreAuthorizedApps(tx azure.Transaction) (*azure.PreAuthorized
 
 // AddCredentials adds credentials for an existing AAD application
 func (c client) AddCredentials(tx azure.Transaction) (azure.CredentialsSet, error) {
-	time.Sleep(DelayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
+	// sleep to prevent concurrent modification error from Microsoft
+	time.Sleep(DelayIntervalBetweenModifications)
 
 	currPasswordCredential, err := c.passwordCredential().add(tx)
 	if err != nil {
