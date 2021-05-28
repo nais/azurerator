@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/crd"
 	"github.com/nais/liberator/pkg/finalizer"
+	"github.com/nais/liberator/pkg/kubernetes"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -592,6 +594,8 @@ func assertApplicationExists(t *testing.T, name string, state ...string) *v1.Azu
 		instance.Status.SynchronizationSecretName,
 	})
 
+	assertPreAuthorizedAppsStatusIsValid(t, instance.Spec.PreAuthorizedApplications, instance.Status.PreAuthorizedApps)
+
 	if len(state) == 0 {
 		assert.Equal(t, v1.EventSynchronized, instance.Status.SynchronizationState, "AzureAdApplication should be synchronized")
 	} else {
@@ -691,6 +695,47 @@ func assertSecretsAreRotated(t *testing.T, previous *corev1.Secret, new *corev1.
 func assertSecretsAreNotRotated(t *testing.T, previous *corev1.Secret, new *corev1.Secret) {
 	for _, key := range relevantSecretValues {
 		assert.Equal(t, previous.Data[key], new.Data[key], fmt.Sprintf("%s", key))
+	}
+}
+
+func assertPreAuthorizedAppsStatusIsValid(t *testing.T, expected []v1.AccessPolicyRule, actual *v1.AzureAdPreAuthorizedAppsStatus) {
+	expectedInvalid := make([]v1.AccessPolicyRule, 0)
+	expectedValid := make([]v1.AccessPolicyRule, 0)
+
+	for _, a := range expected {
+		if strings.HasPrefix(a.Application, "invalid") {
+			expectedInvalid = append(expectedInvalid, a)
+		} else {
+			expectedValid = append(expectedValid, a)
+		}
+	}
+
+	assert.Equal(t, len(expectedInvalid), len(actual.Unassigned))
+	assert.Equal(t, len(expectedValid), len(actual.Assigned))
+
+	contains := func(expected v1.AccessPolicyRule, actual []v1.AzureAdPreAuthorizedApp) bool {
+		seen := false
+		name := kubernetes.UniformResourceName(&metav1.ObjectMeta{
+			Name:        expected.Application,
+			Namespace:   expected.Namespace,
+			ClusterName: expected.Cluster,
+		})
+
+		for _, a := range actual {
+			if a.Name == name {
+				seen = true
+			}
+		}
+
+		return seen
+	}
+
+	for _, e := range expectedInvalid {
+		assert.True(t, contains(e, actual.Unassigned))
+	}
+
+	for _, e := range expectedValid {
+		assert.True(t, contains(e, actual.Assigned))
 	}
 }
 
