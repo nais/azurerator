@@ -148,8 +148,8 @@ func init() {
 	flag.Duration(SecretRotationMaxAge, 180*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
 }
 
-// Print out all configuration options except secret stuff.
-func (c Config) Print(redacted []string) {
+// PrintAllExcept prints out all configuration options except secret stuff.
+func (c Config) PrintAllExcept(redacted []string) {
 	ok := func(key string) bool {
 		for _, forbiddenKey := range redacted {
 			if forbiddenKey == key {
@@ -227,4 +227,26 @@ func New() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+func DefaultConfig() (*Config, error) {
+	cfg, err := New()
+	if err != nil {
+		return nil, err
+	}
+	cfg.PrintAllExcept([]string{
+		AzureClientSecret,
+	})
+
+	err = cfg.Validate([]string{
+		AzureTenantId,
+		AzureClientId,
+		AzureClientSecret,
+		AzurePermissionGrantResourceId,
+		ClusterName,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return nil, err
 }
