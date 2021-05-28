@@ -127,7 +127,12 @@ func (a azureReconciler) rotateCredentials(tx transaction, existing azure.Creden
 }
 
 func (a azureReconciler) validateCredentials(tx transaction) (bool, error) {
-	if !tx.secrets.credentials.valid || tx.secrets.credentials.set == nil {
+	exists, err := a.exists(tx)
+	if err != nil {
+		return false, err
+	}
+
+	if !exists || !tx.secrets.credentials.valid || tx.secrets.credentials.set == nil {
 		return false, nil
 	}
 
