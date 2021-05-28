@@ -97,14 +97,16 @@ func (a application) exists(tx azure.Transaction) (*msgraph.Application, bool, e
 func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (*msgraph.Application, bool, error) {
 	applications, err := a.getAll(ctx, filter)
 	if err != nil {
-		return nil, false, fmt.Errorf("looking up existence of application: %w", err)
+		return nil, false, err
 	}
-
-	if len(applications) == 0 {
+	switch {
+	case len(applications) == 0:
 		return nil, false, nil
+	case len(applications) > 1:
+		return nil, true, fmt.Errorf("found more than one matching azure application")
+	default:
+		return &applications[0], true, nil
 	}
-
-	return &applications[0], true, nil
 }
 
 func (a application) getByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
