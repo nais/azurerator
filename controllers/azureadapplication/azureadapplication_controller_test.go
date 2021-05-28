@@ -711,7 +711,10 @@ func assertPreAuthorizedAppsStatusIsValid(t *testing.T, expected []v1.AccessPoli
 	}
 
 	assert.Equal(t, len(expectedInvalid), len(actual.Unassigned))
+	assert.Len(t, expectedInvalid, *actual.UnassignedCount)
+
 	assert.Equal(t, len(expectedValid), len(actual.Assigned))
+	assert.Len(t, expectedValid, *actual.AssignedCount)
 
 	contains := func(expected v1.AccessPolicyRule, actual []v1.AzureAdPreAuthorizedApp) bool {
 		seen := false

@@ -1,8 +1,6 @@
 package approleassignment
 
 import (
-	"fmt"
-
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -71,9 +69,6 @@ func ToAssignment(
 	target azure.ServicePrincipalId,
 	principalType azure.PrincipalType,
 ) (*msgraph.AppRoleAssignment, error) {
-	if len(roleId) == 0 {
-		return nil, fmt.Errorf("instantiating AppRoleAssignment: role ID is empty")
-	}
 	appRoleAssignment := &msgraph.AppRoleAssignment{
 		AppRoleID:     &roleId,                    // The ID of the AppRole belonging to the target resource to be assigned
 		PrincipalID:   (*msgraph.UUID)(&assignee), // Service Principal ID for the assignee, i.e. the principal that should be assigned to the app role

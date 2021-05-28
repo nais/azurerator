@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/nais/msgraph.go/ptr"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 
@@ -218,7 +219,9 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction, pr
 	}
 
 	tx.instance.Status.PreAuthorizedApps = &v1.AzureAdPreAuthorizedAppsStatus{
-		Assigned:   assigned,
-		Unassigned: unassigned,
+		Assigned:        assigned,
+		AssignedCount:   ptr.Int(len(assigned)),
+		Unassigned:      unassigned,
+		UnassignedCount: ptr.Int(len(unassigned)),
 	}
 }

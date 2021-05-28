@@ -13,21 +13,22 @@ import (
 
 type appRoleAssignments struct {
 	client
-	roleId    msgraph.UUID
 	targetId  azure.ObjectId
 	logFields log.Fields
 }
 
-func (c client) appRoleAssignments(roleId msgraph.UUID, targetId azure.ObjectId) appRoleAssignments {
-	return appRoleAssignments{
-		client:   c,
-		roleId:   roleId,
-		targetId: targetId,
-		logFields: log.Fields{
-			"roleId":   roleId,
-			"targetId": targetId,
-		},
+type appRoleAssignmentsWithRoleId struct {
+	appRoleAssignments
+	roleId msgraph.UUID
+}
+
+func (c client) appRoleAssignments(roleId msgraph.UUID, targetId azure.ObjectId) appRoleAssignmentsWithRoleId {
+	a := appRoleAssignmentsWithRoleId{
+		appRoleAssignments: c.appRoleAssignmentsNoRoleId(targetId),
+		roleId:             roleId,
 	}
+	a.appRoleAssignments.logFields["roleId"] = roleId
+	return a
 }
 
 func (c client) appRoleAssignmentsNoRoleId(targetId azure.ObjectId) appRoleAssignments {
@@ -44,7 +45,48 @@ func (a appRoleAssignments) request() *msgraph.ServicePrincipalAppRoleAssignedTo
 	return a.graphClient.ServicePrincipals().ID(a.targetId).AppRoleAssignedTo().Request()
 }
 
-func (a appRoleAssignments) assignFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) ([]msgraph.AppRoleAssignment, error) {
+func (a appRoleAssignments) getAll(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
+	assignments, err := a.request().GetN(ctx, MaxNumberOfPagesToFetch)
+	if err != nil {
+		return nil, fmt.Errorf("looking up AppRole assignments for service principal '%s': %w", a.targetId, err)
+	}
+	return assignments, nil
+}
+
+func (a appRoleAssignments) getAllGroups(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
+	assignments, err := a.getAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	groups := approleassignment.FilterByType(assignments, azure.PrincipalTypeGroup)
+	return groups, nil
+}
+
+func (a appRoleAssignments) getAllServicePrincipals(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
+	assignments, err := a.getAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	servicePrincipals := approleassignment.FilterByType(assignments, azure.PrincipalTypeServicePrincipal)
+	return servicePrincipals, nil
+}
+
+func (a appRoleAssignments) revokeFor(tx azure.Transaction, revoked []msgraph.AppRoleAssignment, principalType azure.PrincipalType) error {
+	for _, r := range revoked {
+		logFields := a.logFields
+		logFields["assigneeObjectId"] = *r.PrincipalID
+
+		tx.Log.WithFields(logFields).Debugf("revoking AppRole assignment for %s '%s'", principalType, *r.PrincipalDisplayName)
+		err := a.graphClient.ServicePrincipals().ID(a.targetId).AppRoleAssignedTo().ID(*r.ID).Request().Delete(tx.Ctx)
+		if err != nil {
+			return fmt.Errorf("deleting AppRole assignment for %s '%s' (%s) from '%s': %w", principalType, *r.PrincipalDisplayName, *r.PrincipalID, a.targetId, err)
+		}
+		tx.Log.WithFields(logFields).Infof("successfully deleted AppRole assignment for %s '%s'", principalType, *r.PrincipalDisplayName)
+	}
+	return nil
+}
+
+func (a appRoleAssignmentsWithRoleId) assignFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) ([]msgraph.AppRoleAssignment, error) {
 	assignments := make([]msgraph.AppRoleAssignment, 0)
 
 	existing, err := a.getAll(tx.Ctx)
@@ -93,48 +135,7 @@ func (a appRoleAssignments) assignFor(tx azure.Transaction, assignees []azure.Re
 	return assignments, nil
 }
 
-func (a appRoleAssignments) getAll(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
-	assignments, err := a.request().GetN(ctx, MaxNumberOfPagesToFetch)
-	if err != nil {
-		return nil, fmt.Errorf("looking up AppRole assignments for service principal '%s': %w", a.targetId, err)
-	}
-	return assignments, nil
-}
-
-func (a appRoleAssignments) getAllGroups(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
-	assignments, err := a.getAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-	groups := approleassignment.FilterByType(assignments, azure.PrincipalTypeGroup)
-	return groups, nil
-}
-
-func (a appRoleAssignments) getAllServicePrincipals(ctx context.Context) ([]msgraph.AppRoleAssignment, error) {
-	assignments, err := a.getAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-	servicePrincipals := approleassignment.FilterByType(assignments, azure.PrincipalTypeServicePrincipal)
-	return servicePrincipals, nil
-}
-
-func (a appRoleAssignments) revokeFor(tx azure.Transaction, revoked []msgraph.AppRoleAssignment, principalType azure.PrincipalType) error {
-	for _, r := range revoked {
-		logFields := a.logFields
-		logFields["assigneeObjectId"] = *r.PrincipalID
-
-		tx.Log.WithFields(logFields).Debugf("revoking AppRole assignment for %s '%s'", principalType, *r.PrincipalDisplayName)
-		err := a.graphClient.ServicePrincipals().ID(a.targetId).AppRoleAssignedTo().ID(*r.ID).Request().Delete(tx.Ctx)
-		if err != nil {
-			return fmt.Errorf("deleting AppRole assignment for %s '%s' (%s) from '%s': %w", principalType, *r.PrincipalDisplayName, *r.PrincipalID, a.targetId, err)
-		}
-		tx.Log.WithFields(logFields).Infof("successfully deleted AppRole assignment for %s '%s'", principalType, *r.PrincipalDisplayName)
-	}
-	return nil
-}
-
-func (a appRoleAssignments) processFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) error {
+func (a appRoleAssignmentsWithRoleId) processFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) error {
 	desired, err := a.assignFor(tx, assignees, principalType)
 	if err != nil {
 		return fmt.Errorf("adding app role assignments: %w", err)
@@ -156,14 +157,14 @@ func (a appRoleAssignments) processFor(tx azure.Transaction, assignees []azure.R
 	return nil
 }
 
-func (a appRoleAssignments) processForGroups(tx azure.Transaction, assignees []azure.Resource) error {
+func (a appRoleAssignmentsWithRoleId) processForGroups(tx azure.Transaction, assignees []azure.Resource) error {
 	return a.processFor(tx, assignees, azure.PrincipalTypeGroup)
 }
 
-func (a appRoleAssignments) processForServicePrincipals(tx azure.Transaction, assignees []azure.Resource) error {
+func (a appRoleAssignmentsWithRoleId) processForServicePrincipals(tx azure.Transaction, assignees []azure.Resource) error {
 	return a.processFor(tx, assignees, azure.PrincipalTypeServicePrincipal)
 }
 
-func (a appRoleAssignments) toAssignment(assignee azure.Resource) (*msgraph.AppRoleAssignment, error) {
+func (a appRoleAssignmentsWithRoleId) toAssignment(assignee azure.Resource) (*msgraph.AppRoleAssignment, error) {
 	return approleassignment.ToAssignment(a.roleId, assignee.ObjectId, a.targetId, assignee.PrincipalType)
 }

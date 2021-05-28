@@ -6,7 +6,7 @@ require (
 	github.com/go-logr/zapr v0.1.0
 	github.com/google/uuid v1.1.1
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/nais/liberator v0.0.0-20210528081118-4309956df800
+	github.com/nais/liberator v0.0.0-20210528102156-2940bed5fcf4
 	github.com/nais/msgraph.go v0.1.5
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.0.0
