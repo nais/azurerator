@@ -1,4 +1,4 @@
-package client
+package preauthorizedapp
 
 import (
 	"context"
@@ -9,9 +9,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/util"
-	"github.com/nais/azureator/pkg/azure/util/approleassignment"
-	"github.com/nais/azureator/pkg/azure/util/preauthorizedapplication"
 	"github.com/nais/azureator/pkg/customresources"
 )
 
@@ -30,14 +29,14 @@ type appPatch struct {
 }
 
 type preAuthApps struct {
-	client
+	azure.RuntimeClient
 }
 
-func (c client) preAuthApps() preAuthApps {
-	return preAuthApps{c}
+func NewPreAuthApps(runtimeClient azure.RuntimeClient) azure.PreAuthApps {
+	return preAuthApps{RuntimeClient: runtimeClient}
 }
 
-func (p preAuthApps) process(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+func (p preAuthApps) Process(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
 	preAuthorizedApps, err := p.mapToResources(tx)
@@ -50,36 +49,21 @@ func (p preAuthApps) process(tx azure.Transaction) (*azure.PreAuthorizedApps, er
 		return nil, fmt.Errorf("updating preauthorizedapps for application: %w", err)
 	}
 
-	defaultRole := p.application().appRoles().defaultRole()
-	roleID, err := p.application().appRoles().getOrGenerateRoleID(tx, defaultRole)
+	defaultRole := p.Application().AppRoles().DefaultRole()
+	roleID, err := p.Application().AppRoles().GetOrGenerateRoleID(tx, defaultRole)
 	if err != nil {
 		return nil, fmt.Errorf("fetching default app role ID: %w", err)
 	}
 
-	err = p.appRoleAssignments(*roleID, servicePrincipalId).
-		processForServicePrincipals(tx, preAuthorizedApps.Valid)
+	err = p.AppRoleAssignments(*roleID, servicePrincipalId).
+		ProcessForServicePrincipals(tx, preAuthorizedApps.Valid)
 	if err != nil {
 		return nil, fmt.Errorf("updating approle assignments for service principals: %w", err)
 	}
 	return preAuthorizedApps, nil
 }
 
-func (p preAuthApps) patchApplication(tx azure.Transaction, resources []azure.Resource) error {
-	objectId := tx.Instance.GetObjectId()
-	payload := p.mapToGraphRequest(resources)
-
-	if err := p.application().patch(tx.Ctx, objectId, payload); err != nil {
-		return fmt.Errorf("patching preauthorizedapps for application: %w", err)
-	}
-
-	return nil
-}
-
-func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyRule) (*msgraph.Application, bool, error) {
-	return p.application().existsByFilter(ctx, util.FilterByName(customresources.GetUniqueName(app)))
-}
-
-func (p preAuthApps) get(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+func (p preAuthApps) Get(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
 	// lookup desired apps in Azure AD to check for existence
 	desired, err := p.mapToResources(tx)
 	if err != nil {
@@ -90,21 +74,21 @@ func (p preAuthApps) get(tx azure.Transaction) (*azure.PreAuthorizedApps, error)
 	unassigned := desired.Invalid
 
 	// fetch currently pre-authorized applications from the Application resource
-	application, err := p.Get(tx)
+	app, err := p.Application().Get(tx)
 	if err != nil {
 		return nil, err
 	}
-	actual := application.API.PreAuthorizedApplications
+	actual := app.API.PreAuthorizedApplications
 
 	// fetch current AppRole assignments from the ServicePrincipal resource
-	allAssignments, err := p.appRoleAssignmentsNoRoleId(tx.Instance.GetServicePrincipalId()).
-		getAllServicePrincipals(tx.Ctx)
+	allAssignments, err := p.AppRoleAssignmentsNoRoleId(tx.Instance.GetServicePrincipalId()).
+		GetAllServicePrincipals(tx.Ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, resource := range desired.Valid {
-		if !preauthorizedapplication.ResourceInPreAuthorizedApps(resource, actual) || !approleassignment.ResourceInAssignments(resource, allAssignments) {
+		if !resourceInPreAuthorizedApps(resource, actual) || !resourceInAssignments(resource, allAssignments) {
 			unassigned = append(unassigned, resource)
 			continue
 		}
@@ -115,6 +99,21 @@ func (p preAuthApps) get(tx azure.Transaction) (*azure.PreAuthorizedApps, error)
 		Valid:   assigned,
 		Invalid: unassigned,
 	}, nil
+}
+
+func (p preAuthApps) patchApplication(tx azure.Transaction, resources []azure.Resource) error {
+	objectId := tx.Instance.GetObjectId()
+	payload := p.mapToGraphRequest(resources)
+
+	if err := p.Application().Patch(tx.Ctx, objectId, payload); err != nil {
+		return fmt.Errorf("patching preauthorizedapps for application: %w", err)
+	}
+
+	return nil
+}
+
+func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyRule) (*msgraph.Application, bool, error) {
+	return p.Application().ExistsByFilter(ctx, util.FilterByName(customresources.GetUniqueName(app)))
 }
 
 func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
@@ -159,7 +158,7 @@ func (p preAuthApps) mapToGraphRequest(resources []azure.Resource) appPatch {
 
 		apps = append(apps, msgraph.PreAuthorizedApplication{
 			AppID:                  &clientId,
-			DelegatedPermissionIDs: []string{OAuth2DefaultPermissionScopeId},
+			DelegatedPermissionIDs: []string{application.OAuth2DefaultPermissionScopeId},
 		})
 	}
 
@@ -167,19 +166,19 @@ func (p preAuthApps) mapToGraphRequest(resources []azure.Resource) appPatch {
 }
 
 func (p preAuthApps) mapToResource(tx azure.Transaction, app v1.AccessPolicyRule) (*azure.Resource, bool, error) {
-	application, exists, err := p.exists(tx.Ctx, app)
+	a, exists, err := p.exists(tx.Ctx, app)
 	if err != nil || !exists {
 		return invalidResource(app), false, err
 	}
 
-	exists, servicePrincipal, err := p.servicePrincipal().exists(tx.Ctx, *application.AppID)
+	exists, servicePrincipal, err := p.ServicePrincipal().Exists(tx.Ctx, *a.AppID)
 	if err != nil || !exists {
 		return invalidResource(app), false, err
 	}
 
 	return &azure.Resource{
-		Name:          *application.DisplayName,
-		ClientId:      *application.AppID,
+		Name:          *a.DisplayName,
+		ClientId:      *a.AppID,
 		ObjectId:      *servicePrincipal.ID,
 		PrincipalType: azure.PrincipalTypeServicePrincipal,
 	}, true, nil
@@ -213,4 +212,25 @@ func ensureFieldsAreSet(tx azure.Transaction, rule v1.AccessPolicyRule) v1.Acces
 	}
 
 	return rule
+}
+
+func resourceInPreAuthorizedApps(resource azure.Resource, apps []msgraph.PreAuthorizedApplication) bool {
+	for _, app := range apps {
+		if *app.AppID == resource.ClientId {
+			return true
+		}
+	}
+	return false
+}
+
+func resourceInAssignments(resource azure.Resource, assignments []msgraph.AppRoleAssignment) bool {
+	for _, a := range assignments {
+		equalPrincipalID := *a.PrincipalID == msgraph.UUID(resource.ObjectId)
+		equalPrincipalType := azure.PrincipalType(*a.PrincipalType) == resource.PrincipalType
+
+		if equalPrincipalID && equalPrincipalType {
+			return true
+		}
+	}
+	return false
 }

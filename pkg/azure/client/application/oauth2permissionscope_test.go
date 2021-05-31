@@ -1,4 +1,4 @@
-package client
+package application
 
 import (
 	"encoding/json"
@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOAuth2PermissionScope_defaultScopes(t *testing.T) {
-	a := application{}.oAuth2PermissionScopes().defaultScopes()
+func TestOAuth2PermissionScope_DefaultScopes(t *testing.T) {
+	a := Application{}.oAuth2PermissionScopes().defaultScopes()
 	j, _ := json.Marshal(a)
 
 	assert.JSONEq(t, `

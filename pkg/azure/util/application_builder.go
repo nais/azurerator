@@ -40,7 +40,7 @@ func (a ApplicationBuilder) ResourceAccess(access []msgraph.RequiredResourceAcce
 }
 
 func (a ApplicationBuilder) GroupMembershipClaims(groupMembershipClaim azure.GroupMembershipClaim) ApplicationBuilder {
-	a.Application.GroupMembershipClaims = ptr.String(groupMembershipClaim)
+	a.Application.GroupMembershipClaims = ptr.String(string(groupMembershipClaim))
 	return a
 }
 

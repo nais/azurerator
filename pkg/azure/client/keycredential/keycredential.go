@@ -1,4 +1,4 @@
-package client
+package keycredential
 
 import (
 	"fmt"
@@ -17,26 +17,51 @@ import (
 )
 
 type keyCredential struct {
-	client
+	azure.RuntimeClient
 }
 
-type addedKeyCredentialSet struct {
-	Current addedKeyCredential
-	Next    addedKeyCredential
+func NewKeyCredential(runtimeClient azure.RuntimeClient) azure.KeyCredential {
+	return keyCredential{RuntimeClient: runtimeClient}
 }
 
-type addedKeyCredential struct {
-	KeyCredential msgraph.KeyCredential
-	Jwk           crypto.Jwk
+func (k keyCredential) Add(tx azure.Transaction) (*azure.AddedKeyCredentialSet, error) {
+	application, err := k.RuntimeClient.Application().Get(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	currentKeyCredential, currentJwk, err := k.new(tx.Instance)
+	if err != nil {
+		return nil, err
+	}
+
+	nextKeyCredential, nextJwk, err := k.new(tx.Instance)
+	if err != nil {
+		return nil, err
+	}
+
+	application.KeyCredentials = append(application.KeyCredentials, *currentKeyCredential, *nextKeyCredential)
+
+	app := util.EmptyApplication().Keys(application.KeyCredentials).Build()
+	if err := k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
+		return nil, fmt.Errorf("updating application with keycredential set: %w", err)
+	}
+
+	return &azure.AddedKeyCredentialSet{
+		Current: azure.AddedKeyCredential{
+			KeyCredential: *currentKeyCredential,
+			Jwk:           *currentJwk,
+		},
+		Next: azure.AddedKeyCredential{
+			KeyCredential: *nextKeyCredential,
+			Jwk:           *nextJwk,
+		},
+	}, nil
 }
 
-func (c client) keyCredential() keyCredential {
-	return keyCredential{c}
-}
-
-// Generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
+// Rotate generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
 // With the exception of new applications, there should always be two active keys available at any given time so that running applications are not interfered with.
-func (k keyCredential) rotate(tx azure.Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error) {
+func (k keyCredential) Rotate(tx azure.Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error) {
 	keyCredentialIdsInUse := append(
 		keyIdsInUse.Certificate,
 		existing.Current.Certificate.KeyId,
@@ -56,53 +81,38 @@ func (k keyCredential) rotate(tx azure.Transaction, existing azure.CredentialsSe
 	keysInUse = append(keysInUse, *keyCredential)
 
 	app := util.EmptyApplication().Keys(keysInUse).Build()
-	if err := k.application().patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
+	if err := k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
 		return nil, nil, fmt.Errorf("updating application with keycredential: %w", err)
 	}
 
 	return keyCredential, jwk, nil
 }
 
-func (k keyCredential) add(tx azure.Transaction) (*addedKeyCredentialSet, error) {
-	application, err := k.Get(tx)
+func (k keyCredential) Validate(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+	app, err := k.Application().Get(tx)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	currentKeyCredential, currentJwk, err := k.new(tx.Instance)
-	if err != nil {
-		return nil, err
+	currentIsValid := false
+	nextIsValid := false
+	for _, credentials := range app.KeyCredentials {
+		if string(*credentials.KeyID) == existing.Current.Certificate.KeyId {
+			currentIsValid = true
+		}
+		if string(*credentials.KeyID) == existing.Next.Certificate.KeyId {
+			nextIsValid = true
+		}
 	}
 
-	nextKeyCredential, nextJwk, err := k.new(tx.Instance)
-	if err != nil {
-		return nil, err
-	}
-
-	application.KeyCredentials = append(application.KeyCredentials, *currentKeyCredential, *nextKeyCredential)
-
-	app := util.EmptyApplication().Keys(application.KeyCredentials).Build()
-	if err := k.application().patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
-		return nil, fmt.Errorf("updating application with keycredential set: %w", err)
-	}
-
-	return &addedKeyCredentialSet{
-		Current: addedKeyCredential{
-			KeyCredential: *currentKeyCredential,
-			Jwk:           *currentJwk,
-		},
-		Next: addedKeyCredential{
-			KeyCredential: *nextKeyCredential,
-			Jwk:           *nextJwk,
-		},
-	}, nil
+	return currentIsValid && nextIsValid, nil
 }
 
 // Maps a list of key IDs to a list of KeyCredentials
 func (k keyCredential) mapToKeyCredentials(tx azure.Transaction, keyIdsInUse []string) ([]msgraph.KeyCredential, error) {
 	keyIdsInUse = strings2.RemoveDuplicates(keyIdsInUse)
 
-	application, err := k.Get(tx)
+	application, err := k.RuntimeClient.Application().Get(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -157,26 +167,6 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.Jwk) msgraph.KeyCredential
 		Usage:       ptr.String("Verify"),
 		Key:         &keyBase64,
 	}
-}
-
-func (k keyCredential) validate(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
-	app, err := k.Get(tx)
-	if err != nil {
-		return false, err
-	}
-
-	currentIsValid := false
-	nextIsValid := false
-	for _, credentials := range app.KeyCredentials {
-		if string(*credentials.KeyID) == existing.Current.Certificate.KeyId {
-			currentIsValid = true
-		}
-		if string(*credentials.KeyID) == existing.Next.Certificate.KeyId {
-			nextIsValid = true
-		}
-	}
-
-	return currentIsValid && nextIsValid, nil
 }
 
 func keyCredentialInUse(key msgraph.KeyCredential, keyIdsInUse []string) bool {

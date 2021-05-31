@@ -1,4 +1,4 @@
-package client
+package application
 
 import (
 	"fmt"
@@ -17,14 +17,14 @@ type webApi struct {
 }
 
 type redirectUri struct {
-	application
+	azure.Application
 }
 
-func (a application) redirectUri() redirectUri {
-	return redirectUri{a}
+func newRedirectUri(application azure.Application) azure.RedirectUri {
+	return redirectUri{Application: application}
 }
 
-func (r redirectUri) update(tx azure.Transaction) error {
+func (r redirectUri) Update(tx azure.Transaction) error {
 	objectId := tx.Instance.GetObjectId()
 
 	app := &struct {
@@ -36,7 +36,7 @@ func (r redirectUri) update(tx azure.Transaction) error {
 		},
 	}
 
-	if err := r.patch(tx.Ctx, objectId, app); err != nil {
+	if err := r.Application.Patch(tx.Ctx, objectId, app); err != nil {
 		return fmt.Errorf("failed to update redirect URIs: %w", err)
 	}
 	return nil

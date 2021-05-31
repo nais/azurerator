@@ -1,4 +1,4 @@
-package client
+package application
 
 import (
 	"context"
@@ -19,20 +19,56 @@ const (
 	IaCAppTag        string = "azurerator_appreg"
 )
 
-type application struct {
-	client
+type Application struct {
+	azure.RuntimeClient
 }
 
-func (c client) application() application {
-	return application{c}
+func NewApplication(runtimeClient azure.RuntimeClient) azure.Application {
+	return Application{RuntimeClient: runtimeClient}
 }
 
-func (a application) register(tx azure.Transaction) (*msgraph.Application, error) {
+func (a Application) AppRoles() azure.AppRoles {
+	return newAppRoles(a)
+}
+
+func (a Application) IdentifierUri() azure.IdentifierUri {
+	return newIdentifierUri(a)
+}
+
+func (a Application) oAuth2PermissionScopes() oAuth2PermissionScopes {
+	return newOAuth2PermissionScopes(a)
+}
+
+func (a Application) Owners() azure.ApplicationOwners {
+	return newOwners(a.RuntimeClient)
+}
+
+func (a Application) RedirectUri() azure.RedirectUri {
+	return newRedirectUri(a)
+}
+
+func (a Application) requiredResourceAccess() requiredResourceAccess {
+	return newRequiredResourceAccess(a)
+}
+
+func (a Application) Exists(tx azure.Transaction) (*msgraph.Application, bool, error) {
+	name := kubernetes.UniformResourceName(&tx.Instance)
+	return a.ExistsByFilter(tx.Ctx, util.FilterByName(name))
+}
+
+func (a Application) Delete(tx azure.Transaction) error {
+	if err := a.GraphClient().Applications().ID(tx.Instance.GetObjectId()).Request().Delete(tx.Ctx); err != nil {
+		return fmt.Errorf("failed to delete application: %w", err)
+	}
+	return nil
+}
+
+func (a Application) Register(tx azure.Transaction) (*msgraph.Application, error) {
 	access := []msgraph.RequiredResourceAccess{
 		a.requiredResourceAccess().microsoftGraph(),
 	}
 	appRoles := []msgraph.AppRole{
-		a.appRoles().defaultRole(),
+		a.AppRoles().DefaultRole(),
 	}
 	req := util.Application(a.defaultTemplate(tx.Instance)).
 		ResourceAccess(access).
@@ -41,7 +77,7 @@ func (a application) register(tx azure.Transaction) (*msgraph.Application, error
 		RedirectUris(util.GetReplyUrlsStringSlice(tx.Instance)).
 		Build()
 
-	app, err := a.graphClient.Applications().Request().Add(tx.Ctx, req)
+	app, err := a.GraphClient().Applications().Request().Add(tx.Ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("registering application: %w", err)
 	}
@@ -49,14 +85,7 @@ func (a application) register(tx azure.Transaction) (*msgraph.Application, error
 	return app, nil
 }
 
-func (a application) delete(tx azure.Transaction) error {
-	if err := a.graphClient.Applications().ID(tx.Instance.GetObjectId()).Request().Delete(tx.Ctx); err != nil {
-		return fmt.Errorf("failed to delete application: %w", err)
-	}
-	return nil
-}
-
-func (a application) update(tx azure.Transaction) error {
+func (a Application) Update(tx azure.Transaction) error {
 	objectId := tx.Instance.GetObjectId()
 
 	identifierUris := util.IdentifierUris(tx)
@@ -72,29 +101,24 @@ func (a application) update(tx azure.Transaction) error {
 	groupClaimsIsDefined := tx.Instance.Spec.Claims != nil && len(tx.Instance.Spec.Claims.Groups) > 0
 
 	// todo: remove 'groupClaimsIsDefined' predicate after grace period
-	if a.config.Features.GroupsAssignment.Enabled && groupClaimsIsDefined {
+	if a.Config().Features.GroupsAssignment.Enabled && groupClaimsIsDefined {
 		app.GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup)
 	}
 
 	app.Build()
 
-	return a.patch(tx.Ctx, objectId, app)
+	return a.Patch(tx.Ctx, objectId, app)
 }
 
-func (a application) patch(ctx context.Context, id azure.ObjectId, application interface{}) error {
-	req := a.graphClient.Applications().ID(id).Request()
+func (a Application) Patch(ctx context.Context, id azure.ObjectId, application interface{}) error {
+	req := a.GraphClient().Applications().ID(id).Request()
 	if err := req.JSONRequest(ctx, "PATCH", "", application, nil); err != nil {
 		return fmt.Errorf("failed to update web application: %w", err)
 	}
 	return nil
 }
 
-func (a application) exists(tx azure.Transaction) (*msgraph.Application, bool, error) {
-	name := kubernetes.UniformResourceName(&tx.Instance)
-	return a.existsByFilter(tx.Ctx, util.FilterByName(name))
-}
-
-func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (*msgraph.Application, bool, error) {
+func (a Application) ExistsByFilter(ctx context.Context, filter azure.Filter) (*msgraph.Application, bool, error) {
 	applications, err := a.getAll(ctx, filter)
 	if err != nil {
 		return nil, false, err
@@ -109,7 +133,11 @@ func (a application) existsByFilter(ctx context.Context, filter azure.Filter) (*
 	}
 }
 
-func (a application) getByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
+func (a Application) Get(tx azure.Transaction) (msgraph.Application, error) {
+	return a.GetByName(tx.Ctx, kubernetes.UniformResourceName(&tx.Instance))
+}
+
+func (a Application) GetByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
 	application, err := a.getSingleByFilterOrError(ctx, util.FilterByName(name))
 	if err != nil {
 		return msgraph.Application{}, fmt.Errorf("fetching application with name '%s': %w", name, err)
@@ -117,7 +145,7 @@ func (a application) getByName(ctx context.Context, name azure.DisplayName) (msg
 	return *application, nil
 }
 
-func (a application) getByClientId(ctx context.Context, id azure.ClientId) (msgraph.Application, error) {
+func (a Application) GetByClientId(ctx context.Context, id azure.ClientId) (msgraph.Application, error) {
 	application, err := a.getSingleByFilterOrError(ctx, util.FilterByAppId(id))
 	if err != nil {
 		return msgraph.Application{}, fmt.Errorf("fetching application with clientId '%s': %w", id, err)
@@ -125,17 +153,17 @@ func (a application) getByClientId(ctx context.Context, id azure.ClientId) (msgr
 	return *application, nil
 }
 
-func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msgraph.Application, error) {
-	r := a.graphClient.Applications().Request()
+func (a Application) getAll(ctx context.Context, filters ...azure.Filter) ([]msgraph.Application, error) {
+	r := a.GraphClient().Applications().Request()
 	r.Filter(util.MapFiltersToFilter(filters))
-	applications, err := r.GetN(ctx, MaxNumberOfPagesToFetch)
+	applications, err := r.GetN(ctx, a.RuntimeClient.MaxNumberOfPagesToFetch())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get list applications: %w", err)
 	}
 	return applications, nil
 }
 
-func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Application {
+func (a Application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Application {
 	return &msgraph.Application{
 		DisplayName:    ptr.String(kubernetes.UniformResourceName(&resource)),
 		SignInAudience: ptr.String("AzureADMyOrg"),
@@ -158,7 +186,7 @@ func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 	}
 }
 
-func (a application) getSingleByFilterOrError(ctx context.Context, filter azure.Filter) (*msgraph.Application, error) {
+func (a Application) getSingleByFilterOrError(ctx context.Context, filter azure.Filter) (*msgraph.Application, error) {
 	applications, err := a.getAll(ctx, filter)
 	if err != nil {
 		return nil, err

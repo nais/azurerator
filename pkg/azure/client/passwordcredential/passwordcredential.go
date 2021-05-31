@@ -1,4 +1,4 @@
-package client
+package passwordcredential
 
 import (
 	"fmt"
@@ -15,20 +15,35 @@ import (
 )
 
 type passwordCredential struct {
-	client
+	azure.RuntimeClient
 }
 
-func (c client) passwordCredential() passwordCredential {
-	return passwordCredential{c}
+func NewPasswordCredential(runtimeClient azure.RuntimeClient) azure.PasswordCredential {
+	return passwordCredential{RuntimeClient: runtimeClient}
 }
 
-func (p passwordCredential) rotate(tx azure.Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*msgraph.PasswordCredential, error) {
-	app, err := p.Get(tx)
+func (p passwordCredential) Add(tx azure.Transaction) (msgraph.PasswordCredential, error) {
+	objectId := tx.Instance.GetObjectId()
+
+	requestParameter := p.toAddRequest()
+
+	request := p.GraphClient().Applications().ID(objectId).AddPassword(requestParameter).Request()
+
+	response, err := request.Post(tx.Ctx)
+	if err != nil {
+		return msgraph.PasswordCredential{}, fmt.Errorf("adding password credentials for application: %w", err)
+	}
+
+	return *response, nil
+}
+
+func (p passwordCredential) Rotate(tx azure.Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*msgraph.PasswordCredential, error) {
+	app, err := p.Application().Get(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	newCred, err := p.add(tx)
+	newCred, err := p.Add(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +55,7 @@ func (p passwordCredential) rotate(tx azure.Transaction, existing azure.Credenti
 		string(*newCred.KeyID),
 	)
 
-	time.Sleep(DelayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
+	time.Sleep(p.DelayIntervalBetweenModifications()) // sleep to prevent concurrent modification error from Microsoft
 
 	revocationCandidates := p.revocationCandidates(app, passwordKeyIdsInUse)
 	for _, cred := range revocationCandidates {
@@ -52,24 +67,29 @@ func (p passwordCredential) rotate(tx azure.Transaction, existing azure.Credenti
 	return &newCred, nil
 }
 
-func (p passwordCredential) add(tx azure.Transaction) (msgraph.PasswordCredential, error) {
-	objectId := tx.Instance.GetObjectId()
-
-	requestParameter := p.toAddRequest()
-
-	request := p.graphClient.Applications().ID(objectId).AddPassword(requestParameter).Request()
-
-	response, err := request.Post(tx.Ctx)
+func (p passwordCredential) Validate(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+	app, err := p.Application().Get(tx)
 	if err != nil {
-		return msgraph.PasswordCredential{}, fmt.Errorf("adding password credentials for application: %w", err)
+		return false, err
 	}
 
-	return *response, nil
+	currentIsValid := false
+	nextIsValid := false
+	for _, credentials := range app.PasswordCredentials {
+		if string(*credentials.KeyID) == existing.Current.Password.KeyId {
+			currentIsValid = true
+		}
+		if string(*credentials.KeyID) == existing.Next.Password.KeyId {
+			nextIsValid = true
+		}
+	}
+
+	return currentIsValid && nextIsValid, nil
 }
 
 func (p passwordCredential) remove(tx azure.Transaction, id azure.ClientId, keyId *msgraph.UUID) error {
 	req := p.toRemoveRequest(keyId)
-	if err := p.graphClient.Applications().ID(id).RemovePassword(req).Request().Post(tx.Ctx); err != nil {
+	if err := p.GraphClient().Applications().ID(id).RemovePassword(req).Request().Post(tx.Ctx); err != nil {
 		// Microsoft returns HTTP 500 sometimes after adding new credentials due to concurrent modifications; we'll ignore this on our end for now
 		tx.Log.Errorf("removing password credential with id '%s': '%v'; ignoring", string(*keyId), err)
 	}
@@ -130,26 +150,6 @@ func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIds
 		revoked = append(revoked, passwordCredential)
 	}
 	return revoked
-}
-
-func (p passwordCredential) validate(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
-	app, err := p.Get(tx)
-	if err != nil {
-		return false, err
-	}
-
-	currentIsValid := false
-	nextIsValid := false
-	for _, credentials := range app.PasswordCredentials {
-		if string(*credentials.KeyID) == existing.Current.Password.KeyId {
-			currentIsValid = true
-		}
-		if string(*credentials.KeyID) == existing.Next.Password.KeyId {
-			nextIsValid = true
-		}
-	}
-
-	return currentIsValid && nextIsValid, nil
 }
 
 func isPasswordInUse(cred msgraph.PasswordCredential, idsInUse []string) bool {

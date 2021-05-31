@@ -1,16 +1,18 @@
-package client
+package application
 
 import (
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
+
+	"github.com/nais/azureator/pkg/azure"
 )
 
 type requiredResourceAccess struct {
-	client
+	azure.Application
 }
 
-func (c client) requiredResourceAccess() requiredResourceAccess {
-	return requiredResourceAccess{c}
+func newRequiredResourceAccess(application azure.Application) requiredResourceAccess {
+	return requiredResourceAccess{Application: application}
 }
 
 // Access to Microsoft Graph API

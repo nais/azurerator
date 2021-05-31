@@ -1,4 +1,4 @@
-package client
+package application
 
 import (
 	"fmt"
@@ -17,11 +17,25 @@ const (
 )
 
 type oAuth2PermissionScopes struct {
-	application
+	azure.Application
 }
 
-func (a application) oAuth2PermissionScopes() oAuth2PermissionScopes {
-	return oAuth2PermissionScopes{a}
+func newOAuth2PermissionScopes(application azure.Application) oAuth2PermissionScopes {
+	return oAuth2PermissionScopes{Application: application}
+}
+
+func (o oAuth2PermissionScopes) defaultScopes() []msgraph.PermissionScope {
+	defaultAccessScopeId := msgraph.UUID(OAuth2DefaultPermissionScopeId)
+	return []msgraph.PermissionScope{
+		{
+			AdminConsentDescription: ptr.String(fmt.Sprintf("Gives adminconsent for scope %s", OAuth2DefaultAccessScope)),
+			AdminConsentDisplayName: ptr.String(fmt.Sprintf("Adminconsent for scope %s", OAuth2DefaultAccessScope)),
+			ID:                      &defaultAccessScopeId,
+			IsEnabled:               ptr.Bool(true),
+			Type:                    ptr.String("User"),
+			Value:                   ptr.String(OAuth2DefaultAccessScope),
+		},
+	}
 }
 
 // ensure all other scopes than default scope are disabled
@@ -47,7 +61,7 @@ func (o oAuth2PermissionScopes) ensureValidScopes(tx azure.Transaction) error {
 }
 
 func (o oAuth2PermissionScopes) getAll(tx azure.Transaction) ([]msgraph.PermissionScope, error) {
-	application, err := o.application.getByClientId(tx.Ctx, tx.Instance.GetClientId())
+	application, err := o.Application.GetByClientId(tx.Ctx, tx.Instance.GetClientId())
 	if err != nil {
 		return nil, fmt.Errorf("fetching application by client ID: %w", err)
 	}
@@ -56,22 +70,8 @@ func (o oAuth2PermissionScopes) getAll(tx azure.Transaction) ([]msgraph.Permissi
 
 func (o oAuth2PermissionScopes) update(tx azure.Transaction, scopes []msgraph.PermissionScope) error {
 	app := &msgraph.Application{API: &msgraph.APIApplication{OAuth2PermissionScopes: scopes}}
-	if err := o.application.patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
+	if err := o.Application.Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
 		return fmt.Errorf("patching application: %w", err)
 	}
 	return nil
-}
-
-func (o oAuth2PermissionScopes) defaultScopes() []msgraph.PermissionScope {
-	defaultAccessScopeId := msgraph.UUID(OAuth2DefaultPermissionScopeId)
-	return []msgraph.PermissionScope{
-		{
-			AdminConsentDescription: ptr.String(fmt.Sprintf("Gives adminconsent for scope %s", OAuth2DefaultAccessScope)),
-			AdminConsentDisplayName: ptr.String(fmt.Sprintf("Adminconsent for scope %s", OAuth2DefaultAccessScope)),
-			ID:                      &defaultAccessScopeId,
-			IsEnabled:               ptr.Bool(true),
-			Type:                    ptr.String("User"),
-			Value:                   ptr.String(OAuth2DefaultAccessScope),
-		},
-	}
 }

@@ -1,4 +1,4 @@
-package client
+package serviceprincipal
 
 import (
 	"context"
@@ -13,35 +13,43 @@ import (
 )
 
 const (
-	ServicePrincipalTagHideApp = "HideApp"
+	TagHideApp = "HideApp"
 )
 
 type servicePrincipal struct {
-	client
+	azure.RuntimeClient
 }
 
-func (c client) servicePrincipal() servicePrincipal {
-	return servicePrincipal{c}
+func NewServicePrincipal(runtimeClient azure.RuntimeClient) azure.ServicePrincipal {
+	return servicePrincipal{RuntimeClient: runtimeClient}
 }
 
-func (s servicePrincipal) register(tx azure.Transaction) (msgraph.ServicePrincipal, error) {
+func (s servicePrincipal) Owners() azure.ServicePrincipalOwners {
+	return newOwners(s.RuntimeClient)
+}
+
+func (s servicePrincipal) Policies() azure.ServicePrincipalPolicies {
+	return newPolicies(s.RuntimeClient)
+}
+
+func (s servicePrincipal) Register(tx azure.Transaction) (msgraph.ServicePrincipal, error) {
 	clientId := tx.Instance.GetClientId()
 	request := &msgraph.ServicePrincipal{
 		AppID:                     &clientId,
 		AppRoleAssignmentRequired: ptr.Bool(false),
-		Tags:                      []string{ServicePrincipalTagHideApp},
+		Tags:                      []string{TagHideApp},
 	}
-	servicePrincipal, err := s.graphClient.ServicePrincipals().Request().Add(tx.Ctx, request)
+	servicePrincipal, err := s.GraphClient().ServicePrincipals().Request().Add(tx.Ctx, request)
 	if err != nil {
 		return msgraph.ServicePrincipal{}, fmt.Errorf("failed to register service principal: %w", err)
 	}
 	return *servicePrincipal, nil
 }
 
-func (s servicePrincipal) exists(ctx context.Context, id azure.ClientId) (bool, msgraph.ServicePrincipal, error) {
-	r := s.graphClient.ServicePrincipals().Request()
+func (s servicePrincipal) Exists(ctx context.Context, id azure.ClientId) (bool, msgraph.ServicePrincipal, error) {
+	r := s.GraphClient().ServicePrincipals().Request()
 	r.Filter(util.FilterByAppId(id))
-	sps, err := r.GetN(ctx, MaxNumberOfPagesToFetch)
+	sps, err := r.GetN(ctx, s.MaxNumberOfPagesToFetch())
 	if err != nil {
 		return false, msgraph.ServicePrincipal{}, fmt.Errorf("failed to lookup service principal: %w", err)
 	}
@@ -51,25 +59,25 @@ func (s servicePrincipal) exists(ctx context.Context, id azure.ClientId) (bool, 
 	return true, sps[0], nil
 }
 
+func (s servicePrincipal) SetAppRoleAssignmentRequired(tx azure.Transaction) error {
+	return s.setAppRoleAssignment(tx, true)
+}
+
+func (s servicePrincipal) SetAppRoleAssignmentNotRequired(tx azure.Transaction) error {
+	return s.setAppRoleAssignment(tx, false)
+}
+
 func (s servicePrincipal) update(tx azure.Transaction, request *msgraph.ServicePrincipal) error {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
-	if err := s.graphClient.ServicePrincipals().ID(servicePrincipalId).Request().Update(tx.Ctx, request); err != nil {
+	if err := s.GraphClient().ServicePrincipals().ID(servicePrincipalId).Request().Update(tx.Ctx, request); err != nil {
 		return fmt.Errorf("updating service principal: %w", err)
 	}
 	return nil
 }
 
-func (s servicePrincipal) setAppRoleAssignmentRequired(tx azure.Transaction) error {
-	return s.setAppRoleAssignment(tx, true)
-}
-
-func (s servicePrincipal) setAppRoleAssignmentNotRequired(tx azure.Transaction) error {
-	return s.setAppRoleAssignment(tx, false)
-}
-
 func (s servicePrincipal) setAppRoleAssignment(tx azure.Transaction, required bool) error {
-	exists, sp, err := s.exists(tx.Ctx, tx.Instance.GetClientId())
+	exists, sp, err := s.Exists(tx.Ctx, tx.Instance.GetClientId())
 	if err != nil {
 		return err
 	}
@@ -78,7 +86,7 @@ func (s servicePrincipal) setAppRoleAssignment(tx azure.Transaction, required bo
 		return fmt.Errorf("service principal not found or unexpected response data")
 	}
 
-	isAlreadySet := *sp.AppRoleAssignmentRequired == required && strings.ContainsString(sp.Tags, ServicePrincipalTagHideApp)
+	isAlreadySet := *sp.AppRoleAssignmentRequired == required && strings.ContainsString(sp.Tags, TagHideApp)
 
 	if isAlreadySet {
 		return nil
@@ -92,7 +100,7 @@ func (s servicePrincipal) setAppRoleAssignment(tx azure.Transaction, required bo
 
 	request := &msgraph.ServicePrincipal{
 		AppRoleAssignmentRequired: ptr.Bool(required),
-		Tags:                      []string{ServicePrincipalTagHideApp},
+		Tags:                      []string{TagHideApp},
 	}
 
 	if err := s.update(tx, request); err != nil {
