@@ -5,7 +5,10 @@ import (
 	"github.com/nais/liberator/pkg/finalizer"
 
 	"github.com/nais/azureator/pkg/annotations"
-	"github.com/nais/azureator/pkg/finalizers"
+)
+
+const (
+	FinalizerName string = "finalizer.azurerator.nais.io"
 )
 
 type FinalizerOptions struct {
@@ -15,7 +18,7 @@ type FinalizerOptions struct {
 }
 
 func (b optionsBuilder) Finalizer() FinalizerOptions {
-	hasFinalizer := finalizer.HasFinalizer(&b.instance, finalizers.Name)
+	hasFinalizer := finalizer.HasFinalizer(&b.instance, FinalizerName)
 	finalize := hasFinalizer && finalizer.IsBeingDeleted(&b.instance)
 	deleteFromAzure := ShouldDeleteFromAzure(&b.instance)
 
