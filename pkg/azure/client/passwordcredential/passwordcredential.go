@@ -131,6 +131,11 @@ func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIds
 			newestCredential = passwordCredential
 			newestCredentialIndex = i
 		}
+
+		if passwordCredential.DisplayName == nil {
+			continue
+		}
+
 		keyDisplayName := *passwordCredential.DisplayName
 		if strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix) {
 			keyCreatedByAzureratorFound = true
