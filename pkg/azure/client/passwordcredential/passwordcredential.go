@@ -67,6 +67,21 @@ func (p passwordCredential) Rotate(tx azure.Transaction, existing azure.Credenti
 	return &newCred, nil
 }
 
+func (p passwordCredential) Purge(tx azure.Transaction) error {
+	app, err := p.Application().Get(tx)
+	if err != nil {
+		return err
+	}
+
+	for _, cred := range app.PasswordCredentials {
+		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (p passwordCredential) Validate(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
 	app, err := p.Application().Get(tx)
 	if err != nil {

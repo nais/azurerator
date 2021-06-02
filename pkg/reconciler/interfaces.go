@@ -24,6 +24,7 @@ type Azure interface {
 
 	AddCredentials(tx Transaction, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error)
 	RotateCredentials(tx Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error)
+	PurgeCredentials(tx Transaction) error
 	ValidateCredentials(tx Transaction) (bool, error)
 }
 

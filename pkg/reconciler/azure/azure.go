@@ -142,6 +142,20 @@ func (a azureReconciler) RotateCredentials(tx reconciler.Transaction, existing a
 	return &credentialsSet, keyIdsInUse, nil
 }
 
+func (a azureReconciler) PurgeCredentials(tx reconciler.Transaction) error {
+	exists, err := a.exists(tx)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return nil
+	}
+
+	tx.Logger.Debug("purging existing credentials for Azure application...")
+	return a.azureClient.PurgeCredentials(tx.ToAzureTx())
+}
+
 func (a azureReconciler) ValidateCredentials(tx reconciler.Transaction) (bool, error) {
 	exists, err := a.exists(tx)
 	if err != nil {

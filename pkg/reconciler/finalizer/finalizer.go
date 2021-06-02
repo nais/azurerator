@@ -74,6 +74,11 @@ func (f finalizer) finalize(tx reconciler.Transaction) error {
 		}
 
 		f.ReportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedInAzure, "Azure application is deleted")
+	} else {
+		err := f.Azure().PurgeCredentials(tx)
+		if err != nil {
+			return fmt.Errorf("purging credentials from Azure AD: %w", err)
+		}
 	}
 
 	err := f.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {

@@ -23,6 +23,7 @@ type Client interface {
 
 	AddCredentials(tx Transaction) (CredentialsSet, error)
 	RotateCredentials(tx Transaction, existing CredentialsSet, inUse KeyIdsInUse) (CredentialsSet, error)
+	PurgeCredentials(tx Transaction) error
 	ValidateCredentials(tx Transaction, existing CredentialsSet) (bool, error)
 
 	Update(tx Transaction) (*ApplicationResult, error)
@@ -105,6 +106,7 @@ type Groups interface {
 type KeyCredential interface {
 	Add(tx Transaction) (*AddedKeyCredentialSet, error)
 	Rotate(tx Transaction, existing CredentialsSet, keyIdsInUse KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error)
+	Purge(tx Transaction) error
 	Validate(tx Transaction, existing CredentialsSet) (bool, error)
 }
 
@@ -115,6 +117,7 @@ type OAuth2PermissionGrant interface {
 type PasswordCredential interface {
 	Add(tx Transaction) (msgraph.PasswordCredential, error)
 	Rotate(tx Transaction, existing CredentialsSet, keyIdsInUse KeyIdsInUse) (*msgraph.PasswordCredential, error)
+	Purge(tx Transaction) error
 	Validate(tx Transaction, existing CredentialsSet) (bool, error)
 }
 

@@ -282,6 +282,21 @@ func (c Client) RotateCredentials(tx azure.Transaction, existing azure.Credentia
 	}, nil
 }
 
+// PurgeCredentials removes all credentials for the application in Azure AD.
+func (c Client) PurgeCredentials(tx azure.Transaction) error {
+	err := c.PasswordCredential().Purge(tx)
+	if err != nil {
+		return fmt.Errorf("purging password credentials: %w", err)
+	}
+
+	err = c.KeyCredential().Purge(tx)
+	if err != nil {
+		return fmt.Errorf("purging key credentials: %w", err)
+	}
+
+	return nil
+}
+
 // ValidateCredentials validates the given credentials set against the actual state for the application in Azure AD.
 func (c Client) ValidateCredentials(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
 	validPasswordCredentials, err := c.PasswordCredential().Validate(tx, existing)

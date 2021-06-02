@@ -54,6 +54,10 @@ func (a fakeAzureClient) RotateCredentials(tx azure.Transaction, existing azure.
 	return newSet, nil
 }
 
+func (a fakeAzureClient) PurgeCredentials(tx azure.Transaction) error {
+	return nil
+}
+
 func (a fakeAzureClient) ValidateCredentials(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
 	return true, nil
 }
