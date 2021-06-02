@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/nais/msgraph.go/ptr"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -39,7 +40,7 @@ func NewAzureReconciler(
 func (a azureReconciler) Process(tx reconciler.Transaction) (*azure.ApplicationResult, error) {
 	var applicationResult *azure.ApplicationResult
 
-	exists, err := a.exists(tx)
+	exists, err := a.Exists(tx)
 	if err != nil {
 		return nil, fmt.Errorf("looking up existence of application: %w", err)
 	}
@@ -143,7 +144,7 @@ func (a azureReconciler) RotateCredentials(tx reconciler.Transaction, existing a
 }
 
 func (a azureReconciler) PurgeCredentials(tx reconciler.Transaction) error {
-	exists, err := a.exists(tx)
+	exists, err := a.Exists(tx)
 	if err != nil {
 		return err
 	}
@@ -157,7 +158,7 @@ func (a azureReconciler) PurgeCredentials(tx reconciler.Transaction) error {
 }
 
 func (a azureReconciler) ValidateCredentials(tx reconciler.Transaction) (bool, error) {
-	exists, err := a.exists(tx)
+	exists, err := a.Exists(tx)
 	if err != nil {
 		return false, err
 	}
@@ -183,7 +184,7 @@ func (a azureReconciler) ValidateCredentials(tx reconciler.Transaction) (bool, e
 
 func (a azureReconciler) Delete(tx reconciler.Transaction) error {
 	tx.Logger.Info("deleting application in Azure AD...")
-	exists, err := a.exists(tx)
+	exists, err := a.Exists(tx)
 	if err != nil {
 		return err
 	}
@@ -198,7 +199,7 @@ func (a azureReconciler) Delete(tx reconciler.Transaction) error {
 	return nil
 }
 
-func (a azureReconciler) exists(tx reconciler.Transaction) (bool, error) {
+func (a azureReconciler) Exists(tx reconciler.Transaction) (bool, error) {
 	application, exists, err := a.azureClient.Exists(tx.ToAzureTx())
 	if err != nil {
 		return false, fmt.Errorf("looking up existence of azure application: %w", err)
@@ -222,6 +223,28 @@ func (a azureReconciler) exists(tx reconciler.Transaction) (bool, error) {
 	}
 
 	return exists, nil
+}
+
+func (a azureReconciler) ProcessOrphaned(tx reconciler.Transaction) error {
+	exists, err := a.Exists(tx)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return nil
+	}
+
+	tx.Logger.Warnf("orphaned resource '%s' found in tenant %s", kubernetes.UniformResourceName(tx.Instance), a.config.Azure.Tenant)
+	metrics.IncWithNamespaceLabel(metrics.AzureAppOrphanedTotal, tx.Instance.GetNamespace())
+
+	if tx.Options.Process.Azure.CleanupOrphans {
+		err = a.Delete(tx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx reconciler.Transaction, preAuthApps azure.PreAuthorizedApps) {

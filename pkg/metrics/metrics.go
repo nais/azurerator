@@ -29,6 +29,13 @@ var (
 			Help: "Total number of azureadapp secrets",
 		},
 	)
+	AzureAppOrphanedTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_orphaned_total",
+			Help: "Number of orphaned azuread apps (exists in Azure AD without matching k8s resource)",
+		},
+		[]string{labelNamespace},
+	)
 	AzureAppsCreatedCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "azureadapp_created_count",
@@ -83,6 +90,7 @@ var (
 var AllMetrics = []prometheus.Collector{
 	AzureAppsTotal,
 	AzureAppSecretsTotal,
+	AzureAppOrphanedTotal,
 	AzureAppsProcessedCount,
 	AzureAppsFailedProcessingCount,
 	AzureAppsCreatedCount,

@@ -75,7 +75,13 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	if tx.Options.Tenant.Ignore {
-		tx.Logger.Debugf("resource is not addressed to tenant '%s', ignoring...", r.Config.Azure.Tenant.Name)
+		tx.Logger.Debugf("resource is not addressed to tenant %s, ignoring...", r.Config.Azure.Tenant)
+
+		err := r.Azure().ProcessOrphaned(*tx)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("processing orphaned resources: %w", err)
+		}
+
 		return ctrl.Result{}, nil
 	}
 

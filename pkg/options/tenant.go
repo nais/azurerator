@@ -9,10 +9,10 @@ type TenantOptions struct {
 }
 
 func (b optionsBuilder) Tenant() TenantOptions {
-	ignore := IsNotAddressedToTenant(b.instance, b.Config.Azure.Tenant.Name, b.Config.Validations.Tenant.Required)
+	notAddressedToTenant := IsNotAddressedToTenant(b.instance, b.Config.Azure.Tenant.Name, b.Config.Validations.Tenant.Required)
 
 	return TenantOptions{
-		Ignore: ignore,
+		Ignore: notAddressedToTenant,
 	}
 }
 

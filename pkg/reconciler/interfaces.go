@@ -19,8 +19,10 @@ type AzureAdApplication interface {
 }
 
 type Azure interface {
-	Process(tx Transaction) (*azure.ApplicationResult, error)
+	Exists(tx Transaction) (bool, error)
 	Delete(tx Transaction) error
+	Process(tx Transaction) (*azure.ApplicationResult, error)
+	ProcessOrphaned(tx Transaction) error
 
 	AddCredentials(tx Transaction, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error)
 	RotateCredentials(tx Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error)

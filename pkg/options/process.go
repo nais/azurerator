@@ -28,7 +28,8 @@ func (b optionsBuilder) Process() (ProcessOptions, error) {
 	return ProcessOptions{
 		Synchronize: needsSynchronization,
 		Azure: AzureOptions{
-			Synchronize: needsAzureSynchronization,
+			Synchronize:    needsAzureSynchronization,
+			CleanupOrphans: b.Config.Azure.Features.CleanupOrphans.Enabled,
 		},
 		Secret: SecretOptions{
 			Rotate: needsSecretRotation,
@@ -44,7 +45,8 @@ type ProcessOptions struct {
 }
 
 type AzureOptions struct {
-	Synchronize bool
+	Synchronize    bool
+	CleanupOrphans bool
 }
 
 type SecretOptions struct {

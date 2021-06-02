@@ -48,6 +48,7 @@ type AzureFeatures struct {
 	ClaimsMappingPolicies     ClaimsMappingPolicies     `json:"claims-mapping-policies"`
 	GroupsAssignment          GroupsAssignment          `json:"groups-assignment"`
 	AppRoleAssignmentRequired AppRoleAssignmentRequired `json:"app-role-assignment-required"`
+	CleanupOrphans            CleanupOrphans            `json:"cleanup-orphans"`
 }
 
 type TeamsManagement struct {
@@ -63,6 +64,10 @@ type ClaimsMappingPolicies struct {
 }
 
 type AppRoleAssignmentRequired struct {
+	Enabled bool `json:"enabled"`
+}
+
+type CleanupOrphans struct {
 	Enabled bool `json:"enabled"`
 }
 
@@ -99,6 +104,7 @@ const (
 	AzureFeaturesGroupsAssignmentEnabled              = "azure.features.groups-assignment.enabled"
 	AzureFeaturesGroupsAllUsersGroupId                = "azure.features.groups-assignment.all-users-group-id"
 	AzureFeaturesAppRoleAssignmentRequiredEnabled     = "azure.features.app-role-assignment-required.enabled"
+	AzureFeaturesCleanupOrphansEnabled                = "azure.features.cleanup-orphans.enabled"
 	MetricsAddress                                    = "metrics-address"
 	ClusterName                                       = "cluster-name"
 	DebugEnabled                                      = "debug"
@@ -139,6 +145,8 @@ func init() {
 	flag.String(AzureFeaturesGroupsAllUsersGroupId, "", "Group ID that contains all users in the tenant. Assigned to all application by default unless overridden by user in the custom resource.")
 
 	flag.Bool(AzureFeaturesAppRoleAssignmentRequiredEnabled, false, "Feature toggle to enable 'appRoleAssignmentRequired' for service principals.")
+
+	flag.Bool(AzureFeaturesCleanupOrphansEnabled, false, "Feature toggle to enable cleanup of orphaned resources.")
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
 	flag.String(ClusterName, "", "The cluster in which this application should run")

@@ -51,16 +51,16 @@ func main() {
 func run() error {
 	ctx := context.Background()
 
-	cfg, err := config.DefaultConfig()
-	if err != nil {
-		return err
-	}
-
 	zapLogger, err := logger.ZapLogger()
 	if err != nil {
 		return err
 	}
 	ctrl.SetLogger(zapr.NewLogger(zapLogger))
+
+	cfg, err := config.DefaultConfig()
+	if err != nil {
+		return err
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
