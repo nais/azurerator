@@ -12,7 +12,6 @@ import (
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/crd"
 	"github.com/nais/liberator/pkg/finalizer"
-	"github.com/nais/liberator/pkg/kubernetes"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -717,20 +716,12 @@ func assertPreAuthorizedAppsStatusIsValid(t *testing.T, expected []v1.AccessPoli
 	assert.Len(t, expectedValid, *actual.AssignedCount)
 
 	contains := func(expected v1.AccessPolicyRule, actual []v1.AzureAdPreAuthorizedApp) bool {
-		seen := false
-		name := kubernetes.UniformResourceName(&metav1.ObjectMeta{
-			Name:        expected.Application,
-			Namespace:   expected.Namespace,
-			ClusterName: expected.Cluster,
-		})
-
 		for _, a := range actual {
-			if a.Name == name {
-				seen = true
+			if *a.AccessPolicyRule == expected {
+				return true
 			}
 		}
-
-		return seen
+		return false
 	}
 
 	for _, e := range expectedInvalid {

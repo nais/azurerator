@@ -112,10 +112,11 @@ func mapToInternalPreAuthApp(app v1.AccessPolicyRule) azure.Resource {
 		ClusterName: app.Cluster,
 	}))
 	return azure.Resource{
-		Name:          name,
-		ClientId:      clientId,
-		ObjectId:      objectId,
-		PrincipalType: azure.PrincipalTypeServicePrincipal,
+		Name:             name,
+		ClientId:         clientId,
+		ObjectId:         objectId,
+		PrincipalType:    azure.PrincipalTypeServicePrincipal,
+		AccessPolicyRule: app,
 	}
 }
 

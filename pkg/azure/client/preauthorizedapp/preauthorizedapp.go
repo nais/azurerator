@@ -177,19 +177,21 @@ func (p preAuthApps) mapToResource(tx azure.Transaction, app v1.AccessPolicyRule
 	}
 
 	return &azure.Resource{
-		Name:          *a.DisplayName,
-		ClientId:      *a.AppID,
-		ObjectId:      *servicePrincipal.ID,
-		PrincipalType: azure.PrincipalTypeServicePrincipal,
+		Name:             *a.DisplayName,
+		ClientId:         *a.AppID,
+		ObjectId:         *servicePrincipal.ID,
+		PrincipalType:    azure.PrincipalTypeServicePrincipal,
+		AccessPolicyRule: app,
 	}, true, nil
 }
 
 func invalidResource(app v1.AccessPolicyRule) *azure.Resource {
 	return &azure.Resource{
-		Name:          customresources.GetUniqueName(app),
-		ClientId:      "",
-		ObjectId:      "",
-		PrincipalType: azure.PrincipalTypeServicePrincipal,
+		Name:             customresources.GetUniqueName(app),
+		ClientId:         "",
+		ObjectId:         "",
+		PrincipalType:    azure.PrincipalTypeServicePrincipal,
+		AccessPolicyRule: app,
 	}
 }
 
@@ -199,6 +201,11 @@ func toResource(instance v1.AzureAdApplication) azure.Resource {
 		ClientId:      instance.Status.ClientId,
 		ObjectId:      instance.Status.ServicePrincipalId,
 		PrincipalType: azure.PrincipalTypeServicePrincipal,
+		AccessPolicyRule: v1.AccessPolicyRule{
+			Application: instance.GetName(),
+			Namespace:   instance.GetNamespace(),
+			Cluster:     instance.GetClusterName(),
+		},
 	}
 }
 

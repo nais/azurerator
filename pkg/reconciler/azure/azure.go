@@ -215,8 +215,9 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx reconciler.Tran
 	assigned := make([]v1.AzureAdPreAuthorizedApp, 0)
 
 	for _, app := range preAuthApps.Valid {
+		rule := app.AccessPolicyRule
 		assigned = append(assigned, v1.AzureAdPreAuthorizedApp{
-			Name:                     app.Name,
+			AccessPolicyRule:         &rule,
 			ClientID:                 app.ClientId,
 			ServicePrincipalObjectID: app.ObjectId,
 		})
@@ -231,8 +232,9 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx reconciler.Tran
 		tx.Logger.Warnf(message)
 		a.recorder.Eventf(tx.Instance, corev1.EventTypeNormal, v1.EventSkipped, message)
 
+		rule := app.AccessPolicyRule
 		unassigned = append(unassigned, v1.AzureAdPreAuthorizedApp{
-			Name:                     app.Name,
+			AccessPolicyRule:         &rule,
 			ClientID:                 app.ClientId,
 			ServicePrincipalObjectID: app.ObjectId,
 			Reason:                   message,
