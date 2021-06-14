@@ -1,19 +1,11 @@
 package application
 
 import (
-	"fmt"
-
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/util"
-)
-
-const (
-	DefaultAppRole     string = "access_as_application"
-	DefaultAppRoleId   string = "00000001-abcd-9001-0000-000000000000"
-	DefaultGroupRoleId string = "00000000-0000-0000-0000-000000000000"
+	"github.com/nais/azureator/pkg/azure/util/approle"
+	"github.com/nais/azureator/pkg/azure/util/permissions"
 )
 
 type appRoles struct {
@@ -24,59 +16,28 @@ func newAppRoles(application azure.Application) azure.AppRoles {
 	return appRoles{Application: application}
 }
 
-func (a appRoles) GetOrGenerateRoleID(tx azure.Transaction, role msgraph.AppRole) (*msgraph.UUID, error) {
-	roles, err := a.getAll(tx)
-	if err != nil {
-		return nil, fmt.Errorf("fetching approles for application: %w", err)
-	}
-
-	if role, found := roleExistsInRoles(role, roles); found {
-		return role.ID, nil
-	}
-
-	roles = append(roles, role)
-	if err := a.update(tx, roles); err != nil {
-		return nil, fmt.Errorf("adding approle '%s' (%s) for application: %w", *role.Value, *role.ID, err)
-	}
-
-	return role.ID, nil
+// DescribeCreate returns a slice describing the desired msgraph.AppRole to be created without actually creating them.
+func (a appRoles) DescribeCreate(desired permissions.Permissions) []msgraph.AppRole {
+	existingSet := make(approle.Map)
+	return existingSet.ToCreate(desired).ToSlice()
 }
 
-func (a appRoles) DefaultRole() msgraph.AppRole {
-	roleId := msgraph.UUID(DefaultAppRoleId)
-	allowedMemberTypes := []string{"Application"}
-	return msgraph.AppRole{
-		Object:             msgraph.Object{},
-		AllowedMemberTypes: allowedMemberTypes,
-		Description:        ptr.String(DefaultAppRole),
-		DisplayName:        ptr.String(DefaultAppRole),
-		ID:                 &roleId,
-		IsEnabled:          ptr.Bool(true),
-		Value:              ptr.String(DefaultAppRole),
-	}
-}
+// DescribeUpdate returns a slice describing the desired state of both new (if any) and existing msgraph.AppRole, i.e:
+// 1) add any non-existing, desired roles.
+// 2) disable existing, non-desired roles.
+// It does not perform any modifying operations on the remote state in Azure AD.
+func (a appRoles) DescribeUpdate(desired permissions.Permissions, existing []msgraph.AppRole) []msgraph.AppRole {
+	result := make([]msgraph.AppRole, 0)
 
-func (a appRoles) getAll(tx azure.Transaction) ([]msgraph.AppRole, error) {
-	application, err := a.Application.GetByClientId(tx.Ctx, tx.Instance.GetClientId())
-	if err != nil {
-		return nil, fmt.Errorf("fetching application by client ID: %w", err)
-	}
-	return application.AppRoles, nil
-}
+	existingSet := approle.ToMap(existing)
 
-func (a appRoles) update(tx azure.Transaction, roles []msgraph.AppRole) error {
-	app := util.EmptyApplication().AppRoles(roles).Build()
-	if err := a.Application.Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
-		return fmt.Errorf("patching application: %w", err)
-	}
-	return nil
-}
+	toCreate := existingSet.ToCreate(desired)
+	toDisable := existingSet.ToDisable(desired)
+	unmodified := existingSet.Unmodified(toCreate, toDisable)
 
-func roleExistsInRoles(role msgraph.AppRole, roles []msgraph.AppRole) (*msgraph.AppRole, bool) {
-	for _, r := range roles {
-		if *role.Value == *r.Value {
-			return &r, true
-		}
-	}
-	return nil, false
+	result = append(result, unmodified.ToSlice()...)
+	result = append(result, toCreate.ToSlice()...)
+	result = append(result, toDisable.ToSlice()...)
+	result = approle.EnsureDefaultAppRoleIsEnabled(result)
+	return result
 }

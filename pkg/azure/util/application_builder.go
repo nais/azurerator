@@ -54,6 +54,11 @@ func (a ApplicationBuilder) RedirectUris(redirectUris []string) ApplicationBuild
 	return a
 }
 
+func (a ApplicationBuilder) PermissionScopes(scopes []msgraph.PermissionScope) ApplicationBuilder {
+	a.API.OAuth2PermissionScopes = scopes
+	return a
+}
+
 func (a ApplicationBuilder) Build() *msgraph.Application {
 	return a.Application
 }

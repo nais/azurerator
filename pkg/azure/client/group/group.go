@@ -10,7 +10,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/client/application"
+	"github.com/nais/azureator/pkg/azure/util/approle"
 )
 
 type group struct {
@@ -45,7 +45,7 @@ func (g group) Process(tx azure.Transaction) error {
 		}
 	}
 
-	err = g.AppRoleAssignments(msgraph.UUID(application.DefaultGroupRoleId), servicePrincipalId).
+	err = g.AppRoleAssignments(msgraph.UUID(approle.DefaultGroupRoleId), servicePrincipalId).
 		ProcessForGroups(tx, groups)
 	if err != nil {
 		return fmt.Errorf("updating app roles for groups: %w", err)

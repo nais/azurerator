@@ -1,77 +1,44 @@
 package application
 
 import (
-	"fmt"
-
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
-)
-
-const (
-	// OAuth2 permission scope that the web API application exposes to client applications
-	OAuth2DefaultAccessScope string = "defaultaccess"
-	// Apparently this just has to be unique per application, so we re-use this for all of our applications for consistency.
-	OAuth2DefaultPermissionScopeId string = "00000000-1337-d34d-b33f-000000000000"
+	"github.com/nais/azureator/pkg/azure/util/permissions"
+	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 )
 
 type oAuth2PermissionScopes struct {
 	azure.Application
 }
 
-func newOAuth2PermissionScopes(application azure.Application) oAuth2PermissionScopes {
+func newOAuth2PermissionScopes(application azure.Application) azure.OAuth2PermissionScope {
 	return oAuth2PermissionScopes{Application: application}
 }
 
-func (o oAuth2PermissionScopes) defaultScopes() []msgraph.PermissionScope {
-	defaultAccessScopeId := msgraph.UUID(OAuth2DefaultPermissionScopeId)
-	return []msgraph.PermissionScope{
-		{
-			AdminConsentDescription: ptr.String(fmt.Sprintf("Gives adminconsent for scope %s", OAuth2DefaultAccessScope)),
-			AdminConsentDisplayName: ptr.String(fmt.Sprintf("Adminconsent for scope %s", OAuth2DefaultAccessScope)),
-			ID:                      &defaultAccessScopeId,
-			IsEnabled:               ptr.Bool(true),
-			Type:                    ptr.String("User"),
-			Value:                   ptr.String(OAuth2DefaultAccessScope),
-		},
-	}
+// DescribeCreate returns a slice describing the desired msgraph.PermissionScope to be created without actually creating them.
+func (o oAuth2PermissionScopes) DescribeCreate(desired permissions.Permissions) []msgraph.PermissionScope {
+	existingSet := make(permissionscope.Map)
+	return existingSet.ToCreate(desired).ToSlice()
 }
 
-// ensure all other scopes than default scope are disabled
-func (o oAuth2PermissionScopes) ensureValidScopes(tx azure.Transaction) error {
-	existingScopes, err := o.getAll(tx)
-	if err != nil {
-		return err
-	}
+// DescribeUpdate returns a slice describing the desired state of both new (if any) and existing msgraph.PermissionScope, i.e:
+// 1) add any non-existing, desired scopes.
+// 2) disable existing, non-desired scopes.
+// It does not perform any modifying operations on the remote state in Azure AD.
+func (o oAuth2PermissionScopes) DescribeUpdate(desired permissions.Permissions, existing []msgraph.PermissionScope) []msgraph.PermissionScope {
+	result := make([]msgraph.PermissionScope, 0)
 
-	if len(existingScopes) == 1 && (*existingScopes[0].ID == msgraph.UUID(OAuth2DefaultPermissionScopeId)) {
-		return nil
-	}
+	existingSet := permissionscope.ToMap(existing)
 
-	for i, scope := range existingScopes {
-		if *scope.ID == msgraph.UUID(OAuth2DefaultPermissionScopeId) {
-			continue
-		}
-		scope.IsEnabled = ptr.Bool(false)
-		existingScopes[i] = scope
-	}
+	toCreate := existingSet.ToCreate(desired)
+	toDisable := existingSet.ToDisable(desired)
+	unmodified := existingSet.Unmodified(toCreate, toDisable)
 
-	return o.update(tx, existingScopes)
-}
-
-func (o oAuth2PermissionScopes) getAll(tx azure.Transaction) ([]msgraph.PermissionScope, error) {
-	application, err := o.Application.GetByClientId(tx.Ctx, tx.Instance.GetClientId())
-	if err != nil {
-		return nil, fmt.Errorf("fetching application by client ID: %w", err)
-	}
-	return application.API.OAuth2PermissionScopes, nil
-}
-
-func (o oAuth2PermissionScopes) update(tx azure.Transaction, scopes []msgraph.PermissionScope) error {
-	app := &msgraph.Application{API: &msgraph.APIApplication{OAuth2PermissionScopes: scopes}}
-	if err := o.Application.Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
-		return fmt.Errorf("patching application: %w", err)
-	}
-	return nil
+	result = append(result, unmodified.ToSlice()...)
+	result = append(result, toCreate.ToSlice()...)
+	result = append(result, toDisable.ToSlice()...)
+	result = permissionscope.EnsureScopesRequireAdminConsent(result)
+	result = permissionscope.EnsureDefaultScopeIsEnabled(result)
+	return result
 }

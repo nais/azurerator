@@ -11,6 +11,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/azure/util/permissions"
 )
 
 // Application tags
@@ -35,7 +36,7 @@ func (a Application) IdentifierUri() azure.IdentifierUri {
 	return newIdentifierUri(a)
 }
 
-func (a Application) oAuth2PermissionScopes() oAuth2PermissionScopes {
+func (a Application) OAuth2PermissionScopes() azure.OAuth2PermissionScope {
 	return newOAuth2PermissionScopes(a)
 }
 
@@ -67,14 +68,16 @@ func (a Application) Register(tx azure.Transaction) (*msgraph.Application, error
 	access := []msgraph.RequiredResourceAccess{
 		a.requiredResourceAccess().microsoftGraph(),
 	}
-	appRoles := []msgraph.AppRole{
-		a.AppRoles().DefaultRole(),
-	}
+	desiredPermissions := permissions.GenerateDesiredPermissionSet(tx.Instance)
+	roles := a.AppRoles().DescribeCreate(desiredPermissions)
+	scopes := a.OAuth2PermissionScopes().DescribeCreate(desiredPermissions)
+
 	req := util.Application(a.defaultTemplate(tx.Instance)).
 		ResourceAccess(access).
 		GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup).
-		AppRoles(appRoles).
+		AppRoles(roles).
 		RedirectUris(util.GetReplyUrlsStringSlice(tx.Instance)).
+		PermissionScopes(scopes).
 		Build()
 
 	app, err := a.GraphClient().Applications().Request().Add(tx.Ctx, req)
@@ -85,29 +88,38 @@ func (a Application) Register(tx azure.Transaction) (*msgraph.Application, error
 	return app, nil
 }
 
-func (a Application) Update(tx azure.Transaction) error {
+func (a Application) Update(tx azure.Transaction) (*msgraph.Application, error) {
 	objectId := tx.Instance.GetObjectId()
-
+	clientId := tx.Instance.GetClientId()
 	identifierUris := util.IdentifierUris(tx)
 
-	err := a.oAuth2PermissionScopes().ensureValidScopes(tx)
+	actualApp, err := a.GetByClientId(tx.Ctx, clientId)
 	if err != nil {
-		return fmt.Errorf("while ensuring valid oauth2 permission scopes: %w", err)
+		return nil, err
 	}
 
-	app := util.Application(a.defaultTemplate(tx.Instance)).
-		IdentifierUriList(identifierUris)
+	desiredPermissions := permissions.GenerateDesiredPermissionSetPreserveExisting(tx.Instance, actualApp)
+
+	existingRoles := actualApp.AppRoles
+	roles := a.AppRoles().DescribeUpdate(desiredPermissions, existingRoles)
+
+	existingScopes := actualApp.API.OAuth2PermissionScopes
+	scopes := a.OAuth2PermissionScopes().DescribeUpdate(desiredPermissions, existingScopes)
+
+	builder := util.Application(a.defaultTemplate(tx.Instance)).
+		IdentifierUriList(identifierUris).
+		PermissionScopes(scopes).
+		AppRoles(roles)
 
 	groupClaimsIsDefined := tx.Instance.Spec.Claims != nil && len(tx.Instance.Spec.Claims.Groups) > 0
 
 	// todo: remove 'groupClaimsIsDefined' predicate after grace period
 	if a.Config().Features.GroupsAssignment.Enabled && groupClaimsIsDefined {
-		app.GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup)
+		builder.GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup)
 	}
 
-	app.Build()
-
-	return a.Patch(tx.Ctx, objectId, app)
+	app := builder.Build()
+	return app, a.Patch(tx.Ctx, objectId, app)
 }
 
 func (a Application) Patch(ctx context.Context, id azure.ObjectId, application interface{}) error {
@@ -174,7 +186,6 @@ func (a Application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 		API: &msgraph.APIApplication{
 			AcceptMappedClaims:          ptr.Bool(true),
 			RequestedAccessTokenVersion: ptr.Int(2),
-			OAuth2PermissionScopes:      a.oAuth2PermissionScopes().defaultScopes(),
 		},
 		Web: &msgraph.WebApplication{
 			LogoutURL: ptr.String(resource.Spec.LogoutUrl),

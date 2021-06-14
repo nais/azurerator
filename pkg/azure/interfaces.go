@@ -8,6 +8,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/util/crypto"
 )
@@ -53,6 +54,7 @@ type RuntimeClient interface {
 type Application interface {
 	AppRoles() AppRoles
 	IdentifierUri() IdentifierUri
+	OAuth2PermissionScopes() OAuth2PermissionScope
 	Owners() ApplicationOwners
 	RedirectUri() RedirectUri
 
@@ -64,16 +66,21 @@ type Application interface {
 	GetByClientId(ctx context.Context, id ClientId) (msgraph.Application, error)
 	Patch(ctx context.Context, id ObjectId, application interface{}) error
 	Register(tx Transaction) (*msgraph.Application, error)
-	Update(tx Transaction) error
+	Update(tx Transaction) (*msgraph.Application, error)
 }
 
 type AppRoles interface {
-	DefaultRole() msgraph.AppRole
-	GetOrGenerateRoleID(tx Transaction, role msgraph.AppRole) (*msgraph.UUID, error)
+	DescribeCreate(desired permissions.Permissions) []msgraph.AppRole
+	DescribeUpdate(desired permissions.Permissions, existing []msgraph.AppRole) []msgraph.AppRole
 }
 
 type IdentifierUri interface {
 	Set(tx Transaction) error
+}
+
+type OAuth2PermissionScope interface {
+	DescribeCreate(desired permissions.Permissions) []msgraph.PermissionScope
+	DescribeUpdate(desired permissions.Permissions, existing []msgraph.PermissionScope) []msgraph.PermissionScope
 }
 
 type ApplicationOwners interface {
@@ -123,7 +130,7 @@ type PasswordCredential interface {
 
 type PreAuthApps interface {
 	Get(tx Transaction) (*PreAuthorizedApps, error)
-	Process(tx Transaction) (*PreAuthorizedApps, error)
+	Process(tx Transaction, permissions permissions.Permissions) (*PreAuthorizedApps, error)
 }
 
 type ServicePrincipal interface {
