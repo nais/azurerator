@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	nais_io_v1alpha1 "github.com/nais/liberator/pkg/apis/nais.io/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -291,7 +290,7 @@ func (r *Reconciler) updateStatus(tx reconciler.Transaction) error {
 }
 
 func (r *Reconciler) getOrGenerateCorrelationId(instance *v1.AzureAdApplication) string {
-	value, found := annotations.HasAnnotation(instance, nais_io_v1alpha1.DeploymentCorrelationIDAnnotation)
+	value, found := annotations.HasAnnotation(instance, v1.DeploymentCorrelationIDAnnotation)
 	if !found {
 		return uuid.New().String()
 	}

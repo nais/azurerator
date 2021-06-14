@@ -11,6 +11,8 @@ import (
 	"github.com/nais/azureator/pkg/azure/util/approleassignment"
 )
 
+// TODO(tronghn): should log AppRole ID / name being processed
+//  should also refactor Resource to contain list of all (AppRole ID / name) instead of locking the instance here to a single role
 type appRoleAssignmentsWithRoleId struct {
 	azure.RuntimeClient
 	azure.AppRoleAssignments
@@ -35,6 +37,9 @@ func (a appRoleAssignmentsWithRoleId) ProcessForServicePrincipals(tx azure.Trans
 	return a.processFor(tx, assignees, azure.PrincipalTypeServicePrincipal)
 }
 
+// TODO(tronghn): extract getAll() from assignFor() and reuse in assignFor / getAllGroups / getAllServicePrincipals?
+//  difference = existing (before new assignments) + newAssigned) - desired (newAssigned + alreadyAssigned
+//  difference = existing (before new assignments) - alreadyAssigned?
 func (a appRoleAssignmentsWithRoleId) processFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) error {
 	desired, err := a.assignFor(tx, assignees, principalType)
 	if err != nil {
@@ -57,6 +62,7 @@ func (a appRoleAssignmentsWithRoleId) processFor(tx azure.Transaction, assignees
 	return nil
 }
 
+// TODO(tronghn): should return struct desiredAssignmentsResult of ([]newAssigned, []alreadyAssigned, []invalid)
 func (a appRoleAssignmentsWithRoleId) assignFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) ([]msgraph.AppRoleAssignment, error) {
 	assignments := make([]msgraph.AppRoleAssignment, 0)
 

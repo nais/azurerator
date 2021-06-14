@@ -21,6 +21,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/preauthorizedapp"
 	"github.com/nais/azureator/pkg/azure/client/serviceprincipal"
 	"github.com/nais/azureator/pkg/azure/client/team"
+	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/config"
 )
 
@@ -143,7 +144,8 @@ func (c Client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		return nil, fmt.Errorf("setting identifier URIs for application: %w", err)
 	}
 
-	preAuthApps, err := c.process(tx)
+	actualPermissions := permissions.ExtractPermissions(app)
+	preAuthApps, err := c.process(tx, actualPermissions)
 	if err != nil {
 		return nil, err
 	}
@@ -152,6 +154,7 @@ func (c Client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		ClientId:           *app.AppID,
 		ObjectId:           *app.ID,
 		ServicePrincipalId: *servicePrincipal.ID,
+		Permissions:        actualPermissions,
 		PreAuthorizedApps:  *preAuthApps,
 		Tenant:             c.config.Tenant.Id,
 		Result:             azure.OperationResultCreated,
@@ -318,7 +321,8 @@ func (c Client) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
 	objectId := tx.Instance.GetObjectId()
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
-	if err := c.Application().Update(tx); err != nil {
+	app, err := c.Application().Update(tx)
+	if err != nil {
 		return nil, fmt.Errorf("updating application resource: %w", err)
 	}
 
@@ -326,27 +330,34 @@ func (c Client) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		return nil, fmt.Errorf("updating redirect URIs: %w", err)
 	}
 
-	preAuthApps, err := c.process(tx)
+	actualPermissions := permissions.ExtractPermissions(app)
+	preAuthApps, err := c.process(tx, actualPermissions)
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: finally, patch application and remove all roles and scopes that are set to disabled
+	//	- we _CANNOT delete a disabled PermissionScope that has been granted to any pre-authorized app
+	// 	- we _CAN_ however delete a disabled AppRole _without_ removing the associated approleassignments first...
+	//	(however it appears to clog up the list of granted Permissions in the Enterprise Apps overview)
 
 	return &azure.ApplicationResult{
 		ClientId:           clientId,
 		ObjectId:           objectId,
 		ServicePrincipalId: servicePrincipalId,
+		Permissions:        actualPermissions,
 		PreAuthorizedApps:  *preAuthApps,
 		Tenant:             c.config.Tenant.Id,
 		Result:             azure.OperationResultUpdated,
 	}, nil
 }
 
-func (c Client) process(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+func (c Client) process(tx azure.Transaction, permissions permissions.Permissions) (*azure.PreAuthorizedApps, error) {
 	if err := c.OAuth2PermissionGrant().Process(tx); err != nil {
 		return nil, fmt.Errorf("processing oauth2 permission grants: %w", err)
 	}
 
-	preAuthApps, err := c.PreAuthApps().Process(tx)
+	preAuthApps, err := c.PreAuthApps().Process(tx, permissions)
 	if err != nil {
 		return nil, fmt.Errorf("processing preauthorized apps: %w", err)
 	}

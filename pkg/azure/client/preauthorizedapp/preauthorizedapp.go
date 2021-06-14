@@ -9,8 +9,10 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/azure/util/approle"
+	"github.com/nais/azureator/pkg/azure/util/permissions"
+	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 	"github.com/nais/azureator/pkg/customresources"
 )
 
@@ -36,7 +38,10 @@ func NewPreAuthApps(runtimeClient azure.RuntimeClient) azure.PreAuthApps {
 	return preAuthApps{RuntimeClient: runtimeClient}
 }
 
-func (p preAuthApps) Process(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+func (p preAuthApps) Process(tx azure.Transaction, permissions permissions.Permissions) (*azure.PreAuthorizedApps, error) {
+	// TODO(tronghn): assign/revoke scopes in preauthorizedapps
+	//  assign/revoke approles in approleassignment
+
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
 	preAuthorizedApps, err := p.mapToResources(tx)
@@ -44,18 +49,13 @@ func (p preAuthApps) Process(tx azure.Transaction) (*azure.PreAuthorizedApps, er
 		return nil, fmt.Errorf("mapping preauthorizedapps to resources: %w", err)
 	}
 
-	err = p.patchApplication(tx, preAuthorizedApps.Valid)
+	err = p.patchApplication(tx, preAuthorizedApps.Valid, permissions)
 	if err != nil {
 		return nil, fmt.Errorf("updating preauthorizedapps for application: %w", err)
 	}
 
-	defaultRole := p.Application().AppRoles().DefaultRole()
-	roleID, err := p.Application().AppRoles().GetOrGenerateRoleID(tx, defaultRole)
-	if err != nil {
-		return nil, fmt.Errorf("fetching default app role ID: %w", err)
-	}
-
-	err = p.AppRoleAssignments(*roleID, servicePrincipalId).
+	permission := permissions[approle.DefaultAppRoleValue]
+	err = p.AppRoleAssignments(permission.ID, servicePrincipalId).
 		ProcessForServicePrincipals(tx, preAuthorizedApps.Valid)
 	if err != nil {
 		return nil, fmt.Errorf("updating approle assignments for service principals: %w", err)
@@ -101,9 +101,9 @@ func (p preAuthApps) Get(tx azure.Transaction) (*azure.PreAuthorizedApps, error)
 	}, nil
 }
 
-func (p preAuthApps) patchApplication(tx azure.Transaction, resources []azure.Resource) error {
+func (p preAuthApps) patchApplication(tx azure.Transaction, resources []azure.Resource, permissions permissions.Permissions) error {
 	objectId := tx.Instance.GetObjectId()
-	payload := p.mapToGraphRequest(resources)
+	payload := p.mapToGraphRequest(resources, permissions)
 
 	if err := p.Application().Patch(tx.Ctx, objectId, payload); err != nil {
 		return fmt.Errorf("patching preauthorizedapps for application: %w", err)
@@ -151,14 +151,17 @@ func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedA
 	}, nil
 }
 
-func (p preAuthApps) mapToGraphRequest(resources []azure.Resource) appPatch {
+func (p preAuthApps) mapToGraphRequest(resources []azure.Resource, permissions permissions.Permissions) appPatch {
 	apps := make([]msgraph.PreAuthorizedApplication, 0)
 	for _, resource := range resources {
 		clientId := resource.ClientId
+		defaultPermission := permissions[permissionscope.DefaultAccessScopeValue]
 
 		apps = append(apps, msgraph.PreAuthorizedApplication{
-			AppID:                  &clientId,
-			DelegatedPermissionIDs: []string{application.OAuth2DefaultPermissionScopeId},
+			AppID: &clientId,
+			DelegatedPermissionIDs: []string{
+				string(defaultPermission.ID),
+			},
 		})
 	}
 
