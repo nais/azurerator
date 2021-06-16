@@ -8,6 +8,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 )
 
@@ -91,4 +93,51 @@ func TestEnsureDefaultAppRoleIsEnabled(t *testing.T) {
 	for _, scope := range actual {
 		assert.True(t, *scope.IsEnabled)
 	}
+}
+
+func TestEnsureDefaultScopeIsEnabled(t *testing.T) {
+	defaultScope := permissionscope.DefaultScope()
+	defaultScope.IsEnabled = ptr.Bool(false)
+
+	scopes := []msgraph.PermissionScope{defaultScope}
+	for _, scope := range scopes {
+		assert.False(t, *scope.IsEnabled)
+	}
+
+	actual := permissionscope.EnsureDefaultScopeIsEnabled(scopes)
+	for _, scope := range actual {
+		assert.True(t, *scope.IsEnabled)
+	}
+}
+
+func TestFromPermission(t *testing.T) {
+	permission := permissions.NewGenerateIdEnabled("scope")
+	scope := permissionscope.FromPermission(permission)
+
+	assert.Equal(t, "scope", *scope.AdminConsentDescription)
+	assert.Equal(t, "scope", *scope.AdminConsentDisplayName)
+	assert.Equal(t, "scope", *scope.Value)
+	assert.Equal(t, permission.ID, *scope.ID)
+}
+
+func TestRemoveDisabled(t *testing.T) {
+	enabledScope := permissionscope.NewGenerateId("enabled-scope")
+	enabledScope2 := permissionscope.NewGenerateId("enabled-scope-2")
+	disabledScope := permissionscope.NewGenerateId("disabled-scope")
+	disabledScope.IsEnabled = ptr.Bool(false)
+
+	scopes := []msgraph.PermissionScope{
+		enabledScope,
+		enabledScope2,
+		disabledScope,
+	}
+	application := util.EmptyApplication().
+		PermissionScopes(scopes).
+		Build()
+
+	desired := permissionscope.RemoveDisabled(*application)
+	assert.Len(t, desired, 2)
+	assert.Contains(t, desired, enabledScope)
+	assert.Contains(t, desired, enabledScope2)
+	assert.NotContains(t, desired, disabledScope)
 }

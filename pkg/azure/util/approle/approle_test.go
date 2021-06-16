@@ -8,7 +8,9 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/azure/util/approle"
+	"github.com/nais/azureator/pkg/azure/util/permissions"
 )
 
 func TestNew(t *testing.T) {
@@ -73,4 +75,36 @@ func TestEnsureDefaultAppRoleIsEnabled(t *testing.T) {
 	for _, role := range actual {
 		assert.True(t, *role.IsEnabled)
 	}
+}
+
+func TestFromPermission(t *testing.T) {
+	permission := permissions.NewGenerateIdEnabled("role")
+	role := approle.FromPermission(permission)
+
+	assert.Equal(t, "role", *role.Description)
+	assert.Equal(t, "role", *role.DisplayName)
+	assert.Equal(t, "role", *role.Value)
+	assert.Equal(t, permission.ID, *role.ID)
+}
+
+func TestRemoveDisabled(t *testing.T) {
+	enabledRole := approle.NewGenerateId("enabled-role")
+	enabledRole2 := approle.NewGenerateId("enabled-role-2")
+	disabledRole := approle.NewGenerateId("disabled-role")
+	disabledRole.IsEnabled = ptr.Bool(false)
+
+	roles := []msgraph.AppRole{
+		enabledRole,
+		enabledRole2,
+		disabledRole,
+	}
+	application := util.EmptyApplication().
+		AppRoles(roles).
+		Build()
+
+	desired := approle.RemoveDisabled(*application)
+	assert.Len(t, desired, 2)
+	assert.Contains(t, desired, enabledRole)
+	assert.Contains(t, desired, enabledRole2)
+	assert.NotContains(t, desired, disabledRole)
 }

@@ -340,6 +340,9 @@ func (c Client) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
 	//	- we _CANNOT delete a disabled PermissionScope that has been granted to any pre-authorized app
 	// 	- we _CAN_ however delete a disabled AppRole _without_ removing the associated approleassignments first...
 	//	(however it appears to clog up the list of granted Permissions in the Enterprise Apps overview)
+	if err := c.Application().RemoveDisabledPermissions(tx, *app); err != nil {
+		return nil, err
+	}
 
 	return &azure.ApplicationResult{
 		ClientId:           clientId,

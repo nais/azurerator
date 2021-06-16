@@ -66,6 +66,7 @@ type Application interface {
 	GetByClientId(ctx context.Context, id ClientId) (msgraph.Application, error)
 	Patch(ctx context.Context, id ObjectId, application interface{}) error
 	Register(tx Transaction) (*msgraph.Application, error)
+	RemoveDisabledPermissions(tx Transaction, application msgraph.Application) error
 	Update(tx Transaction) (*msgraph.Application, error)
 }
 
