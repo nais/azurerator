@@ -50,3 +50,19 @@ func DefaultScope() msgraph.PermissionScope {
 func FromPermission(permission permissions.Permission) msgraph.PermissionScope {
 	return New(permission.ID, permission.Name)
 }
+
+func RemoveDisabled(application msgraph.Application) []msgraph.PermissionScope {
+	desired := make([]msgraph.PermissionScope, 0)
+
+	if application.API == nil {
+		return desired
+	}
+
+	for _, scope := range application.API.OAuth2PermissionScopes {
+		if *scope.IsEnabled {
+			desired = append(desired, scope)
+		}
+	}
+
+	return desired
+}

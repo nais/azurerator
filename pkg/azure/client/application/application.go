@@ -11,7 +11,9 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/azure/util/approle"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
+	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 )
 
 // Application tags
@@ -163,6 +165,23 @@ func (a Application) GetByClientId(ctx context.Context, id azure.ClientId) (msgr
 		return msgraph.Application{}, fmt.Errorf("fetching application with clientId '%s': %w", id, err)
 	}
 	return *application, nil
+}
+
+func (a Application) RemoveDisabledPermissions(tx azure.Transaction, application msgraph.Application) error {
+	objectId := tx.Instance.GetObjectId()
+
+	scopes := permissionscope.RemoveDisabled(application)
+	roles := approle.RemoveDisabled(application)
+
+	patchedApp := util.EmptyApplication().
+		PermissionScopes(scopes).
+		AppRoles(roles)
+
+	if err := a.Patch(tx.Ctx, objectId, patchedApp); err != nil {
+		return fmt.Errorf("removing disabled permissions: %w", err)
+	}
+
+	return nil
 }
 
 func (a Application) getAll(ctx context.Context, filters ...azure.Filter) ([]msgraph.Application, error) {

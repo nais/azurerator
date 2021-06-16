@@ -40,3 +40,15 @@ func EnsureDefaultAppRoleIsEnabled(scopes []msgraph.AppRole) []msgraph.AppRole {
 func FromPermission(permission permissions.Permission) msgraph.AppRole {
 	return New(permission.ID, permission.Name)
 }
+
+func RemoveDisabled(application msgraph.Application) []msgraph.AppRole {
+	desired := make([]msgraph.AppRole, 0)
+
+	for _, role := range application.AppRoles {
+		if *role.IsEnabled {
+			desired = append(desired, role)
+		}
+	}
+
+	return desired
+}
