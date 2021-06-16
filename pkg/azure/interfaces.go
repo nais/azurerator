@@ -8,7 +8,9 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/nais/azureator/pkg/azure/util/approle"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
+	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/util/crypto"
 )
@@ -71,8 +73,8 @@ type Application interface {
 }
 
 type AppRoles interface {
-	DescribeCreate(desired permissions.Permissions) []msgraph.AppRole
-	DescribeUpdate(desired permissions.Permissions, existing []msgraph.AppRole) []msgraph.AppRole
+	DescribeCreate(desired permissions.Permissions) approle.CreateResult
+	DescribeUpdate(desired permissions.Permissions, existing []msgraph.AppRole) approle.UpdateResult
 }
 
 type IdentifierUri interface {
@@ -80,8 +82,8 @@ type IdentifierUri interface {
 }
 
 type OAuth2PermissionScope interface {
-	DescribeCreate(desired permissions.Permissions) []msgraph.PermissionScope
-	DescribeUpdate(desired permissions.Permissions, existing []msgraph.PermissionScope) []msgraph.PermissionScope
+	DescribeCreate(desired permissions.Permissions) permissionscope.CreateResult
+	DescribeUpdate(desired permissions.Permissions, existing []msgraph.PermissionScope) permissionscope.UpdateResult
 }
 
 type ApplicationOwners interface {
