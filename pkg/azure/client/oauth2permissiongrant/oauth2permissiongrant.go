@@ -7,6 +7,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 )
 
@@ -18,7 +19,7 @@ func NewOAuth2PermissionGrant(runtimeClient azure.RuntimeClient) azure.OAuth2Per
 	return oAuth2PermissionGrant{RuntimeClient: runtimeClient}
 }
 
-func (o oAuth2PermissionGrant) Process(tx azure.Transaction) error {
+func (o oAuth2PermissionGrant) Process(tx transaction.Transaction) error {
 	exists, err := o.exists(tx)
 	if err != nil {
 		return err
@@ -36,7 +37,7 @@ func (o oAuth2PermissionGrant) Process(tx azure.Transaction) error {
 	return nil
 }
 
-func (o oAuth2PermissionGrant) exists(tx azure.Transaction) (bool, error) {
+func (o oAuth2PermissionGrant) exists(tx transaction.Transaction) (bool, error) {
 	// For some odd reason Graph has defined 'clientId' in the oAuth2PermissionGrant resource to be the _objectId_
 	// for the ServicePrincipal when referring to the id of the ServicePrincipal granted consent...
 	clientId := tx.Instance.GetServicePrincipalId()

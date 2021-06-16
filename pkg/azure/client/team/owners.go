@@ -7,6 +7,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/transaction"
 )
 
 type owners struct {
@@ -17,7 +18,7 @@ func newOwners(client azure.RuntimeClient) azure.TeamOwners {
 	return owners{RuntimeClient: client}
 }
 
-func (o owners) Process(tx azure.Transaction) error {
+func (o owners) Process(tx transaction.Transaction) error {
 	owners, err := o.get(tx)
 	if err != nil {
 		return err
@@ -33,7 +34,7 @@ func (o owners) Process(tx azure.Transaction) error {
 	return nil
 }
 
-func (o owners) get(tx azure.Transaction) ([]msgraph.DirectoryObject, error) {
+func (o owners) get(tx transaction.Transaction) ([]msgraph.DirectoryObject, error) {
 	owners := make([]msgraph.DirectoryObject, 0)
 
 	group, err := o.getTeamGroup(tx)
@@ -53,7 +54,7 @@ func (o owners) get(tx azure.Transaction) ([]msgraph.DirectoryObject, error) {
 	return owners, nil
 }
 
-func (o owners) getTeamGroup(tx azure.Transaction) (*msgraph.AppRoleAssignment, error) {
+func (o owners) getTeamGroup(tx transaction.Transaction) (*msgraph.AppRoleAssignment, error) {
 	var group *msgraph.AppRoleAssignment
 	groups, err := o.Team().Groups().Get(tx.Ctx)
 	if err != nil {

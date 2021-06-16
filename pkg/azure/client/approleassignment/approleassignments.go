@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/resource"
 )
 
 type appRoleAssignments struct {
@@ -39,7 +40,7 @@ func (a appRoleAssignments) GetAllGroups(ctx context.Context) ([]msgraph.AppRole
 	if err != nil {
 		return nil, err
 	}
-	groups := filterByType(assignments, azure.PrincipalTypeGroup)
+	groups := filterByType(assignments, resource.PrincipalTypeGroup)
 	return groups, nil
 }
 
@@ -48,7 +49,7 @@ func (a appRoleAssignments) GetAllServicePrincipals(ctx context.Context) ([]msgr
 	if err != nil {
 		return nil, err
 	}
-	servicePrincipals := filterByType(assignments, azure.PrincipalTypeServicePrincipal)
+	servicePrincipals := filterByType(assignments, resource.PrincipalTypeServicePrincipal)
 	return servicePrincipals, nil
 }
 
@@ -64,10 +65,10 @@ func (a appRoleAssignments) LogFields() log.Fields {
 	return a.logFields
 }
 
-func filterByType(assignments []msgraph.AppRoleAssignment, principalType azure.PrincipalType) []msgraph.AppRoleAssignment {
+func filterByType(assignments []msgraph.AppRoleAssignment, principalType resource.PrincipalType) []msgraph.AppRoleAssignment {
 	filtered := make([]msgraph.AppRoleAssignment, 0)
 	for _, assignment := range assignments {
-		if azure.PrincipalType(*assignment.PrincipalType) == principalType {
+		if resource.PrincipalType(*assignment.PrincipalType) == principalType {
 			filtered = append(filtered, assignment)
 		}
 	}

@@ -10,8 +10,10 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/azure/util/approle"
+	"github.com/nais/azureator/pkg/azure/util/groupmembershipclaim"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 )
@@ -54,19 +56,19 @@ func (a Application) requiredResourceAccess() requiredResourceAccess {
 	return newRequiredResourceAccess(a)
 }
 
-func (a Application) Exists(tx azure.Transaction) (*msgraph.Application, bool, error) {
+func (a Application) Exists(tx transaction.Transaction) (*msgraph.Application, bool, error) {
 	name := kubernetes.UniformResourceName(&tx.Instance)
 	return a.ExistsByFilter(tx.Ctx, util.FilterByName(name))
 }
 
-func (a Application) Delete(tx azure.Transaction) error {
+func (a Application) Delete(tx transaction.Transaction) error {
 	if err := a.GraphClient().Applications().ID(tx.Instance.GetObjectId()).Request().Delete(tx.Ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	return nil
 }
 
-func (a Application) Register(tx azure.Transaction) (*msgraph.Application, error) {
+func (a Application) Register(tx transaction.Transaction) (*msgraph.Application, error) {
 	access := []msgraph.RequiredResourceAccess{
 		a.requiredResourceAccess().microsoftGraph(),
 	}
@@ -78,7 +80,7 @@ func (a Application) Register(tx azure.Transaction) (*msgraph.Application, error
 
 	req := util.Application(a.defaultTemplate(tx.Instance)).
 		ResourceAccess(access).
-		GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup).
+		GroupMembershipClaims(groupmembershipclaim.GroupMembershipClaimApplicationGroup).
 		AppRoles(roles.GetResult()).
 		RedirectUris(util.GetReplyUrlsStringSlice(tx.Instance)).
 		PermissionScopes(scopes.GetResult()).
@@ -92,7 +94,7 @@ func (a Application) Register(tx azure.Transaction) (*msgraph.Application, error
 	return app, nil
 }
 
-func (a Application) Update(tx azure.Transaction) (*msgraph.Application, error) {
+func (a Application) Update(tx transaction.Transaction) (*msgraph.Application, error) {
 	objectId := tx.Instance.GetObjectId()
 	clientId := tx.Instance.GetClientId()
 	identifierUris := util.IdentifierUris(tx)
@@ -121,7 +123,7 @@ func (a Application) Update(tx azure.Transaction) (*msgraph.Application, error) 
 
 	// todo: remove 'groupClaimsIsDefined' predicate after grace period
 	if a.Config().Features.GroupsAssignment.Enabled && groupClaimsIsDefined {
-		builder.GroupMembershipClaims(azure.GroupMembershipClaimApplicationGroup)
+		builder.GroupMembershipClaims(groupmembershipclaim.GroupMembershipClaimApplicationGroup)
 	}
 
 	app := builder.Build()
@@ -151,7 +153,7 @@ func (a Application) ExistsByFilter(ctx context.Context, filter azure.Filter) (*
 	}
 }
 
-func (a Application) Get(tx azure.Transaction) (msgraph.Application, error) {
+func (a Application) Get(tx transaction.Transaction) (msgraph.Application, error) {
 	return a.GetByName(tx.Ctx, kubernetes.UniformResourceName(&tx.Instance))
 }
 
@@ -171,7 +173,7 @@ func (a Application) GetByClientId(ctx context.Context, id azure.ClientId) (msgr
 	return *application, nil
 }
 
-func (a Application) RemoveDisabledPermissions(tx azure.Transaction, application msgraph.Application) error {
+func (a Application) RemoveDisabledPermissions(tx transaction.Transaction, application msgraph.Application) error {
 	objectId := tx.Instance.GetObjectId()
 
 	scopes := permissionscope.RemoveDisabled(application)

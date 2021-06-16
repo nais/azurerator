@@ -11,8 +11,9 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/fake"
+	"github.com/nais/azureator/pkg/azure/resource"
+	"github.com/nais/azureator/pkg/azure/result"
 )
 
 const (
@@ -36,7 +37,7 @@ func TestSecretData(t *testing.T) {
 			},
 		},
 	}
-	azureApp := fake.AzureApplicationResult(*app, azure.OperationResultCreated)
+	azureApp := fake.AzureApplicationResult(*app, result.OperationCreated)
 	azureOpenIdConfig := fake.AzureOpenIdConfig()
 	azureCredentialsSet := fake.AzureCredentialsSet(*app)
 
@@ -104,7 +105,7 @@ func TestSecretData(t *testing.T) {
 		})
 
 		t.Run("Secret Data should contain list of PreAuthorizedApps", func(t *testing.T) {
-			var actual []azure.Resource
+			var actual []resource.Resource
 			err := json.Unmarshal([]byte(stringData[keys.PreAuthApps]), &actual)
 			assert.NoError(t, err)
 			assert.Len(t, actual, 1)

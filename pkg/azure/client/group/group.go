@@ -10,6 +10,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/resource"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util/approle"
 )
 
@@ -29,7 +31,7 @@ func (g group) GetOwnersFor(ctx context.Context, groupId string) ([]msgraph.Dire
 	return owners, nil
 }
 
-func (g group) Process(tx azure.Transaction) error {
+func (g group) Process(tx transaction.Transaction) error {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
 	groups, err := g.mapGroupClaimsToResources(tx)
@@ -54,7 +56,7 @@ func (g group) Process(tx azure.Transaction) error {
 	return nil
 }
 
-func (g group) getById(tx azure.Transaction, id azure.ObjectId) (bool, *msgraph.Group, error) {
+func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *msgraph.Group, error) {
 	r := g.GraphClient().Groups().ID(id).Request()
 
 	req, err := g.toGetRequestWithContext(tx.Ctx, r)
@@ -78,8 +80,8 @@ func (g group) getById(tx azure.Transaction, id azure.ObjectId) (bool, *msgraph.
 	return exists, group, nil
 }
 
-func (g group) mapGroupClaimsToResources(tx azure.Transaction) ([]azure.Resource, error) {
-	resources := make([]azure.Resource, 0)
+func (g group) mapGroupClaimsToResources(tx transaction.Transaction) ([]resource.Resource, error) {
+	resources := make([]resource.Resource, 0)
 
 	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0 {
 		return resources, nil
@@ -102,7 +104,7 @@ func (g group) mapGroupClaimsToResources(tx azure.Transaction) ([]azure.Resource
 	return resources, nil
 }
 
-func (g group) mapAllUserGroupToResources(tx azure.Transaction) ([]azure.Resource, error) {
+func (g group) mapAllUserGroupToResources(tx transaction.Transaction) ([]resource.Resource, error) {
 	allUsersGroupID := g.Config().Features.GroupsAssignment.AllUsersGroupId
 
 	exists, groupResult, err := g.getById(tx, allUsersGroupID)
@@ -114,7 +116,7 @@ func (g group) mapAllUserGroupToResources(tx azure.Transaction) ([]azure.Resourc
 		return nil, fmt.Errorf("all-users group '%s' does not exist: %w", allUsersGroupID, err)
 	}
 
-	return []azure.Resource{g.mapToResource(*groupResult)}, nil
+	return []resource.Resource{g.mapToResource(*groupResult)}, nil
 }
 
 func (g group) toGetRequestWithContext(ctx context.Context, r *msgraph.GroupRequest) (*http.Request, error) {
@@ -151,11 +153,11 @@ func (g group) decodeJsonResponseForGetRequest(res *http.Response, obj interface
 	}
 }
 
-func (g group) mapToResource(group msgraph.Group) azure.Resource {
-	return azure.Resource{
+func (g group) mapToResource(group msgraph.Group) resource.Resource {
+	return resource.Resource{
 		Name:          *group.DisplayName,
 		ClientId:      "",
 		ObjectId:      *group.ID,
-		PrincipalType: azure.PrincipalTypeGroup,
+		PrincipalType: resource.PrincipalTypeGroup,
 	}
 }

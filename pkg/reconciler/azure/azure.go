@@ -11,6 +11,8 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/reconciler"
@@ -37,8 +39,8 @@ func NewAzureReconciler(
 	}
 }
 
-func (a azureReconciler) Process(tx reconciler.Transaction) (*azure.ApplicationResult, error) {
-	var applicationResult *azure.ApplicationResult
+func (a azureReconciler) Process(tx reconciler.Transaction) (*result.Application, error) {
+	var applicationResult *result.Application
 
 	exists, err := a.Exists(tx)
 	if err != nil {
@@ -63,7 +65,7 @@ func (a azureReconciler) Process(tx reconciler.Transaction) (*azure.ApplicationR
 	return applicationResult, nil
 }
 
-func (a azureReconciler) create(tx reconciler.Transaction) (*azure.ApplicationResult, error) {
+func (a azureReconciler) create(tx reconciler.Transaction) (*result.Application, error) {
 	tx.Logger.Info("Azure application not found, registering...")
 
 	applicationResult, err := a.azureClient.Create(tx.ToAzureTx())
@@ -81,7 +83,7 @@ func (a azureReconciler) create(tx reconciler.Transaction) (*azure.ApplicationRe
 	return applicationResult, nil
 }
 
-func (a azureReconciler) update(tx reconciler.Transaction) (*azure.ApplicationResult, error) {
+func (a azureReconciler) update(tx reconciler.Transaction) (*result.Application, error) {
 	tx.Logger.Info("Azure application already exists, updating...")
 
 	applicationResult, err := a.azureClient.Update(tx.ToAzureTx())
@@ -95,27 +97,27 @@ func (a azureReconciler) update(tx reconciler.Transaction) (*azure.ApplicationRe
 	return applicationResult, nil
 }
 
-func (a azureReconciler) notModified(tx reconciler.Transaction) (*azure.ApplicationResult, error) {
+func (a azureReconciler) notModified(tx reconciler.Transaction) (*result.Application, error) {
 	apps, err := a.azureClient.GetPreAuthorizedApps(tx.ToAzureTx())
 	if err != nil {
 		return nil, fmt.Errorf("fetching pre-authorized apps: %w", err)
 	}
-	return &azure.ApplicationResult{
+	return &result.Application{
 		ClientId:           tx.Instance.Status.ClientId,
 		ObjectId:           tx.Instance.Status.ObjectId,
 		ServicePrincipalId: tx.Instance.Status.ServicePrincipalId,
 		PreAuthorizedApps:  *apps,
 		Tenant:             a.config.Azure.Tenant.Id,
-		Result:             azure.OperationResultNotModified,
+		Result:             result.OperationNotModified,
 	}, nil
 }
 
-func (a azureReconciler) AddCredentials(tx reconciler.Transaction, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error) {
+func (a azureReconciler) AddCredentials(tx reconciler.Transaction, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
 	tx.Logger.Info("adding credentials for Azure application...")
 
 	credentialsSet, err := a.azureClient.AddCredentials(tx.ToAzureTx())
 	if err != nil {
-		return nil, azure.KeyIdsInUse{}, err
+		return nil, credentials.KeyIdsInUse{}, err
 	}
 
 	tx.Logger.Info("successfully added credentials for Azure application")
@@ -125,12 +127,12 @@ func (a azureReconciler) AddCredentials(tx reconciler.Transaction, keyIdsInUse a
 	return &credentialsSet, keyIdsInUse, nil
 }
 
-func (a azureReconciler) RotateCredentials(tx reconciler.Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error) {
+func (a azureReconciler) RotateCredentials(tx reconciler.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
 	tx.Logger.Info("rotating credentials for Azure application...")
 
 	credentialsSet, err := a.azureClient.RotateCredentials(tx.ToAzureTx(), existing, keyIdsInUse)
 	if err != nil {
-		return nil, azure.KeyIdsInUse{}, err
+		return nil, credentials.KeyIdsInUse{}, err
 	}
 
 	tx.Logger.Info("successfully rotated credentials for Azure application")
@@ -247,7 +249,7 @@ func (a azureReconciler) ProcessOrphaned(tx reconciler.Transaction) error {
 	return nil
 }
 
-func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx reconciler.Transaction, preAuthApps azure.PreAuthorizedApps) {
+func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx reconciler.Transaction, preAuthApps result.PreAuthorizedApps) {
 	unassigned := make([]v1.AzureAdPreAuthorizedApp, 0)
 	assigned := make([]v1.AzureAdPreAuthorizedApp, 0)
 

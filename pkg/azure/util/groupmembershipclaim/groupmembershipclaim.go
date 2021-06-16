@@ -1,12 +1,4 @@
-package azure
-
-type OperationResult int
-
-const (
-	OperationResultCreated OperationResult = iota
-	OperationResultUpdated
-	OperationResultNotModified
-)
+package groupmembershipclaim
 
 // GroupMembershipClaim is the type of groups to emit for tokens returned to the Application from Azure AD
 type GroupMembershipClaim string
@@ -18,12 +10,4 @@ const (
 	GroupMembershipClaimApplicationGroup GroupMembershipClaim = "ApplicationGroup"
 	// No groups are returned.
 	GroupMembershipClaimNone GroupMembershipClaim = "None"
-)
-
-type PrincipalType string
-
-const (
-	PrincipalTypeGroup            PrincipalType = "Group"
-	PrincipalTypeServicePrincipal PrincipalType = "ServicePrincipal"
-	PrincipalTypeUser             PrincipalType = "User"
 )

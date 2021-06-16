@@ -10,6 +10,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 	strings2 "github.com/nais/azureator/pkg/util/strings"
 )
@@ -22,7 +24,7 @@ func NewPasswordCredential(runtimeClient azure.RuntimeClient) azure.PasswordCred
 	return passwordCredential{RuntimeClient: runtimeClient}
 }
 
-func (p passwordCredential) Add(tx azure.Transaction) (msgraph.PasswordCredential, error) {
+func (p passwordCredential) Add(tx transaction.Transaction) (msgraph.PasswordCredential, error) {
 	objectId := tx.Instance.GetObjectId()
 
 	requestParameter := p.toAddRequest()
@@ -37,7 +39,7 @@ func (p passwordCredential) Add(tx azure.Transaction) (msgraph.PasswordCredentia
 	return *response, nil
 }
 
-func (p passwordCredential) Rotate(tx azure.Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*msgraph.PasswordCredential, error) {
+func (p passwordCredential) Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.PasswordCredential, error) {
 	app, err := p.Application().Get(tx)
 	if err != nil {
 		return nil, err
@@ -67,7 +69,7 @@ func (p passwordCredential) Rotate(tx azure.Transaction, existing azure.Credenti
 	return &newCred, nil
 }
 
-func (p passwordCredential) Purge(tx azure.Transaction) error {
+func (p passwordCredential) Purge(tx transaction.Transaction) error {
 	app, err := p.Application().Get(tx)
 	if err != nil {
 		return err
@@ -82,7 +84,7 @@ func (p passwordCredential) Purge(tx azure.Transaction) error {
 	return nil
 }
 
-func (p passwordCredential) Validate(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+func (p passwordCredential) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
 	app, err := p.Application().Get(tx)
 	if err != nil {
 		return false, err
@@ -102,7 +104,7 @@ func (p passwordCredential) Validate(tx azure.Transaction, existing azure.Creden
 	return currentIsValid && nextIsValid, nil
 }
 
-func (p passwordCredential) remove(tx azure.Transaction, id azure.ClientId, keyId *msgraph.UUID) error {
+func (p passwordCredential) remove(tx transaction.Transaction, id azure.ClientId, keyId *msgraph.UUID) error {
 	req := p.toRemoveRequest(keyId)
 	if err := p.GraphClient().Applications().ID(id).RemovePassword(req).Request().Post(tx.Ctx); err != nil {
 		// Microsoft returns HTTP 500 sometimes after adding new credentials due to concurrent modifications; we'll ignore this on our end for now

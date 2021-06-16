@@ -8,6 +8,7 @@ import (
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/transaction"
 )
 
 func GetReplyUrlsStringSlice(resource v1.AzureAdApplication) []string {
@@ -26,7 +27,7 @@ func IdentifierUriHumanReadable(spec v1.AzureAdApplication) string {
 	return fmt.Sprintf("api://%s.%s.%s", spec.GetClusterName(), spec.GetNamespace(), spec.GetName())
 }
 
-func IdentifierUris(tx azure.Transaction) azure.IdentifierUris {
+func IdentifierUris(tx transaction.Transaction) azure.IdentifierUris {
 	return []string{
 		IdentifierUriClientId(tx.Instance.GetClientId()),
 		IdentifierUriHumanReadable(tx.Instance),

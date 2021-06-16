@@ -5,7 +5,8 @@ import (
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 
-	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/result"
 )
 
 type AzureAdApplication interface {
@@ -21,11 +22,11 @@ type AzureAdApplication interface {
 type Azure interface {
 	Exists(tx Transaction) (bool, error)
 	Delete(tx Transaction) error
-	Process(tx Transaction) (*azure.ApplicationResult, error)
+	Process(tx Transaction) (*result.Application, error)
 	ProcessOrphaned(tx Transaction) error
 
-	AddCredentials(tx Transaction, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error)
-	RotateCredentials(tx Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*azure.CredentialsSet, azure.KeyIdsInUse, error)
+	AddCredentials(tx Transaction, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error)
+	RotateCredentials(tx Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error)
 	PurgeCredentials(tx Transaction) error
 	ValidateCredentials(tx Transaction) (bool, error)
 }
@@ -40,5 +41,5 @@ type Namespace interface {
 
 type Secrets interface {
 	Prepare(ctx context.Context, instance *v1.AzureAdApplication) (*TransactionSecrets, error)
-	Process(tx Transaction, applicationResult *azure.ApplicationResult) error
+	Process(tx Transaction, applicationResult *result.Application) error
 }

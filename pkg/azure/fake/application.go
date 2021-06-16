@@ -10,7 +10,9 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/resource"
+	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/util/crypto"
 )
@@ -28,24 +30,24 @@ func MsGraphApplication(instance v1.AzureAdApplication) msgraph.Application {
 	}
 }
 
-func AzureApplicationResult(instance v1.AzureAdApplication, result azure.OperationResult) azure.ApplicationResult {
+func AzureApplicationResult(instance v1.AzureAdApplication, operation result.Operation) result.Application {
 	objectId := getOrGenerate(instance.GetObjectId())
 	clientId := getOrGenerate(instance.GetClientId())
 	servicePrincipalId := getOrGenerate(instance.GetServicePrincipalId())
 
 	tenantId := uuid.New().String()
 
-	return azure.ApplicationResult{
+	return result.Application{
 		ClientId:           clientId,
 		ObjectId:           objectId,
 		ServicePrincipalId: servicePrincipalId,
 		PreAuthorizedApps:  mapToInternalPreAuthApps(instance.Spec.PreAuthorizedApplications),
 		Tenant:             tenantId,
-		Result:             result,
+		Result:             operation,
 	}
 }
 
-func AzureCredentialsSet(instance v1.AzureAdApplication) azure.CredentialsSet {
+func AzureCredentialsSet(instance v1.AzureAdApplication) credentials.Set {
 	currJwk, err := crypto.GenerateJwk(instance)
 	if err != nil {
 		panic(err)
@@ -56,23 +58,23 @@ func AzureCredentialsSet(instance v1.AzureAdApplication) azure.CredentialsSet {
 		panic(err)
 	}
 
-	return azure.CredentialsSet{
-		Current: azure.Credentials{
-			Certificate: azure.Certificate{
+	return credentials.Set{
+		Current: credentials.Credentials{
+			Certificate: credentials.Certificate{
 				KeyId: uuid.New().String(),
 				Jwk:   currJwk,
 			},
-			Password: azure.Password{
+			Password: credentials.Password{
 				KeyId:        uuid.New().String(),
 				ClientSecret: uuid.New().String(),
 			},
 		},
-		Next: azure.Credentials{
-			Certificate: azure.Certificate{
+		Next: credentials.Credentials{
+			Certificate: credentials.Certificate{
 				KeyId: uuid.New().String(),
 				Jwk:   nextJwk,
 			},
-			Password: azure.Password{
+			Password: credentials.Password{
 				KeyId:        uuid.New().String(),
 				ClientSecret: uuid.New().String(),
 			},
@@ -80,14 +82,14 @@ func AzureCredentialsSet(instance v1.AzureAdApplication) azure.CredentialsSet {
 	}
 }
 
-func AzurePreAuthorizedApps(instance v1.AzureAdApplication) *azure.PreAuthorizedApps {
+func AzurePreAuthorizedApps(instance v1.AzureAdApplication) *result.PreAuthorizedApps {
 	preAuthApps := mapToInternalPreAuthApps(instance.Spec.PreAuthorizedApplications)
 	return &preAuthApps
 }
 
-func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) azure.PreAuthorizedApps {
-	valid := make([]azure.Resource, 0)
-	invalid := make([]azure.Resource, 0)
+func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) result.PreAuthorizedApps {
+	valid := make([]resource.Resource, 0)
+	invalid := make([]resource.Resource, 0)
 
 	for _, app := range apps {
 		if strings.Contains(customresources.GetUniqueName(app), "invalid") {
@@ -97,13 +99,13 @@ func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) azure.PreAuthorizedApp
 		}
 	}
 
-	return azure.PreAuthorizedApps{
+	return result.PreAuthorizedApps{
 		Valid:   valid,
 		Invalid: invalid,
 	}
 }
 
-func mapToInternalPreAuthApp(app v1.AccessPolicyRule) azure.Resource {
+func mapToInternalPreAuthApp(app v1.AccessPolicyRule) resource.Resource {
 	clientId := uuid.New().String()
 	objectId := uuid.New().String()
 	name := getOrGenerate(kubernetes.UniformResourceName(&metav1.ObjectMeta{
@@ -111,11 +113,11 @@ func mapToInternalPreAuthApp(app v1.AccessPolicyRule) azure.Resource {
 		Namespace:   app.Namespace,
 		ClusterName: app.Cluster,
 	}))
-	return azure.Resource{
+	return resource.Resource{
 		Name:             name,
 		ClientId:         clientId,
 		ObjectId:         objectId,
-		PrincipalType:    azure.PrincipalTypeServicePrincipal,
+		PrincipalType:    resource.PrincipalTypeServicePrincipal,
 		AccessPolicyRule: app,
 	}
 }

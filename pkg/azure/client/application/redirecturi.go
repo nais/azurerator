@@ -6,6 +6,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 )
 
@@ -24,7 +25,7 @@ func newRedirectUri(application azure.Application) azure.RedirectUri {
 	return redirectUri{Application: application}
 }
 
-func (r redirectUri) Update(tx azure.Transaction) error {
+func (r redirectUri) Update(tx transaction.Transaction) error {
 	objectId := tx.Instance.GetObjectId()
 
 	app := &struct {

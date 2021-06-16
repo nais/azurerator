@@ -21,6 +21,9 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/preauthorizedapp"
 	"github.com/nais/azureator/pkg/azure/client/serviceprincipal"
 	"github.com/nais/azureator/pkg/azure/client/team"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/result"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/config"
 )
@@ -120,7 +123,7 @@ func New(ctx context.Context, cfg *config.AzureConfig) (azure.Client, error) {
 }
 
 // Create registers a new AAD application with the desired configuration
-func (c Client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
+func (c Client) Create(tx transaction.Transaction) (*result.Application, error) {
 	app, err := c.Application().Register(tx)
 	if err != nil {
 		return nil, fmt.Errorf("registering application resource: %w", err)
@@ -150,19 +153,19 @@ func (c Client) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		return nil, err
 	}
 
-	return &azure.ApplicationResult{
+	return &result.Application{
 		ClientId:           *app.AppID,
 		ObjectId:           *app.ID,
 		ServicePrincipalId: *servicePrincipal.ID,
 		Permissions:        actualPermissions,
 		PreAuthorizedApps:  *preAuthApps,
 		Tenant:             c.config.Tenant.Id,
-		Result:             azure.OperationResultCreated,
+		Result:             result.OperationCreated,
 	}, nil
 }
 
 // Delete deletes the specified AAD application.
-func (c Client) Delete(tx azure.Transaction) error {
+func (c Client) Delete(tx transaction.Transaction) error {
 	_, exists, err := c.Exists(tx)
 	if err != nil {
 		return err
@@ -174,17 +177,17 @@ func (c Client) Delete(tx azure.Transaction) error {
 }
 
 // Exists returns an indication of whether the application exists in AAD or not
-func (c Client) Exists(tx azure.Transaction) (*msgraph.Application, bool, error) {
+func (c Client) Exists(tx transaction.Transaction) (*msgraph.Application, bool, error) {
 	return c.Application().Exists(tx)
 }
 
 // Get returns a Graph API Application entity, which represents an Application in AAD
-func (c Client) Get(tx azure.Transaction) (msgraph.Application, error) {
+func (c Client) Get(tx transaction.Transaction) (msgraph.Application, error) {
 	return c.Application().Get(tx)
 }
 
 // GetServicePrincipal returns the application's associated Graph ServicePrincipal entity, or registers and returns one if none exist for the application.
-func (c Client) GetServicePrincipal(tx azure.Transaction) (msgraph.ServicePrincipal, error) {
+func (c Client) GetServicePrincipal(tx transaction.Transaction) (msgraph.ServicePrincipal, error) {
 	clientId := tx.Instance.GetClientId()
 	exists, sp, err := c.ServicePrincipal().Exists(tx.Ctx, clientId)
 	if err != nil {
@@ -202,51 +205,51 @@ func (c Client) GetServicePrincipal(tx azure.Transaction) (msgraph.ServicePrinci
 
 // GetPreAuthorizedApps transforms a list of desired pre-authorized applications in the spec to lists of valid and invalid
 // Azure applications, where the validity indicates whether a desired application is pre-authorized or not.
-func (c Client) GetPreAuthorizedApps(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+func (c Client) GetPreAuthorizedApps(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
 	return c.PreAuthApps().Get(tx)
 }
 
 // AddCredentials adds credentials for an existing AAD application
-func (c Client) AddCredentials(tx azure.Transaction) (azure.CredentialsSet, error) {
+func (c Client) AddCredentials(tx transaction.Transaction) (credentials.Set, error) {
 	// sleep to prevent concurrent modification error from Microsoft
 	time.Sleep(delayIntervalBetweenModifications)
 
 	currPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
-		return azure.CredentialsSet{}, fmt.Errorf("adding current password credential: %w", err)
+		return credentials.Set{}, fmt.Errorf("adding current password credential: %w", err)
 	}
 
 	time.Sleep(delayIntervalBetweenModifications)
 
 	nextPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
-		return azure.CredentialsSet{}, fmt.Errorf("adding next password credential: %w", err)
+		return credentials.Set{}, fmt.Errorf("adding next password credential: %w", err)
 	}
 
 	time.Sleep(delayIntervalBetweenModifications)
 
 	keyCredentialSet, err := c.KeyCredential().Add(tx)
 	if err != nil {
-		return azure.CredentialsSet{}, fmt.Errorf("adding key credential set: %w", err)
+		return credentials.Set{}, fmt.Errorf("adding key credential set: %w", err)
 	}
 
-	return azure.CredentialsSet{
-		Current: azure.Credentials{
-			Certificate: azure.Certificate{
+	return credentials.Set{
+		Current: credentials.Credentials{
+			Certificate: credentials.Certificate{
 				KeyId: string(*keyCredentialSet.Current.KeyCredential.KeyID),
 				Jwk:   keyCredentialSet.Current.Jwk,
 			},
-			Password: azure.Password{
+			Password: credentials.Password{
 				KeyId:        string(*currPasswordCredential.KeyID),
 				ClientSecret: *currPasswordCredential.SecretText,
 			},
 		},
-		Next: azure.Credentials{
-			Certificate: azure.Certificate{
+		Next: credentials.Credentials{
+			Certificate: credentials.Certificate{
 				KeyId: string(*keyCredentialSet.Next.KeyCredential.KeyID),
 				Jwk:   keyCredentialSet.Next.Jwk,
 			},
-			Password: azure.Password{
+			Password: credentials.Password{
 				KeyId:        string(*nextPasswordCredential.KeyID),
 				ClientSecret: *nextPasswordCredential.SecretText,
 			},
@@ -255,29 +258,29 @@ func (c Client) AddCredentials(tx azure.Transaction) (azure.CredentialsSet, erro
 }
 
 // RotateCredentials rotates credentials for an existing AAD application
-func (c Client) RotateCredentials(tx azure.Transaction, existing azure.CredentialsSet, inUse azure.KeyIdsInUse) (azure.CredentialsSet, error) {
+func (c Client) RotateCredentials(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error) {
 	time.Sleep(delayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
 
 	nextPasswordCredential, err := c.PasswordCredential().Rotate(tx, existing, inUse)
 	if err != nil {
-		return azure.CredentialsSet{}, fmt.Errorf("rotating password credential: %w", err)
+		return credentials.Set{}, fmt.Errorf("rotating password credential: %w", err)
 	}
 
 	time.Sleep(delayIntervalBetweenModifications)
 
 	nextKeyCredential, nextJwk, err := c.KeyCredential().Rotate(tx, existing, inUse)
 	if err != nil {
-		return azure.CredentialsSet{}, fmt.Errorf("rotating key credential: %w", err)
+		return credentials.Set{}, fmt.Errorf("rotating key credential: %w", err)
 	}
 
-	return azure.CredentialsSet{
+	return credentials.Set{
 		Current: existing.Next,
-		Next: azure.Credentials{
-			Certificate: azure.Certificate{
+		Next: credentials.Credentials{
+			Certificate: credentials.Certificate{
 				KeyId: string(*nextKeyCredential.KeyID),
 				Jwk:   *nextJwk,
 			},
-			Password: azure.Password{
+			Password: credentials.Password{
 				KeyId:        string(*nextPasswordCredential.KeyID),
 				ClientSecret: *nextPasswordCredential.SecretText,
 			},
@@ -286,7 +289,7 @@ func (c Client) RotateCredentials(tx azure.Transaction, existing azure.Credentia
 }
 
 // PurgeCredentials removes all credentials for the application in Azure AD.
-func (c Client) PurgeCredentials(tx azure.Transaction) error {
+func (c Client) PurgeCredentials(tx transaction.Transaction) error {
 	err := c.PasswordCredential().Purge(tx)
 	if err != nil {
 		return fmt.Errorf("purging password credentials: %w", err)
@@ -301,7 +304,7 @@ func (c Client) PurgeCredentials(tx azure.Transaction) error {
 }
 
 // ValidateCredentials validates the given credentials set against the actual state for the application in Azure AD.
-func (c Client) ValidateCredentials(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+func (c Client) ValidateCredentials(tx transaction.Transaction, existing credentials.Set) (bool, error) {
 	validPasswordCredentials, err := c.PasswordCredential().Validate(tx, existing)
 	if err != nil {
 		return false, fmt.Errorf("validating password credentials: %w", err)
@@ -316,7 +319,7 @@ func (c Client) ValidateCredentials(tx azure.Transaction, existing azure.Credent
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation
-func (c Client) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
+func (c Client) Update(tx transaction.Transaction) (*result.Application, error) {
 	clientId := tx.Instance.GetClientId()
 	objectId := tx.Instance.GetObjectId()
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
@@ -344,18 +347,18 @@ func (c Client) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
 		return nil, err
 	}
 
-	return &azure.ApplicationResult{
+	return &result.Application{
 		ClientId:           clientId,
 		ObjectId:           objectId,
 		ServicePrincipalId: servicePrincipalId,
 		Permissions:        actualPermissions,
 		PreAuthorizedApps:  *preAuthApps,
 		Tenant:             c.config.Tenant.Id,
-		Result:             azure.OperationResultUpdated,
+		Result:             result.OperationUpdated,
 	}, nil
 }
 
-func (c Client) process(tx azure.Transaction, permissions permissions.Permissions) (*azure.PreAuthorizedApps, error) {
+func (c Client) process(tx transaction.Transaction, permissions permissions.Permissions) (*result.PreAuthorizedApps, error) {
 	if err := c.OAuth2PermissionGrant().Process(tx); err != nil {
 		return nil, fmt.Errorf("processing oauth2 permission grants: %w", err)
 	}
