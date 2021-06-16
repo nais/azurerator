@@ -1,4 +1,4 @@
-package azure
+package resource
 
 import (
 	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
@@ -12,3 +12,11 @@ type Resource struct {
 	PrincipalType               PrincipalType `json:"-"`
 	nais_io_v1.AccessPolicyRule `json:"-"`
 }
+
+type PrincipalType string
+
+const (
+	PrincipalTypeGroup            PrincipalType = "Group"
+	PrincipalTypeServicePrincipal PrincipalType = "ServicePrincipal"
+	PrincipalTypeUser             PrincipalType = "User"
+)

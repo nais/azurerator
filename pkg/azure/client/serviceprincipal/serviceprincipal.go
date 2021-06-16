@@ -9,6 +9,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 )
 
@@ -32,7 +33,7 @@ func (s servicePrincipal) Policies() azure.ServicePrincipalPolicies {
 	return newPolicies(s.RuntimeClient)
 }
 
-func (s servicePrincipal) Register(tx azure.Transaction) (msgraph.ServicePrincipal, error) {
+func (s servicePrincipal) Register(tx transaction.Transaction) (msgraph.ServicePrincipal, error) {
 	clientId := tx.Instance.GetClientId()
 	request := &msgraph.ServicePrincipal{
 		AppID:                     &clientId,
@@ -59,15 +60,15 @@ func (s servicePrincipal) Exists(ctx context.Context, id azure.ClientId) (bool, 
 	return true, sps[0], nil
 }
 
-func (s servicePrincipal) SetAppRoleAssignmentRequired(tx azure.Transaction) error {
+func (s servicePrincipal) SetAppRoleAssignmentRequired(tx transaction.Transaction) error {
 	return s.setAppRoleAssignment(tx, true)
 }
 
-func (s servicePrincipal) SetAppRoleAssignmentNotRequired(tx azure.Transaction) error {
+func (s servicePrincipal) SetAppRoleAssignmentNotRequired(tx transaction.Transaction) error {
 	return s.setAppRoleAssignment(tx, false)
 }
 
-func (s servicePrincipal) update(tx azure.Transaction, request *msgraph.ServicePrincipal) error {
+func (s servicePrincipal) update(tx transaction.Transaction, request *msgraph.ServicePrincipal) error {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
 	if err := s.GraphClient().ServicePrincipals().ID(servicePrincipalId).Request().Update(tx.Ctx, request); err != nil {
@@ -76,7 +77,7 @@ func (s servicePrincipal) update(tx azure.Transaction, request *msgraph.ServiceP
 	return nil
 }
 
-func (s servicePrincipal) setAppRoleAssignment(tx azure.Transaction, required bool) error {
+func (s servicePrincipal) setAppRoleAssignment(tx transaction.Transaction, required bool) error {
 	exists, sp, err := s.Exists(tx.Ctx, tx.Instance.GetClientId())
 	if err != nil {
 		return err

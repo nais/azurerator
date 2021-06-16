@@ -6,6 +6,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util/directoryobject"
 )
 
@@ -17,7 +18,7 @@ func newOwners(client azure.RuntimeClient) azure.ServicePrincipalOwners {
 	return &owners{RuntimeClient: client}
 }
 
-func (o owners) Process(tx azure.Transaction, desired []msgraph.DirectoryObject) error {
+func (o owners) Process(tx transaction.Transaction, desired []msgraph.DirectoryObject) error {
 	existing, err := o.get(tx)
 	if err != nil {
 		return err
@@ -37,7 +38,7 @@ func (o owners) Process(tx azure.Transaction, desired []msgraph.DirectoryObject)
 	return nil
 }
 
-func (o owners) get(tx azure.Transaction) ([]msgraph.DirectoryObject, error) {
+func (o owners) get(tx transaction.Transaction) ([]msgraph.DirectoryObject, error) {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 	owners, err := o.GraphClient().ServicePrincipals().ID(servicePrincipalId).Owners().Request().GetN(tx.Ctx, o.MaxNumberOfPagesToFetch())
 	if err != nil {
@@ -46,7 +47,7 @@ func (o owners) get(tx azure.Transaction) ([]msgraph.DirectoryObject, error) {
 	return owners, nil
 }
 
-func (o owners) registerFor(tx azure.Transaction, owners []msgraph.DirectoryObject) error {
+func (o owners) registerFor(tx transaction.Transaction, owners []msgraph.DirectoryObject) error {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
 	for _, owner := range owners {
@@ -60,7 +61,7 @@ func (o owners) registerFor(tx azure.Transaction, owners []msgraph.DirectoryObje
 	return nil
 }
 
-func (o owners) revokeFor(tx azure.Transaction, revoked []msgraph.DirectoryObject) error {
+func (o owners) revokeFor(tx transaction.Transaction, revoked []msgraph.DirectoryObject) error {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
 	for _, owner := range revoked {

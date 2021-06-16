@@ -7,7 +7,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/util/crypto"
 )
 
@@ -20,7 +20,7 @@ func NewExtractor(secretLists kubernetes.SecretLists, keys SecretDataKeys) *Extr
 	return &Extractor{secretLists: secretLists, keys: keys}
 }
 
-func (e Extractor) GetKeyIdsInUse() azure.KeyIdsInUse {
+func (e Extractor) GetKeyIdsInUse() credentials.KeyIdsInUse {
 	passwordIds := make([]string, 0)
 	certificateIds := make([]string, 0)
 
@@ -37,7 +37,7 @@ func (e Extractor) GetKeyIdsInUse() azure.KeyIdsInUse {
 			passwordIds = append(passwordIds, passwordId)
 		}
 	}
-	return azure.KeyIdsInUse{
+	return credentials.KeyIdsInUse{
 		Certificate: certificateIds,
 		Password:    passwordIds,
 	}
@@ -47,7 +47,7 @@ func (e Extractor) GetKeyIdsInUse() azure.KeyIdsInUse {
 // Looks for and attempts to extract credentials matching the provided secretName parameter, otherwise falls back to
 // extracting credentials from the latest in-use secret (if any).
 // Ultimately returns (nil, false, nil) if no secrets match the above or if any matching secret does not contain the expected keys.
-func (e Extractor) GetPreviousCredentialsSet(secretName string) (*azure.CredentialsSet, bool, error) {
+func (e Extractor) GetPreviousCredentialsSet(secretName string) (*credentials.Set, bool, error) {
 	if len(secretName) == 0 {
 		return nil, false, nil
 	}
@@ -63,7 +63,7 @@ func (e Extractor) GetPreviousCredentialsSet(secretName string) (*azure.Credenti
 	return nil, false, nil
 }
 
-func (e Extractor) extractCredentialsSetFromSecret(secret corev1.Secret) (*azure.CredentialsSet, bool, error) {
+func (e Extractor) extractCredentialsSetFromSecret(secret corev1.Secret) (*credentials.Set, bool, error) {
 	currentCredential, valid, err := e.extractCurrentCredentials(secret)
 	if err != nil {
 		return nil, valid, fmt.Errorf("extracting current credentials set from secret: %w", err)
@@ -82,7 +82,7 @@ func (e Extractor) extractCredentialsSetFromSecret(secret corev1.Secret) (*azure
 		return nil, false, nil
 	}
 
-	return &azure.CredentialsSet{
+	return &credentials.Set{
 		Current: *currentCredential,
 		Next:    *nextCredential,
 	}, valid, nil
@@ -95,7 +95,7 @@ type extractCredentialsKeys struct {
 	passwordIdKey    string
 }
 
-func (e Extractor) extractCurrentCredentials(secret corev1.Secret) (*azure.Credentials, bool, error) {
+func (e Extractor) extractCurrentCredentials(secret corev1.Secret) (*credentials.Credentials, bool, error) {
 	keys := extractCredentialsKeys{
 		certificateIdKey: e.keys.CurrentCredentials.CertificateKeyId,
 		clientSecretKey:  e.keys.CurrentCredentials.ClientSecret,
@@ -106,7 +106,7 @@ func (e Extractor) extractCurrentCredentials(secret corev1.Secret) (*azure.Crede
 	return extractCredentials(secret, keys)
 }
 
-func (e Extractor) extractNextCredentials(secret corev1.Secret) (*azure.Credentials, bool, error) {
+func (e Extractor) extractNextCredentials(secret corev1.Secret) (*credentials.Credentials, bool, error) {
 	keys := extractCredentialsKeys{
 		certificateIdKey: e.keys.NextCredentials.CertificateKeyId,
 		clientSecretKey:  e.keys.NextCredentials.ClientSecret,
@@ -117,7 +117,7 @@ func (e Extractor) extractNextCredentials(secret corev1.Secret) (*azure.Credenti
 	return extractCredentials(secret, keys)
 }
 
-func extractCredentials(secret corev1.Secret, keys extractCredentialsKeys) (*azure.Credentials, bool, error) {
+func extractCredentials(secret corev1.Secret, keys extractCredentialsKeys) (*credentials.Credentials, bool, error) {
 	var clientJwk jose.JSONWebKey
 	var err error
 
@@ -146,12 +146,12 @@ func extractCredentials(secret corev1.Secret, keys extractCredentialsKeys) (*azu
 		return nil, false, err
 	}
 
-	return &azure.Credentials{
-		Certificate: azure.Certificate{
+	return &credentials.Credentials{
+		Certificate: credentials.Certificate{
 			KeyId: string(certificateId),
 			Jwk:   crypto.FromJwk(clientJwk),
 		},
-		Password: azure.Password{
+		Password: credentials.Password{
 			KeyId:        string(passwordId),
 			ClientSecret: string(clientSecret),
 		},

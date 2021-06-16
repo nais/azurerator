@@ -11,6 +11,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
 	strings2 "github.com/nais/azureator/pkg/util/strings"
@@ -32,7 +34,7 @@ func NewKeyCredential(runtimeClient azure.RuntimeClient) azure.KeyCredential {
 	return keyCredential{RuntimeClient: runtimeClient}
 }
 
-func (k keyCredential) Add(tx azure.Transaction) (*azure.AddedKeyCredentialSet, error) {
+func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCredentialSet, error) {
 	application, err := k.RuntimeClient.Application().Get(tx)
 	if err != nil {
 		return nil, err
@@ -55,12 +57,12 @@ func (k keyCredential) Add(tx azure.Transaction) (*azure.AddedKeyCredentialSet, 
 		return nil, fmt.Errorf("updating application with keycredential set: %w", err)
 	}
 
-	return &azure.AddedKeyCredentialSet{
-		Current: azure.AddedKeyCredential{
+	return &credentials.AddedKeyCredentialSet{
+		Current: credentials.AddedKeyCredential{
 			KeyCredential: *currentKeyCredential,
 			Jwk:           *currentJwk,
 		},
-		Next: azure.AddedKeyCredential{
+		Next: credentials.AddedKeyCredential{
 			KeyCredential: *nextKeyCredential,
 			Jwk:           *nextJwk,
 		},
@@ -69,7 +71,7 @@ func (k keyCredential) Add(tx azure.Transaction) (*azure.AddedKeyCredentialSet, 
 
 // Rotate generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
 // With the exception of new applications, there should always be two active keys available at any given time so that running applications are not interfered with.
-func (k keyCredential) Rotate(tx azure.Transaction, existing azure.CredentialsSet, keyIdsInUse azure.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error) {
+func (k keyCredential) Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error) {
 	keyCredentialIdsInUse := append(
 		keyIdsInUse.Certificate,
 		existing.Current.Certificate.KeyId,
@@ -96,7 +98,7 @@ func (k keyCredential) Rotate(tx azure.Transaction, existing azure.CredentialsSe
 	return keyCredential, jwk, nil
 }
 
-func (k keyCredential) Purge(tx azure.Transaction) error {
+func (k keyCredential) Purge(tx transaction.Transaction) error {
 	app := &app{
 		KeyCredentials: make([]azure.KeyCredential, 0),
 	}
@@ -104,7 +106,7 @@ func (k keyCredential) Purge(tx azure.Transaction) error {
 	return k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app)
 }
 
-func (k keyCredential) Validate(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+func (k keyCredential) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
 	app, err := k.Application().Get(tx)
 	if err != nil {
 		return false, err
@@ -125,7 +127,7 @@ func (k keyCredential) Validate(tx azure.Transaction, existing azure.Credentials
 }
 
 // Maps a list of key IDs to a list of KeyCredentials
-func (k keyCredential) mapToKeyCredentials(tx azure.Transaction, keyIdsInUse []string) ([]msgraph.KeyCredential, error) {
+func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction, keyIdsInUse []string) ([]msgraph.KeyCredential, error) {
 	keyIdsInUse = strings2.RemoveDuplicates(keyIdsInUse)
 
 	application, err := k.RuntimeClient.Application().Get(tx)

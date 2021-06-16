@@ -4,6 +4,9 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/result"
+	"github.com/nais/azureator/pkg/azure/transaction"
 )
 
 type fakeAzureClient struct{}
@@ -13,16 +16,16 @@ const (
 	ApplicationExists        = "exists-in-azure"
 )
 
-func (a fakeAzureClient) Create(tx azure.Transaction) (*azure.ApplicationResult, error) {
-	internalApp := AzureApplicationResult(tx.Instance, azure.OperationResultCreated)
+func (a fakeAzureClient) Create(tx transaction.Transaction) (*result.Application, error) {
+	internalApp := AzureApplicationResult(tx.Instance, result.OperationCreated)
 	return &internalApp, nil
 }
 
-func (a fakeAzureClient) Delete(azure.Transaction) error {
+func (a fakeAzureClient) Delete(transaction.Transaction) error {
 	return nil
 }
 
-func (a fakeAzureClient) Exists(tx azure.Transaction) (*msgraph.Application, bool, error) {
+func (a fakeAzureClient) Exists(tx transaction.Transaction) (*msgraph.Application, bool, error) {
 	appExists := tx.Instance.Name == ApplicationExists
 	validStatus := len(tx.Instance.GetObjectId()) > 0 && len(tx.Instance.GetClientId()) > 0
 	if appExists || validStatus {
@@ -32,38 +35,38 @@ func (a fakeAzureClient) Exists(tx azure.Transaction) (*msgraph.Application, boo
 	return nil, false, nil
 }
 
-func (a fakeAzureClient) Get(tx azure.Transaction) (msgraph.Application, error) {
+func (a fakeAzureClient) Get(tx transaction.Transaction) (msgraph.Application, error) {
 	return MsGraphApplication(tx.Instance), nil
 }
 
-func (a fakeAzureClient) GetServicePrincipal(tx azure.Transaction) (msgraph.ServicePrincipal, error) {
+func (a fakeAzureClient) GetServicePrincipal(tx transaction.Transaction) (msgraph.ServicePrincipal, error) {
 	return ServicePrincipal(tx.Instance), nil
 }
 
-func (a fakeAzureClient) GetPreAuthorizedApps(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+func (a fakeAzureClient) GetPreAuthorizedApps(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
 	return AzurePreAuthorizedApps(tx.Instance), nil
 }
 
-func (a fakeAzureClient) AddCredentials(tx azure.Transaction) (azure.CredentialsSet, error) {
+func (a fakeAzureClient) AddCredentials(tx transaction.Transaction) (credentials.Set, error) {
 	return AzureCredentialsSet(tx.Instance), nil
 }
 
-func (a fakeAzureClient) RotateCredentials(tx azure.Transaction, existing azure.CredentialsSet, inUse azure.KeyIdsInUse) (azure.CredentialsSet, error) {
+func (a fakeAzureClient) RotateCredentials(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error) {
 	newSet := AzureCredentialsSet(tx.Instance)
 	newSet.Current = existing.Next
 	return newSet, nil
 }
 
-func (a fakeAzureClient) PurgeCredentials(tx azure.Transaction) error {
+func (a fakeAzureClient) PurgeCredentials(tx transaction.Transaction) error {
 	return nil
 }
 
-func (a fakeAzureClient) ValidateCredentials(tx azure.Transaction, existing azure.CredentialsSet) (bool, error) {
+func (a fakeAzureClient) ValidateCredentials(tx transaction.Transaction, existing credentials.Set) (bool, error) {
 	return true, nil
 }
 
-func (a fakeAzureClient) Update(tx azure.Transaction) (*azure.ApplicationResult, error) {
-	internalApp := AzureApplicationResult(tx.Instance, azure.OperationResultUpdated)
+func (a fakeAzureClient) Update(tx transaction.Transaction) (*result.Application, error) {
+	internalApp := AzureApplicationResult(tx.Instance, result.OperationUpdated)
 	return &internalApp, nil
 }
 

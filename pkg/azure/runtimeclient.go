@@ -8,29 +8,16 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/resource"
+	"github.com/nais/azureator/pkg/azure/result"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util/approle"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/util/crypto"
 )
-
-type Client interface {
-	Create(tx Transaction) (*ApplicationResult, error)
-	Delete(tx Transaction) error
-	Exists(tx Transaction) (*msgraph.Application, bool, error)
-	Get(tx Transaction) (msgraph.Application, error)
-
-	GetPreAuthorizedApps(tx Transaction) (*PreAuthorizedApps, error)
-	GetServicePrincipal(tx Transaction) (msgraph.ServicePrincipal, error)
-
-	AddCredentials(tx Transaction) (CredentialsSet, error)
-	RotateCredentials(tx Transaction, existing CredentialsSet, inUse KeyIdsInUse) (CredentialsSet, error)
-	PurgeCredentials(tx Transaction) error
-	ValidateCredentials(tx Transaction, existing CredentialsSet) (bool, error)
-
-	Update(tx Transaction) (*ApplicationResult, error)
-}
 
 type RuntimeClient interface {
 	Config() *config.AzureConfig
@@ -60,16 +47,16 @@ type Application interface {
 	Owners() ApplicationOwners
 	RedirectUri() RedirectUri
 
-	Delete(tx Transaction) error
-	Exists(tx Transaction) (*msgraph.Application, bool, error)
+	Delete(tx transaction.Transaction) error
+	Exists(tx transaction.Transaction) (*msgraph.Application, bool, error)
 	ExistsByFilter(ctx context.Context, filter Filter) (*msgraph.Application, bool, error)
-	Get(tx Transaction) (msgraph.Application, error)
+	Get(tx transaction.Transaction) (msgraph.Application, error)
 	GetByName(ctx context.Context, name DisplayName) (msgraph.Application, error)
 	GetByClientId(ctx context.Context, id ClientId) (msgraph.Application, error)
 	Patch(ctx context.Context, id ObjectId, application interface{}) error
-	Register(tx Transaction) (*msgraph.Application, error)
-	RemoveDisabledPermissions(tx Transaction, application msgraph.Application) error
-	Update(tx Transaction) (*msgraph.Application, error)
+	Register(tx transaction.Transaction) (*msgraph.Application, error)
+	RemoveDisabledPermissions(tx transaction.Transaction, application msgraph.Application) error
+	Update(tx transaction.Transaction) (*msgraph.Application, error)
 }
 
 type AppRoles interface {
@@ -78,7 +65,7 @@ type AppRoles interface {
 }
 
 type IdentifierUri interface {
-	Set(tx Transaction) error
+	Set(tx transaction.Transaction) error
 }
 
 type OAuth2PermissionScope interface {
@@ -87,16 +74,16 @@ type OAuth2PermissionScope interface {
 }
 
 type ApplicationOwners interface {
-	Process(tx Transaction, desired []msgraph.DirectoryObject) error
+	Process(tx transaction.Transaction, desired []msgraph.DirectoryObject) error
 }
 
 type RedirectUri interface {
-	Update(tx Transaction) error
+	Update(tx transaction.Transaction) error
 }
 
 type AppRoleAssignmentsWithRoleId interface {
-	ProcessForGroups(tx Transaction, assignees []Resource) error
-	ProcessForServicePrincipals(tx Transaction, assignees []Resource) error
+	ProcessForGroups(tx transaction.Transaction, assignees []resource.Resource) error
+	ProcessForServicePrincipals(tx transaction.Transaction, assignees []resource.Resource) error
 }
 
 type AppRoleAssignments interface {
@@ -110,30 +97,30 @@ type AppRoleAssignments interface {
 
 type Groups interface {
 	GetOwnersFor(ctx context.Context, groupId string) ([]msgraph.DirectoryObject, error)
-	Process(tx Transaction) error
+	Process(tx transaction.Transaction) error
 }
 
 type KeyCredential interface {
-	Add(tx Transaction) (*AddedKeyCredentialSet, error)
-	Rotate(tx Transaction, existing CredentialsSet, keyIdsInUse KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error)
-	Purge(tx Transaction) error
-	Validate(tx Transaction, existing CredentialsSet) (bool, error)
+	Add(tx transaction.Transaction) (*credentials.AddedKeyCredentialSet, error)
+	Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error)
+	Purge(tx transaction.Transaction) error
+	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }
 
 type OAuth2PermissionGrant interface {
-	Process(tx Transaction) error
+	Process(tx transaction.Transaction) error
 }
 
 type PasswordCredential interface {
-	Add(tx Transaction) (msgraph.PasswordCredential, error)
-	Rotate(tx Transaction, existing CredentialsSet, keyIdsInUse KeyIdsInUse) (*msgraph.PasswordCredential, error)
-	Purge(tx Transaction) error
-	Validate(tx Transaction, existing CredentialsSet) (bool, error)
+	Add(tx transaction.Transaction) (msgraph.PasswordCredential, error)
+	Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.PasswordCredential, error)
+	Purge(tx transaction.Transaction) error
+	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }
 
 type PreAuthApps interface {
-	Get(tx Transaction) (*PreAuthorizedApps, error)
-	Process(tx Transaction, permissions permissions.Permissions) (*PreAuthorizedApps, error)
+	Get(tx transaction.Transaction) (*result.PreAuthorizedApps, error)
+	Process(tx transaction.Transaction, permissions permissions.Permissions) (*result.PreAuthorizedApps, error)
 }
 
 type ServicePrincipal interface {
@@ -141,17 +128,17 @@ type ServicePrincipal interface {
 	Policies() ServicePrincipalPolicies
 
 	Exists(ctx context.Context, id ClientId) (bool, msgraph.ServicePrincipal, error)
-	Register(tx Transaction) (msgraph.ServicePrincipal, error)
-	SetAppRoleAssignmentRequired(tx Transaction) error
-	SetAppRoleAssignmentNotRequired(tx Transaction) error
+	Register(tx transaction.Transaction) (msgraph.ServicePrincipal, error)
+	SetAppRoleAssignmentRequired(tx transaction.Transaction) error
+	SetAppRoleAssignmentNotRequired(tx transaction.Transaction) error
 }
 
 type ServicePrincipalOwners interface {
-	Process(tx Transaction, desired []msgraph.DirectoryObject) error
+	Process(tx transaction.Transaction, desired []msgraph.DirectoryObject) error
 }
 
 type ServicePrincipalPolicies interface {
-	Process(tx Transaction) error
+	Process(tx transaction.Transaction) error
 }
 
 type Team interface {
@@ -160,7 +147,7 @@ type Team interface {
 }
 
 type TeamOwners interface {
-	Process(tx Transaction) error
+	Process(tx transaction.Transaction) error
 }
 
 type TeamGroups interface {

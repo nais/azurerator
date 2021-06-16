@@ -7,7 +7,8 @@ import (
 	"github.com/nais/liberator/pkg/kubernetes"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/options"
 	"github.com/nais/azureator/pkg/secrets"
 )
@@ -20,8 +21,8 @@ type Transaction struct {
 	Secrets  TransactionSecrets
 }
 
-func (t *Transaction) ToAzureTx() azure.Transaction {
-	return azure.Transaction{
+func (t *Transaction) ToAzureTx() transaction.Transaction {
+	return transaction.Transaction{
 		Ctx:      t.Ctx,
 		Instance: *t.Instance,
 		Log:      t.Logger,
@@ -31,11 +32,11 @@ func (t *Transaction) ToAzureTx() azure.Transaction {
 type TransactionSecrets struct {
 	Credentials    TransactionCredentials
 	DataKeys       secrets.SecretDataKeys
-	KeyIdsInUse    azure.KeyIdsInUse
+	KeyIdsInUse    credentials.KeyIdsInUse
 	ManagedSecrets kubernetes.SecretLists
 }
 
 type TransactionCredentials struct {
-	Set   *azure.CredentialsSet
+	Set   *credentials.Set
 	Valid bool
 }

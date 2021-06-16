@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 )
 
@@ -15,7 +16,7 @@ func newIdentifierUri(application azure.Application) azure.IdentifierUri {
 	return identifierUri{Application: application}
 }
 
-func (i identifierUri) Set(tx azure.Transaction) error {
+func (i identifierUri) Set(tx transaction.Transaction) error {
 	objectId := tx.Instance.GetObjectId()
 	identifierUris := util.IdentifierUris(tx)
 	app := util.EmptyApplication().

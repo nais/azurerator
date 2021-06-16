@@ -5,6 +5,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/util/groupmembershipclaim"
 )
 
 type ApplicationBuilder struct {
@@ -39,7 +40,7 @@ func (a ApplicationBuilder) ResourceAccess(access []msgraph.RequiredResourceAcce
 	return a
 }
 
-func (a ApplicationBuilder) GroupMembershipClaims(groupMembershipClaim azure.GroupMembershipClaim) ApplicationBuilder {
+func (a ApplicationBuilder) GroupMembershipClaims(groupMembershipClaim groupmembershipclaim.GroupMembershipClaim) ApplicationBuilder {
 	a.Application.GroupMembershipClaims = ptr.String(string(groupMembershipClaim))
 	return a
 }

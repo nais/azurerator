@@ -8,6 +8,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/resource"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util/approleassignment"
 )
 
@@ -29,18 +31,18 @@ func NewAppRoleAssignmentsWithRoleId(client azure.RuntimeClient, appRoleAssignme
 	return a
 }
 
-func (a appRoleAssignmentsWithRoleId) ProcessForGroups(tx azure.Transaction, assignees []azure.Resource) error {
-	return a.processFor(tx, assignees, azure.PrincipalTypeGroup)
+func (a appRoleAssignmentsWithRoleId) ProcessForGroups(tx transaction.Transaction, assignees []resource.Resource) error {
+	return a.processFor(tx, assignees, resource.PrincipalTypeGroup)
 }
 
-func (a appRoleAssignmentsWithRoleId) ProcessForServicePrincipals(tx azure.Transaction, assignees []azure.Resource) error {
-	return a.processFor(tx, assignees, azure.PrincipalTypeServicePrincipal)
+func (a appRoleAssignmentsWithRoleId) ProcessForServicePrincipals(tx transaction.Transaction, assignees []resource.Resource) error {
+	return a.processFor(tx, assignees, resource.PrincipalTypeServicePrincipal)
 }
 
 // TODO(tronghn): extract getAll() from assignFor() and reuse in assignFor / getAllGroups / getAllServicePrincipals?
 //  difference = existing (before new assignments) + newAssigned) - desired (newAssigned + alreadyAssigned
 //  difference = existing (before new assignments) - alreadyAssigned?
-func (a appRoleAssignmentsWithRoleId) processFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) error {
+func (a appRoleAssignmentsWithRoleId) processFor(tx transaction.Transaction, assignees []resource.Resource, principalType resource.PrincipalType) error {
 	desired, err := a.assignFor(tx, assignees, principalType)
 	if err != nil {
 		return fmt.Errorf("adding app role assignments: %w", err)
@@ -48,9 +50,9 @@ func (a appRoleAssignmentsWithRoleId) processFor(tx azure.Transaction, assignees
 
 	existing := make([]msgraph.AppRoleAssignment, 0)
 	switch principalType {
-	case azure.PrincipalTypeGroup:
+	case resource.PrincipalTypeGroup:
 		existing, err = a.getAllGroups(tx.Ctx)
-	case azure.PrincipalTypeServicePrincipal:
+	case resource.PrincipalTypeServicePrincipal:
 		existing, err = a.getAllServicePrincipals(tx.Ctx)
 	}
 
@@ -63,7 +65,7 @@ func (a appRoleAssignmentsWithRoleId) processFor(tx azure.Transaction, assignees
 }
 
 // TODO(tronghn): should return struct desiredAssignmentsResult of ([]newAssigned, []alreadyAssigned, []invalid)
-func (a appRoleAssignmentsWithRoleId) assignFor(tx azure.Transaction, assignees []azure.Resource, principalType azure.PrincipalType) ([]msgraph.AppRoleAssignment, error) {
+func (a appRoleAssignmentsWithRoleId) assignFor(tx transaction.Transaction, assignees []resource.Resource, principalType resource.PrincipalType) ([]msgraph.AppRoleAssignment, error) {
 	assignments := make([]msgraph.AppRoleAssignment, 0)
 
 	existing, err := a.getAll(tx.Ctx)
@@ -112,7 +114,7 @@ func (a appRoleAssignmentsWithRoleId) assignFor(tx azure.Transaction, assignees 
 	return assignments, nil
 }
 
-func (a appRoleAssignmentsWithRoleId) revokeFor(tx azure.Transaction, revoked []msgraph.AppRoleAssignment, principalType azure.PrincipalType) error {
+func (a appRoleAssignmentsWithRoleId) revokeFor(tx transaction.Transaction, revoked []msgraph.AppRoleAssignment, principalType resource.PrincipalType) error {
 	for _, r := range revoked {
 		logFields := a.LogFields()
 		logFields["assigneeObjectId"] = *r.PrincipalID
@@ -151,7 +153,7 @@ func (a appRoleAssignmentsWithRoleId) getAllServicePrincipals(ctx context.Contex
 	return filterByRoleID(servicePrincipals, a.RoleId), nil
 }
 
-func (a appRoleAssignmentsWithRoleId) toAssignment(assignee azure.Resource) (*msgraph.AppRoleAssignment, error) {
+func (a appRoleAssignmentsWithRoleId) toAssignment(assignee resource.Resource) (*msgraph.AppRoleAssignment, error) {
 	return &msgraph.AppRoleAssignment{
 		AppRoleID:     &a.RoleId,                                 // The ID of the AppRole belonging to the target resource to be assigned
 		PrincipalID:   (*msgraph.UUID)(&assignee.ObjectId),       // Service Principal ID for the assignee, i.e. the principal that should be assigned to the app role

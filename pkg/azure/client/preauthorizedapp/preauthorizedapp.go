@@ -9,6 +9,9 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	resource2 "github.com/nais/azureator/pkg/azure/resource"
+	"github.com/nais/azureator/pkg/azure/result"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/azure/util/approle"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
@@ -38,7 +41,7 @@ func NewPreAuthApps(runtimeClient azure.RuntimeClient) azure.PreAuthApps {
 	return preAuthApps{RuntimeClient: runtimeClient}
 }
 
-func (p preAuthApps) Process(tx azure.Transaction, permissions permissions.Permissions) (*azure.PreAuthorizedApps, error) {
+func (p preAuthApps) Process(tx transaction.Transaction, permissions permissions.Permissions) (*result.PreAuthorizedApps, error) {
 	// TODO(tronghn): assign/revoke scopes in preauthorizedapps
 	//  assign/revoke approles in approleassignment
 
@@ -63,14 +66,14 @@ func (p preAuthApps) Process(tx azure.Transaction, permissions permissions.Permi
 	return preAuthorizedApps, nil
 }
 
-func (p preAuthApps) Get(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+func (p preAuthApps) Get(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
 	// lookup desired apps in Azure AD to check for existence
 	desired, err := p.mapToResources(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	assigned := make([]azure.Resource, 0)
+	assigned := make([]resource2.Resource, 0)
 	unassigned := desired.Invalid
 
 	// fetch currently pre-authorized applications from the Application resource
@@ -95,13 +98,13 @@ func (p preAuthApps) Get(tx azure.Transaction) (*azure.PreAuthorizedApps, error)
 		assigned = append(assigned, resource)
 	}
 
-	return &azure.PreAuthorizedApps{
+	return &result.PreAuthorizedApps{
 		Valid:   assigned,
 		Invalid: unassigned,
 	}, nil
 }
 
-func (p preAuthApps) patchApplication(tx azure.Transaction, resources []azure.Resource, permissions permissions.Permissions) error {
+func (p preAuthApps) patchApplication(tx transaction.Transaction, resources []resource2.Resource, permissions permissions.Permissions) error {
 	objectId := tx.Instance.GetObjectId()
 	payload := p.mapToGraphRequest(resources, permissions)
 
@@ -116,11 +119,11 @@ func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyRule) (*msgr
 	return p.Application().ExistsByFilter(ctx, util.FilterByName(customresources.GetUniqueName(app)))
 }
 
-func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedApps, error) {
+func (p preAuthApps) mapToResources(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
 	seen := make(map[string]bool)
 
-	validResources := make([]azure.Resource, 0)
-	invalidResources := make([]azure.Resource, 0)
+	validResources := make([]resource2.Resource, 0)
+	invalidResources := make([]resource2.Resource, 0)
 
 	for _, app := range tx.Instance.Spec.PreAuthorizedApplications {
 		app = ensureFieldsAreSet(tx, app)
@@ -145,13 +148,13 @@ func (p preAuthApps) mapToResources(tx azure.Transaction) (*azure.PreAuthorizedA
 		validResources = append(validResources, toResource(tx.Instance))
 	}
 
-	return &azure.PreAuthorizedApps{
+	return &result.PreAuthorizedApps{
 		Valid:   validResources,
 		Invalid: invalidResources,
 	}, nil
 }
 
-func (p preAuthApps) mapToGraphRequest(resources []azure.Resource, permissions permissions.Permissions) appPatch {
+func (p preAuthApps) mapToGraphRequest(resources []resource2.Resource, permissions permissions.Permissions) appPatch {
 	apps := make([]msgraph.PreAuthorizedApplication, 0)
 	for _, resource := range resources {
 		clientId := resource.ClientId
@@ -168,7 +171,7 @@ func (p preAuthApps) mapToGraphRequest(resources []azure.Resource, permissions p
 	return appPatch{API: preAuthAppPatch{PreAuthorizedApplications: apps}}
 }
 
-func (p preAuthApps) mapToResource(tx azure.Transaction, app v1.AccessPolicyRule) (*azure.Resource, bool, error) {
+func (p preAuthApps) mapToResource(tx transaction.Transaction, app v1.AccessPolicyRule) (*resource2.Resource, bool, error) {
 	a, exists, err := p.exists(tx.Ctx, app)
 	if err != nil || !exists {
 		return invalidResource(app), false, err
@@ -179,31 +182,31 @@ func (p preAuthApps) mapToResource(tx azure.Transaction, app v1.AccessPolicyRule
 		return invalidResource(app), false, err
 	}
 
-	return &azure.Resource{
+	return &resource2.Resource{
 		Name:             *a.DisplayName,
 		ClientId:         *a.AppID,
 		ObjectId:         *servicePrincipal.ID,
-		PrincipalType:    azure.PrincipalTypeServicePrincipal,
+		PrincipalType:    resource2.PrincipalTypeServicePrincipal,
 		AccessPolicyRule: app,
 	}, true, nil
 }
 
-func invalidResource(app v1.AccessPolicyRule) *azure.Resource {
-	return &azure.Resource{
+func invalidResource(app v1.AccessPolicyRule) *resource2.Resource {
+	return &resource2.Resource{
 		Name:             customresources.GetUniqueName(app),
 		ClientId:         "",
 		ObjectId:         "",
-		PrincipalType:    azure.PrincipalTypeServicePrincipal,
+		PrincipalType:    resource2.PrincipalTypeServicePrincipal,
 		AccessPolicyRule: app,
 	}
 }
 
-func toResource(instance v1.AzureAdApplication) azure.Resource {
-	return azure.Resource{
+func toResource(instance v1.AzureAdApplication) resource2.Resource {
+	return resource2.Resource{
 		Name:          kubernetes.UniformResourceName(&instance),
 		ClientId:      instance.Status.ClientId,
 		ObjectId:      instance.Status.ServicePrincipalId,
-		PrincipalType: azure.PrincipalTypeServicePrincipal,
+		PrincipalType: resource2.PrincipalTypeServicePrincipal,
 		AccessPolicyRule: v1.AccessPolicyRule{
 			Application: instance.GetName(),
 			Namespace:   instance.GetNamespace(),
@@ -212,7 +215,7 @@ func toResource(instance v1.AzureAdApplication) azure.Resource {
 	}
 }
 
-func ensureFieldsAreSet(tx azure.Transaction, rule v1.AccessPolicyRule) v1.AccessPolicyRule {
+func ensureFieldsAreSet(tx transaction.Transaction, rule v1.AccessPolicyRule) v1.AccessPolicyRule {
 	if len(rule.Cluster) == 0 {
 		rule.Cluster = tx.Instance.GetClusterName()
 	}
@@ -224,7 +227,7 @@ func ensureFieldsAreSet(tx azure.Transaction, rule v1.AccessPolicyRule) v1.Acces
 	return rule
 }
 
-func resourceInPreAuthorizedApps(resource azure.Resource, apps []msgraph.PreAuthorizedApplication) bool {
+func resourceInPreAuthorizedApps(resource resource2.Resource, apps []msgraph.PreAuthorizedApplication) bool {
 	for _, app := range apps {
 		if *app.AppID == resource.ClientId {
 			return true
@@ -233,10 +236,10 @@ func resourceInPreAuthorizedApps(resource azure.Resource, apps []msgraph.PreAuth
 	return false
 }
 
-func resourceInAssignments(resource azure.Resource, assignments []msgraph.AppRoleAssignment) bool {
+func resourceInAssignments(resource resource2.Resource, assignments []msgraph.AppRoleAssignment) bool {
 	for _, a := range assignments {
 		equalPrincipalID := *a.PrincipalID == msgraph.UUID(resource.ObjectId)
-		equalPrincipalType := azure.PrincipalType(*a.PrincipalType) == resource.PrincipalType
+		equalPrincipalType := resource2.PrincipalType(*a.PrincipalType) == resource.PrincipalType
 
 		if equalPrincipalID && equalPrincipalType {
 			return true

@@ -13,7 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/reconciler"
@@ -56,7 +57,7 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 
 	secretsExtractor := secrets.NewExtractor(*managedSecrets, dataKeys)
 
-	keyIdsInUse := func() azure.KeyIdsInUse {
+	keyIdsInUse := func() credentials.KeyIdsInUse {
 		keyIdsInUse := secretsExtractor.GetKeyIdsInUse()
 		instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
 		instance.Status.PasswordKeyIds = keyIdsInUse.Password
@@ -79,7 +80,7 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 	}, nil
 }
 
-func (s secretsReconciler) Process(tx reconciler.Transaction, applicationResult *azure.ApplicationResult) error {
+func (s secretsReconciler) Process(tx reconciler.Transaction, applicationResult *result.Application) error {
 	// return early if no operations needed
 	if tx.Options.Process.Secret.Valid && !tx.Options.Process.Secret.Rotate && applicationResult.IsNotModified() {
 		return nil
@@ -121,7 +122,7 @@ func (s secretsReconciler) Process(tx reconciler.Transaction, applicationResult 
 	return nil
 }
 
-func (s secretsReconciler) createOrUpdate(tx reconciler.Transaction, result azure.ApplicationResult, set azure.CredentialsSet) error {
+func (s secretsReconciler) createOrUpdate(tx reconciler.Transaction, result result.Application, set credentials.Set) error {
 	secretName := tx.Instance.Spec.SecretName
 	objectMeta := kubernetes.ObjectMeta(secretName, tx.Instance.GetNamespace(), labels.Labels(tx.Instance))
 

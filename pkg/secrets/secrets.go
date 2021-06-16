@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/config"
 )
 
@@ -120,7 +121,7 @@ type OpenIdConfigKeys struct {
 	TokenEndpoint string
 }
 
-func SecretData(app azure.ApplicationResult, set azure.CredentialsSet, azureOpenIDConfig config.AzureOpenIdConfig, keys SecretDataKeys) (map[string]string, error) {
+func SecretData(app result.Application, set credentials.Set, azureOpenIDConfig config.AzureOpenIdConfig, keys SecretDataKeys) (map[string]string, error) {
 	jwkJson, err := json.Marshal(set.Current.Certificate.Jwk.Private)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling private JWK: %w", err)
