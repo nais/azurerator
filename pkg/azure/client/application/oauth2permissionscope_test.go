@@ -15,7 +15,7 @@ import (
 
 func TestPermissionScopes_DescribeCreate_DesiredIsEmpty_ShouldAddDefaultScope(t *testing.T) {
 	desired := make(permissions.Permissions)
-	scopes := application.Application{}.OAuth2PermissionScopes().DescribeCreate(desired)
+	scopes := application.Application{}.OAuth2PermissionScopes().DescribeCreate(desired).GetResult()
 
 	assert.Len(t, scopes, 1)
 	assertContainsDefaultScope(t, scopes)
@@ -27,7 +27,7 @@ func TestPermissionScopes_DescribeCreate_DisabledDefaultScopeInDesired_ShouldNot
 	defaultScope.IsEnabled = ptr.Bool(false)
 	desired.Add(permissions.FromPermissionScope(defaultScope))
 
-	scopes := application.Application{}.OAuth2PermissionScopes().DescribeCreate(desired)
+	scopes := application.Application{}.OAuth2PermissionScopes().DescribeCreate(desired).GetResult()
 
 	assert.Len(t, scopes, 1)
 	assertContainsDefaultScope(t, scopes)
@@ -41,7 +41,7 @@ func TestPermissionScopes_DescribeCreate_CustomScopes_ShouldAddCustomScopeAndDef
 	desired.Add(permissions.FromPermissionScope(scope1))
 	desired.Add(permissions.FromPermissionScope(scope2))
 
-	scopes := application.Application{}.OAuth2PermissionScopes().DescribeCreate(desired)
+	scopes := application.Application{}.OAuth2PermissionScopes().DescribeCreate(desired).GetResult()
 
 	assertContainsScope(t, scope1, scopes)
 	assertContainsScope(t, scope2, scopes)
@@ -54,7 +54,7 @@ func TestPermissionScopes_DescribeCreate_CustomScopes_ShouldAddCustomScopeAndDef
 func TestPermissionScopes_DescribeUpdate_DefaultRoleNotExistsInDesiredNorExisting_ShouldAdd(t *testing.T) {
 	desired := make(permissions.Permissions)
 	existing := make([]msgraph.PermissionScope, 0)
-	scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing)
+	scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 	assert.Len(t, scopes, 1)
 	assertContainsDefaultScope(t, scopes)
@@ -65,7 +65,7 @@ func TestPermissionScopes_DescribeUpdate_DefaultScopeAlreadyExists_ShouldOnlyUpd
 	existing := []msgraph.PermissionScope{
 		permissionscope.DefaultScope(),
 	}
-	scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing)
+	scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 	assert.Len(t, scopes, 1)
 	assertContainsDefaultScope(t, scopes)
@@ -82,7 +82,7 @@ func TestPermissionScopes_DescribeUpdate_DefaultScopeAlreadyExists_ShouldOnlyUpd
 			Value:                   ptr.String(permissionscope.DefaultAccessScopeValue),
 		},
 	}
-	scopes = application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing)
+	scopes = application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 	assert.Len(t, scopes, 1)
 	assertContainsDefaultScopeWithLambda(t, scopes, func(t assert.TestingT, expected, actual msgraph.PermissionScope) {
@@ -100,7 +100,7 @@ func TestPermissionScopes_DescribeUpdate_DisabledDefaultScopeInDesired_ShouldNot
 	desired.Add(permissions.NewGenerateIdDisabled(permissionscope.DefaultAccessScopeValue))
 
 	existing := make([]msgraph.PermissionScope, 0)
-	scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing)
+	scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 	assert.Len(t, scopes, 1)
 	assertContainsDefaultScope(t, scopes)
@@ -122,7 +122,7 @@ func TestPermissionScopes_DescribeUpdate_CustomScopes_ShouldAddDesiredScopesAndR
 		scope3,
 	}
 
-	scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing)
+	scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 	// assert that scope "scope-1" still exists and is unmodified
 	assertContainsScope(t, scope1, scopes)

@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	naisiov1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraph "github.com/nais/msgraph.go/v1.0"
+	log "github.com/sirupsen/logrus"
 )
 
 type Permissions map[string]Permission
@@ -28,6 +29,14 @@ func New(id msgraph.UUID, name string, enabled bool) Permission {
 		Name:    name,
 		ID:      id,
 		Enabled: enabled,
+	}
+}
+
+type PermissionList []Permission
+
+func (p PermissionList) Log(logger log.Entry, message string) {
+	if len(p) > 0 {
+		logger.Debugf("%s: %+v", message, p)
 	}
 }
 

@@ -17,16 +17,16 @@ func newAppRoles(application azure.Application) azure.AppRoles {
 }
 
 // DescribeCreate returns a slice describing the desired msgraph.AppRole to be created without actually creating them.
-func (a appRoles) DescribeCreate(desired permissions.Permissions) []msgraph.AppRole {
+func (a appRoles) DescribeCreate(desired permissions.Permissions) approle.CreateResult {
 	existingSet := make(approle.Map)
-	return existingSet.ToCreate(desired).ToSlice()
+	return approle.NewCreateResult(existingSet.ToCreate(desired))
 }
 
 // DescribeUpdate returns a slice describing the desired state of both new (if any) and existing msgraph.AppRole, i.e:
 // 1) add any non-existing, desired roles.
 // 2) disable existing, non-desired roles.
 // It does not perform any modifying operations on the remote state in Azure AD.
-func (a appRoles) DescribeUpdate(desired permissions.Permissions, existing []msgraph.AppRole) []msgraph.AppRole {
+func (a appRoles) DescribeUpdate(desired permissions.Permissions, existing []msgraph.AppRole) approle.UpdateResult {
 	result := make([]msgraph.AppRole, 0)
 
 	existingSet := approle.ToMap(existing)
@@ -39,5 +39,5 @@ func (a appRoles) DescribeUpdate(desired permissions.Permissions, existing []msg
 	result = append(result, toCreate.ToSlice()...)
 	result = append(result, toDisable.ToSlice()...)
 	result = approle.EnsureDefaultAppRoleIsEnabled(result)
-	return result
+	return approle.NewUpdateResult(toCreate, toDisable, unmodified, result)
 }

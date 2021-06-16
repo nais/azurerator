@@ -15,7 +15,7 @@ import (
 
 func TestAppRoles_DescribeCreate_DesiredIsEmpty_ShouldAddDefaultRole(t *testing.T) {
 	desired := make(permissions.Permissions)
-	roles := application.Application{}.AppRoles().DescribeCreate(desired)
+	roles := application.Application{}.AppRoles().DescribeCreate(desired).GetResult()
 
 	assert.Len(t, roles, 1)
 	assertContainsDefaultRole(t, roles)
@@ -27,7 +27,7 @@ func TestAppRoles_DescribeCreate_DisabledDefaultRoleInDesired_ShouldNotDisable(t
 	defaultRole.IsEnabled = ptr.Bool(false)
 	desired.Add(permissions.FromAppRole(defaultRole))
 
-	roles := application.Application{}.AppRoles().DescribeCreate(desired)
+	roles := application.Application{}.AppRoles().DescribeCreate(desired).GetResult()
 
 	assert.Len(t, roles, 1)
 	assertContainsDefaultRole(t, roles)
@@ -41,7 +41,7 @@ func TestAppRoles_DescribeCreate_CustomRoles_ShouldAddCustomRolesAndDefaultRole(
 	desired.Add(permissions.FromAppRole(role1))
 	desired.Add(permissions.FromAppRole(role2))
 
-	roles := application.Application{}.AppRoles().DescribeCreate(desired)
+	roles := application.Application{}.AppRoles().DescribeCreate(desired).GetResult()
 
 	assertContainsRole(t, role1, roles)
 	assertContainsRole(t, role2, roles)
@@ -54,7 +54,7 @@ func TestAppRoles_DescribeCreate_CustomRoles_ShouldAddCustomRolesAndDefaultRole(
 func TestAppRoles_DescribeUpdate_DefaultRoleNotExistsInDesiredNorExisting_ShouldAdd(t *testing.T) {
 	desired := make(permissions.Permissions)
 	existing := make([]msgraph.AppRole, 0)
-	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing)
+	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
 
 	assert.Len(t, roles, 1)
 	assertContainsDefaultRole(t, roles)
@@ -65,7 +65,7 @@ func TestAppRoles_DescribeUpdate_DefaultRoleAlreadyExists_ShouldOnlyEnable(t *te
 	existing := []msgraph.AppRole{
 		approle.DefaultRole(),
 	}
-	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing)
+	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
 
 	assert.Len(t, roles, 1)
 	assertContainsDefaultRole(t, roles)
@@ -82,7 +82,7 @@ func TestAppRoles_DescribeUpdate_DefaultRoleAlreadyExists_ShouldOnlyEnable(t *te
 			Value:              ptr.String(approle.DefaultAppRoleValue),
 		},
 	}
-	roles = application.Application{}.AppRoles().DescribeUpdate(desired, existing)
+	roles = application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
 
 	assert.Len(t, roles, 1)
 	assertContainsDefaultRoleWithLambda(t, roles, func(t assert.TestingT, expected, actual msgraph.AppRole) {
@@ -101,7 +101,7 @@ func TestAppRoles_DescribeUpdate_DisabledDefaultRoleInDesired_ShouldNotDisable(t
 	desired.Add(permissions.NewGenerateIdDisabled(approle.DefaultAppRoleValue))
 
 	existing := make([]msgraph.AppRole, 0)
-	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing)
+	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
 
 	assert.Len(t, roles, 1)
 	assertContainsDefaultRole(t, roles)
@@ -123,7 +123,7 @@ func TestAppRoles_DescribeUpdate_CustomRoles_ShouldAddDesiredAndRemoveNonDesired
 		role3,
 	}
 
-	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing)
+	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
 
 	// assert that role "role-1" still exists and is unmodified
 	assertContainsRole(t, role1, roles)

@@ -101,3 +101,13 @@ func (m Map) Unmodified(toCreate, toDisable Map) Map {
 
 	return unmodified
 }
+
+func (m Map) ToPermissionList() permissions.PermissionList {
+	result := make(permissions.PermissionList, 0)
+
+	for _, role := range m {
+		result = append(result, permissions.FromAppRole(role))
+	}
+
+	return result
+}
