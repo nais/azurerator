@@ -6,8 +6,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	directoryobject2 "github.com/nais/azureator/pkg/azure/directoryobject"
 	"github.com/nais/azureator/pkg/azure/transaction"
-	"github.com/nais/azureator/pkg/azure/util/directoryobject"
 )
 
 type owners struct {
@@ -24,7 +24,7 @@ func (o owners) Process(tx transaction.Transaction, desired []msgraph.DirectoryO
 		return err
 	}
 
-	newOwners := directoryobject.Difference(desired, existing)
+	newOwners := directoryobject2.Difference(desired, existing)
 
 	if err := o.registerFor(tx, newOwners); err != nil {
 		return fmt.Errorf("registering new owners for service principal: %w", err)
@@ -51,7 +51,7 @@ func (o owners) registerFor(tx transaction.Transaction, owners []msgraph.Directo
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
 	for _, owner := range owners {
-		body := directoryobject.ToOwnerPayload(owner)
+		body := directoryobject2.ToOwnerPayload(owner)
 		req := o.GraphClient().ServicePrincipals().ID(servicePrincipalId).Owners().Request()
 		err := req.JSONRequest(tx.Ctx, "POST", "/$ref", body, nil)
 		if err != nil {
@@ -76,6 +76,6 @@ func (o owners) revokeFor(tx transaction.Transaction, revoked []msgraph.Director
 }
 
 func (o owners) revoked(desired []msgraph.DirectoryObject, existing []msgraph.DirectoryObject) []msgraph.DirectoryObject {
-	revoked := directoryobject.Difference(existing, desired)
+	revoked := directoryobject2.Difference(existing, desired)
 	return revoked
 }
