@@ -4,15 +4,15 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
-	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 )
 
 type oAuth2PermissionScopes struct {
 	azure.Application
 }
 
-func newOAuth2PermissionScopes(application azure.Application) azure.OAuth2PermissionScope {
+func NewOAuth2PermissionScopes(application azure.Application) azure.OAuth2PermissionScope {
 	return oAuth2PermissionScopes{Application: application}
 }
 

@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/nais/azureator/pkg/azure/client/application"
+	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
-	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 )
 
 func TestPermissionScopes_DescribeCreate_DesiredIsEmpty_ShouldAddDefaultScope(t *testing.T) {

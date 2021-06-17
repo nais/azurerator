@@ -11,11 +11,11 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
+	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/azure/util/groupmembershipclaim"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
-	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 )
 
 // Application tags
@@ -33,7 +33,7 @@ func NewApplication(runtimeClient azure.RuntimeClient) azure.Application {
 }
 
 func (a Application) AppRoles() azure.AppRoles {
-	return approle.NewAppRoles(a)
+	return NewAppRoles(a)
 }
 
 func (a Application) IdentifierUri() azure.IdentifierUri {
@@ -41,7 +41,7 @@ func (a Application) IdentifierUri() azure.IdentifierUri {
 }
 
 func (a Application) OAuth2PermissionScopes() azure.OAuth2PermissionScope {
-	return newOAuth2PermissionScopes(a)
+	return NewOAuth2PermissionScopes(a)
 }
 
 func (a Application) Owners() azure.ApplicationOwners {
