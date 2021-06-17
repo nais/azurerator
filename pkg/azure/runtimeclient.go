@@ -9,12 +9,12 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
+	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
-	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/util/crypto"
 )
