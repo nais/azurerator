@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
+	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/util"
-	"github.com/nais/azureator/pkg/azure/util/permissions"
 )
 
 func TestNew(t *testing.T) {

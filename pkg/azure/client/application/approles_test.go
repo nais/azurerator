@@ -10,7 +10,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
-	"github.com/nais/azureator/pkg/azure/util/permissions"
+	"github.com/nais/azureator/pkg/azure/permissions"
 )
 
 func TestAppRoles_DescribeCreate_DesiredIsEmpty_ShouldAddDefaultRole(t *testing.T) {

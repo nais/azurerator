@@ -22,9 +22,9 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/serviceprincipal"
 	"github.com/nais/azureator/pkg/azure/client/team"
 	"github.com/nais/azureator/pkg/azure/credentials"
+	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/azure/transaction"
-	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/config"
 )
 

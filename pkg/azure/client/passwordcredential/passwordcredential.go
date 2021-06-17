@@ -13,7 +13,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
-	strings2 "github.com/nais/azureator/pkg/util/strings"
+	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
 type passwordCredential struct {
@@ -134,7 +134,7 @@ func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.Applic
 }
 
 func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIdsInUse []string) []msgraph.PasswordCredential {
-	keyIdsInUse = strings2.RemoveDuplicates(keyIdsInUse)
+	keyIdsInUse = stringutils.RemoveDuplicates(keyIdsInUse)
 
 	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
 	// This case assumes the possibility of the Azure application being used in applications external to the cluster.

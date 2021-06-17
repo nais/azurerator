@@ -11,7 +11,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
-	"github.com/nais/azureator/pkg/azure/util/permissions"
+	"github.com/nais/azureator/pkg/azure/permissions"
 )
 
 func TestGenerateDesiredPermissionSet(t *testing.T) {
