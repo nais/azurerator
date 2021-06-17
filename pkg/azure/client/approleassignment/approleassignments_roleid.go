@@ -10,7 +10,6 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/transaction"
-	"github.com/nais/azureator/pkg/azure/util/approleassignment"
 )
 
 // TODO(tronghn): should log AppRole ID / name being processed
@@ -56,7 +55,7 @@ func (a appRoleAssignmentsWithRoleId) processFor(tx transaction.Transaction, ass
 		existing, err = a.getAllServicePrincipals(tx.Ctx)
 	}
 
-	revoked := approleassignment.Difference(existing, desired)
+	revoked := Difference(existing, desired)
 
 	if err := a.revokeFor(tx, revoked, principalType); err != nil {
 		return fmt.Errorf("deleting revoked app role assignments: %w", err)
