@@ -8,8 +8,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/nais/azureator/pkg/azure/client/application/approle"
 	"github.com/nais/azureator/pkg/azure/util"
-	"github.com/nais/azureator/pkg/azure/util/approle"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
 )
 

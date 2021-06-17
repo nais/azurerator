@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/nais/azureator/pkg/azure/util/approle"
+	"github.com/nais/azureator/pkg/azure/client/application/approle"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/azure/util/permissionscope"
 )
