@@ -17,6 +17,36 @@ func (p Permissions) Add(permission Permission) {
 	}
 }
 
+func (p Permissions) Filter(desired ...string) Permissions {
+	result := make(Permissions)
+
+	for _, scope := range desired {
+		permission, found := p[scope]
+		if !found {
+			continue
+		}
+
+		_, found = result[scope]
+		if found {
+			continue
+		}
+
+		result[scope] = permission
+	}
+
+	return result
+}
+
+func (p Permissions) PermissionIDs() []string {
+	result := make([]string, 0)
+
+	for _, value := range p {
+		result = append(result, string(value.ID))
+	}
+
+	return result
+}
+
 // Permission is a struct defining common fields used for generating and managing both AppRole and PermissionScope.
 type Permission struct {
 	Name    string
