@@ -10,7 +10,6 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
-	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/result"
@@ -91,12 +90,12 @@ func (p preAuthApps) Get(tx transaction.Transaction) (*result.PreAuthorizedApps,
 		return nil, err
 	}
 
-	for _, resource := range desired.Valid {
-		if !resourceInPreAuthorizedApps(resource, actual) || !resourceInAssignments(resource, allAssignments) {
-			unassigned = append(unassigned, resource)
+	for _, valid := range desired.Valid {
+		if !resourceInPreAuthorizedApps(valid, actual) || !resourceInAssignments(valid, allAssignments) {
+			unassigned = append(unassigned, valid)
 			continue
 		}
-		assigned = append(assigned, resource)
+		assigned = append(assigned, valid)
 	}
 
 	return &result.PreAuthorizedApps{
@@ -118,19 +117,19 @@ func (p preAuthApps) mapToResources(tx transaction.Transaction) (*result.PreAuth
 	for _, app := range tx.Instance.Spec.PreAuthorizedApplications {
 		app = ensureFieldsAreSet(tx, app)
 
-		resource, exists, err := p.mapToResource(tx, app)
+		res, exists, err := p.mapToResource(tx, app)
 		if err != nil {
 			return nil, fmt.Errorf("looking up existence of PreAuthorizedApp '%s': %w", customresources.GetUniqueName(app), err)
 		}
 
 		if !exists {
-			invalidResources = append(invalidResources, *resource)
+			invalidResources = append(invalidResources, *res)
 			continue
 		}
 
-		if !seen[resource.Name] {
-			seen[resource.Name] = true
-			validResources = append(validResources, *resource)
+		if !seen[res.Name] {
+			seen[res.Name] = true
+			validResources = append(validResources, *res)
 		}
 	}
 
@@ -147,16 +146,8 @@ func (p preAuthApps) mapToResources(tx transaction.Transaction) (*result.PreAuth
 
 func (p preAuthApps) mapToGraphRequest(resources []resource.Resource, permissions permissions.Permissions) appPatch {
 	apps := make([]msgraph.PreAuthorizedApplication, 0)
-	for _, resource := range resources {
-		clientId := resource.ClientId
-		defaultPermission := permissions[permissionscope.DefaultAccessScopeValue]
-
-		apps = append(apps, msgraph.PreAuthorizedApplication{
-			AppID: &clientId,
-			DelegatedPermissionIDs: []string{
-				string(defaultPermission.ID),
-			},
-		})
+	for _, app := range resources {
+		apps = append(apps, app.ToPreAuthorizedApp(permissions))
 	}
 
 	return appPatch{API: preAuthAppPatch{PreAuthorizedApplications: apps}}

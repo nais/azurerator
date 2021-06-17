@@ -94,6 +94,56 @@ func TestGenerateDesiredPermissionSetPreserveExisting(t *testing.T) {
 	assert.NotContains(t, desired, "common-2")
 }
 
+func TestPermissions_Add(t *testing.T) {
+	result := make(permissions.Permissions)
+	existing := permissions.NewGenerateIdEnabled("existing")
+	result["existing"] = existing
+
+	existingDuplicate := permissions.NewGenerateIdDisabled("existing")
+	result.Add(existingDuplicate)
+	newPermission := permissions.NewGenerateIdEnabled("new")
+	result.Add(newPermission)
+	newPermission2 := permissions.NewGenerateIdEnabled("new-2")
+	result.Add(newPermission2)
+
+	assert.Len(t, result, 3)
+	assert.Equal(t, existing, result["existing"])
+	assert.NotEqual(t, existingDuplicate, result["existing"])
+	assert.Equal(t, newPermission, result["new"])
+	assert.Equal(t, newPermission2, result["new-2"])
+}
+
+func TestPermissions_Filter(t *testing.T) {
+	result := make(permissions.Permissions)
+	result.Add(permissions.NewGenerateIdEnabled("permission-1"))
+	result.Add(permissions.NewGenerateIdEnabled("permission-2"))
+	result.Add(permissions.NewGenerateIdEnabled("permission-3"))
+
+	desired := make([]string, 0)
+	desired = append(desired, "permission-1", "permission-2", "permission-non-existing")
+
+	filtered := result.Filter(desired...)
+	assert.Len(t, filtered, 2)
+	assert.Equal(t, filtered["permission-1"], result["permission-1"])
+	assert.Equal(t, filtered["permission-2"], result["permission-2"])
+	assert.Empty(t, filtered["permission-3"])
+	assert.Empty(t, filtered["permission-non-existing"])
+}
+
+func TestPermissions_PermissionIDs(t *testing.T) {
+	result := make(permissions.Permissions)
+	result.Add(permissions.NewGenerateIdEnabled("permission-1"))
+	result.Add(permissions.NewGenerateIdEnabled("permission-2"))
+	result.Add(permissions.NewGenerateIdEnabled("permission-3"))
+
+	permissionIDs := result.PermissionIDs()
+
+	assert.Len(t, permissionIDs, 3)
+	assert.Contains(t, permissionIDs, string(result["permission-1"].ID))
+	assert.Contains(t, permissionIDs, string(result["permission-2"].ID))
+	assert.Contains(t, permissionIDs, string(result["permission-3"].ID))
+}
+
 func assertPermissionsInPermissions(t assert.TestingT, actual permissions.Permissions, expected []string) {
 	for _, v := range expected {
 		assertPermissionInPermissions(t, actual, v)
