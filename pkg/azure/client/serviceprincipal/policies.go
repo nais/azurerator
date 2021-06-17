@@ -7,8 +7,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/client/serviceprincipal/claimsmappingpolicy"
 	"github.com/nais/azureator/pkg/azure/transaction"
-	"github.com/nais/azureator/pkg/azure/util/claimsmappingpolicy"
 	"github.com/nais/azureator/pkg/customresources"
 )
 
