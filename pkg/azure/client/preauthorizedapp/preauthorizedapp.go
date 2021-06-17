@@ -11,11 +11,11 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
+	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
-	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/customresources"
 )
 

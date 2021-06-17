@@ -10,7 +10,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
-	"github.com/nais/azureator/pkg/azure/util/permissions"
+	"github.com/nais/azureator/pkg/azure/permissions"
 )
 
 func TestPermissionScopes_DescribeCreate_DesiredIsEmpty_ShouldAddDefaultScope(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
-	"github.com/nais/azureator/pkg/azure/util/permissions"
+	"github.com/nais/azureator/pkg/azure/permissions"
 )
 
 func TestToMap(t *testing.T) {

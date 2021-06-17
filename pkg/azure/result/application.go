@@ -1,7 +1,7 @@
 package result
 
 import (
-	"github.com/nais/azureator/pkg/azure/util/permissions"
+	"github.com/nais/azureator/pkg/azure/permissions"
 )
 
 type Application struct {

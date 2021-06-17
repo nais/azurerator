@@ -15,7 +15,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/util/crypto"
-	strings2 "github.com/nais/azureator/pkg/util/strings"
+	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
 type keyCredential struct {
@@ -128,7 +128,7 @@ func (k keyCredential) Validate(tx transaction.Transaction, existing credentials
 
 // Maps a list of key IDs to a list of KeyCredentials
 func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction, keyIdsInUse []string) ([]msgraph.KeyCredential, error) {
-	keyIdsInUse = strings2.RemoveDuplicates(keyIdsInUse)
+	keyIdsInUse = stringutils.RemoveDuplicates(keyIdsInUse)
 
 	application, err := k.RuntimeClient.Application().Get(tx)
 	if err != nil {
