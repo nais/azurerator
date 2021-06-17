@@ -10,9 +10,9 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/client/application/approle"
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
-	"github.com/nais/azureator/pkg/azure/util/approle"
 	"github.com/nais/azureator/pkg/azure/util/groupmembershipclaim"
 	"github.com/nais/azureator/pkg/azure/util/permissions"
 	"github.com/nais/azureator/pkg/azure/util/permissionscope"
@@ -33,7 +33,7 @@ func NewApplication(runtimeClient azure.RuntimeClient) azure.Application {
 }
 
 func (a Application) AppRoles() azure.AppRoles {
-	return newAppRoles(a)
+	return approle.NewAppRoles(a)
 }
 
 func (a Application) IdentifierUri() azure.IdentifierUri {
