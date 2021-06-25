@@ -47,6 +47,40 @@ func (p Permissions) PermissionIDs() []string {
 	return result
 }
 
+func (p Permissions) Enabled() Permissions {
+	result := make(Permissions)
+
+	for _, value := range p {
+		if value.Enabled {
+			result.Add(value)
+		}
+	}
+
+	return result
+}
+
+func (p Permissions) Disabled() Permissions {
+	result := make(Permissions)
+
+	for _, value := range p {
+		if !value.Enabled {
+			result.Add(value)
+		}
+	}
+
+	return result
+}
+
+func (p Permissions) HasRoleID(roleID msgraph.UUID) bool {
+	for _, permission := range p {
+		if permission.ID == roleID {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Permission is a struct defining common fields used for generating and managing both AppRole and PermissionScope.
 type Permission struct {
 	Name    string
@@ -102,7 +136,7 @@ func GenerateDesiredPermissionSet(in naisiov1.AzureAdApplication) Permissions {
 	desiredScopes := flattenScopes(in)
 
 	for _, permission := range append(desiredScopes, desiredRoles...) {
-		permissions.Add(NewGenerateIdEnabled(permission))
+		permissions.Add(NewGenerateIdEnabled(string(permission)))
 	}
 
 	return permissions
@@ -142,28 +176,28 @@ func ExtractPermissions(app *msgraph.Application) Permissions {
 	return permissions
 }
 
-func flattenScopes(in naisiov1.AzureAdApplication) []string {
-	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyRule) []string {
+func flattenScopes(in naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermission {
+	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyRule) []naisiov1.AccessPolicyPermission {
 		if rule.Permissions != nil && len(rule.Permissions.Scopes) > 0 {
 			return rule.Permissions.Scopes
 		} else {
-			return make([]string, 0)
+			return make([]naisiov1.AccessPolicyPermission, 0)
 		}
 	})
 }
 
-func flattenRoles(in naisiov1.AzureAdApplication) []string {
-	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyRule) []string {
+func flattenRoles(in naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermission {
+	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyRule) []naisiov1.AccessPolicyPermission {
 		if rule.Permissions != nil && len(rule.Permissions.Roles) > 0 {
 			return rule.Permissions.Roles
 		} else {
-			return make([]string, 0)
+			return make([]naisiov1.AccessPolicyPermission, 0)
 		}
 	})
 }
 
-func flatten(in []naisiov1.AccessPolicyRule, rule func(rule naisiov1.AccessPolicyRule) []string) []string {
-	result := make([]string, 0)
+func flatten(in []naisiov1.AccessPolicyRule, rule func(rule naisiov1.AccessPolicyRule) []naisiov1.AccessPolicyPermission) []naisiov1.AccessPolicyPermission {
+	result := make([]naisiov1.AccessPolicyPermission, 0)
 
 	for _, app := range in {
 		for _, permission := range rule(app) {

@@ -173,6 +173,8 @@ func (a Application) GetByClientId(ctx context.Context, id azure.ClientId) (msgr
 	return *application, nil
 }
 
+//	- we _CANNOT_ delete a disabled PermissionScope that has been granted to any pre-authorized app
+// 	- we _CAN_ however delete a disabled AppRole _without_ removing the associated approleassignments first
 func (a Application) RemoveDisabledPermissions(tx transaction.Transaction, application msgraph.Application) error {
 	objectId := tx.Instance.GetObjectId()
 

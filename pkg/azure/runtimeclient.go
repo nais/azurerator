@@ -6,10 +6,10 @@ import (
 	"time"
 
 	msgraph "github.com/nais/msgraph.go/v1.0"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
+	"github.com/nais/azureator/pkg/azure/client/approleassignment"
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
@@ -29,8 +29,7 @@ type RuntimeClient interface {
 	MaxNumberOfPagesToFetch() int
 
 	Application() Application
-	AppRoleAssignments(roleId msgraph.UUID, targetId ObjectId) AppRoleAssignmentsWithRoleId
-	AppRoleAssignmentsNoRoleId(targetId ObjectId) AppRoleAssignments
+	AppRoleAssignments(tx transaction.Transaction, targetId ObjectId) AppRoleAssignments
 	Groups() Groups
 	KeyCredential() KeyCredential
 	OAuth2PermissionGrant() OAuth2PermissionGrant
@@ -81,18 +80,12 @@ type RedirectUri interface {
 	Update(tx transaction.Transaction) error
 }
 
-type AppRoleAssignmentsWithRoleId interface {
-	ProcessForGroups(tx transaction.Transaction, assignees []resource.Resource) error
-	ProcessForServicePrincipals(tx transaction.Transaction, assignees []resource.Resource) error
-}
-
 type AppRoleAssignments interface {
-	GetAll(ctx context.Context) ([]msgraph.AppRoleAssignment, error)
-	GetAllGroups(ctx context.Context) ([]msgraph.AppRoleAssignment, error)
-	GetAllServicePrincipals(ctx context.Context) ([]msgraph.AppRoleAssignment, error)
-	LogFields() log.Fields
-	Request() *msgraph.ServicePrincipalAppRoleAssignedToCollectionRequest
-	TargetId() ObjectId
+	GetAll() (approleassignment.List, error)
+	GetAllGroups() (approleassignment.List, error)
+	GetAllServicePrincipals() (approleassignment.List, error)
+	ProcessForGroups(assignees resource.Resources, roles permissions.Permissions) error
+	ProcessForServicePrincipals(assignees resource.Resources, roles permissions.Permissions) error
 }
 
 type Groups interface {
@@ -151,5 +144,5 @@ type TeamOwners interface {
 }
 
 type TeamGroups interface {
-	Get(ctx context.Context) ([]msgraph.AppRoleAssignment, error)
+	Get(tx transaction.Transaction) (approleassignment.List, error)
 }

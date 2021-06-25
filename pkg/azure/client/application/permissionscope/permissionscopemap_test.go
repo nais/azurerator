@@ -71,38 +71,40 @@ func TestMap_ToSlice(t *testing.T) {
 }
 
 func TestMap_ToCreate(t *testing.T) {
-	existing := make(permissionscope.Map)
-	existing.Add(permissionscope.NewGenerateId("existing-scope-1"))
-	existing.Add(permissionscope.NewGenerateId("existing-scope-2"))
-	existing.Add(permissionscope.DefaultScope())
+	t.Run("with existing scopes", func(t *testing.T) {
+		existing := make(permissionscope.Map)
+		existing.Add(permissionscope.NewGenerateId("existing-scope-1"))
+		existing.Add(permissionscope.NewGenerateId("existing-scope-2"))
+		existing.Add(permissionscope.DefaultScope())
 
-	desired := make(permissions.Permissions)
-	desired.Add(permissions.NewGenerateIdEnabled("existing-scope-1"))
-	desired.Add(permissions.NewGenerateIdEnabled("scope-2"))
-	desired.Add(permissions.NewGenerateIdEnabled("scope-3"))
+		desired := make(permissions.Permissions)
+		desired.Add(permissions.NewGenerateIdEnabled("existing-scope-1"))
+		desired.Add(permissions.NewGenerateIdEnabled("scope-2"))
+		desired.Add(permissions.NewGenerateIdEnabled("scope-3"))
 
-	toCreate := existing.ToCreate(desired)
+		toCreate := existing.ToCreate(desired)
 
-	assert.Len(t, toCreate, 2)
-	// should contain the new scopes to be created
-	assert.Equal(t, permissionscope.FromPermission(desired["scope-2"]), toCreate["scope-2"])
-	assert.Equal(t, permissionscope.FromPermission(desired["scope-3"]), toCreate["scope-3"])
-	// should not contain default scope
-	assert.Empty(t, toCreate[permissionscope.DefaultAccessScopeValue])
-}
+		assert.Len(t, toCreate, 2)
+		// should contain the new scopes to be created
+		assert.Equal(t, permissionscope.FromPermission(desired["scope-2"]), toCreate["scope-2"])
+		assert.Equal(t, permissionscope.FromPermission(desired["scope-3"]), toCreate["scope-3"])
+		// should not contain default scope
+		assert.Empty(t, toCreate[permissionscope.DefaultAccessScopeValue])
+	})
 
-func TestMap_ToCreate_EmptyExisting_ShouldAddDefaultScope(t *testing.T) {
-	existing := make(permissionscope.Map)
+	t.Run("without existing scopes should add default scope", func(t *testing.T) {
+		existing := make(permissionscope.Map)
 
-	desired := make(permissions.Permissions)
-	desired.Add(permissions.NewGenerateIdEnabled("scope-1"))
+		desired := make(permissions.Permissions)
+		desired.Add(permissions.NewGenerateIdEnabled("scope-1"))
 
-	toCreate := existing.ToCreate(desired)
-	assert.Len(t, toCreate, 2)
-	// should contain the new scopes to be created
-	assert.Equal(t, permissionscope.FromPermission(desired["scope-1"]), toCreate["scope-1"])
-	// should contain default scope if not in existing
-	assert.Equal(t, permissionscope.DefaultScope(), toCreate[permissionscope.DefaultAccessScopeValue])
+		toCreate := existing.ToCreate(desired)
+		assert.Len(t, toCreate, 2)
+		// should contain the new scopes to be created
+		assert.Equal(t, permissionscope.FromPermission(desired["scope-1"]), toCreate["scope-1"])
+		// should contain default scope if not in existing
+		assert.Equal(t, permissionscope.DefaultScope(), toCreate[permissionscope.DefaultAccessScopeValue])
+	})
 }
 
 func TestMap_ToDisable(t *testing.T) {

@@ -56,7 +56,7 @@ func (o owners) get(tx transaction.Transaction) ([]msgraph.DirectoryObject, erro
 
 func (o owners) getTeamGroup(tx transaction.Transaction) (*msgraph.AppRoleAssignment, error) {
 	var group *msgraph.AppRoleAssignment
-	groups, err := o.Team().Groups().Get(tx.Ctx)
+	groups, err := o.Team().Groups().Get(tx)
 	if err != nil {
 		return group, err
 	}

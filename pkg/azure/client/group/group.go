@@ -11,6 +11,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
+	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/transaction"
 )
@@ -47,8 +48,13 @@ func (g group) Process(tx transaction.Transaction) error {
 		}
 	}
 
-	err = g.AppRoleAssignments(msgraph.UUID(approle.DefaultGroupRoleId), servicePrincipalId).
-		ProcessForGroups(tx, groups)
+	// TODO(tronghn): if there exists an AppRole where AllowedMemberTypes includes "User", then we cannot use the default AppRole `00000000-0000-0000-0000-000000000000`.
+	//  Should ensure that a default group role is created and used for this case.
+	roles := make(permissions.Permissions)
+	roles.Add(permissions.FromAppRole(approle.DefaultGroupRole()))
+
+	err = g.AppRoleAssignments(tx, servicePrincipalId).
+		ProcessForGroups(groups, roles)
 	if err != nil {
 		return fmt.Errorf("updating app roles for groups: %w", err)
 	}

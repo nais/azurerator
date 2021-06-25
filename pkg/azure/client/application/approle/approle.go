@@ -28,6 +28,10 @@ func DefaultRole() msgraph.AppRole {
 	return New(msgraph.UUID(DefaultAppRoleId), DefaultAppRoleValue)
 }
 
+func DefaultGroupRole() msgraph.AppRole {
+	return New(msgraph.UUID(DefaultGroupRoleId), DefaultGroupRoleValue)
+}
+
 func EnsureDefaultAppRoleIsEnabled(scopes []msgraph.AppRole) []msgraph.AppRole {
 	for i := range scopes {
 		if *scopes[i].Value == DefaultAppRoleValue && !*scopes[i].IsEnabled {

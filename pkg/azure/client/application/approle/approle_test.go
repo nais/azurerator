@@ -62,6 +62,21 @@ func TestDefaultRole(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestDefaultGroupRole(t *testing.T) {
+	id := msgraph.UUID(approle.DefaultGroupRoleId)
+	expected := msgraph.AppRole{
+		AllowedMemberTypes: []string{"Application"},
+		Description:        ptr.String(approle.DefaultGroupRoleValue),
+		DisplayName:        ptr.String(approle.DefaultGroupRoleValue),
+		ID:                 &id,
+		IsEnabled:          ptr.Bool(true),
+		Value:              ptr.String(approle.DefaultGroupRoleValue),
+	}
+	actual := approle.DefaultGroupRole()
+
+	assert.Equal(t, expected, actual)
+}
+
 func TestEnsureDefaultAppRoleIsEnabled(t *testing.T) {
 	defaultRole := approle.DefaultRole()
 	defaultRole.IsEnabled = ptr.Bool(false)
