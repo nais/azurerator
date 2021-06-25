@@ -13,7 +13,6 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application"
-	"github.com/nais/azureator/pkg/azure/client/approleassignment"
 	"github.com/nais/azureator/pkg/azure/client/group"
 	"github.com/nais/azureator/pkg/azure/client/keycredential"
 	"github.com/nais/azureator/pkg/azure/client/oauth2permissiongrant"
@@ -68,12 +67,8 @@ func (c Client) Application() azure.Application {
 	return application.NewApplication(c)
 }
 
-func (c Client) AppRoleAssignments(roleId msgraph.UUID, targetId azure.ObjectId) azure.AppRoleAssignmentsWithRoleId {
-	return approleassignment.NewAppRoleAssignmentsWithRoleId(c, c.AppRoleAssignmentsNoRoleId(targetId), roleId)
-}
-
-func (c Client) AppRoleAssignmentsNoRoleId(targetId azure.ObjectId) azure.AppRoleAssignments {
-	return approleassignment.NewAppRoleAssignmentsNoRoleId(c, targetId)
+func (c Client) AppRoleAssignments(tx transaction.Transaction, targetId azure.ServicePrincipalId) azure.AppRoleAssignments {
+	return serviceprincipal.NewAppRoleAssignments(c, tx, targetId)
 }
 
 func (c Client) Groups() azure.Groups {
@@ -339,10 +334,6 @@ func (c Client) Update(tx transaction.Transaction) (*result.Application, error) 
 		return nil, err
 	}
 
-	// TODO: finally, patch application and remove all roles and scopes that are set to disabled
-	//	- we _CANNOT delete a disabled PermissionScope that has been granted to any pre-authorized app
-	// 	- we _CAN_ however delete a disabled AppRole _without_ removing the associated approleassignments first...
-	//	(however it appears to clog up the list of granted Permissions in the Enterprise Apps overview)
 	if err := c.Application().RemoveDisabledPermissions(tx, *app); err != nil {
 		return nil, err
 	}

@@ -72,38 +72,40 @@ func TestMap_ToSlice(t *testing.T) {
 }
 
 func TestMap_ToCreate(t *testing.T) {
-	existing := make(approle.Map)
-	existing.Add(approle.NewGenerateId("existing-role-1"))
-	existing.Add(approle.NewGenerateId("existing-role-2"))
-	existing.Add(approle.DefaultRole())
+	t.Run("with existing roles", func(t *testing.T) {
+		existing := make(approle.Map)
+		existing.Add(approle.NewGenerateId("existing-role-1"))
+		existing.Add(approle.NewGenerateId("existing-role-2"))
+		existing.Add(approle.DefaultRole())
 
-	desired := make(permissions.Permissions)
-	desired.Add(permissions.NewGenerateIdEnabled("existing-role-1"))
-	desired.Add(permissions.NewGenerateIdEnabled("role-2"))
-	desired.Add(permissions.NewGenerateIdEnabled("role-3"))
+		desired := make(permissions.Permissions)
+		desired.Add(permissions.NewGenerateIdEnabled("existing-role-1"))
+		desired.Add(permissions.NewGenerateIdEnabled("role-2"))
+		desired.Add(permissions.NewGenerateIdEnabled("role-3"))
 
-	toCreate := existing.ToCreate(desired)
+		toCreate := existing.ToCreate(desired)
 
-	assert.Len(t, toCreate, 2)
-	// should contain new roles to be created
-	assert.Equal(t, approle.FromPermission(desired["role-2"]), toCreate["role-2"])
-	assert.Equal(t, approle.FromPermission(desired["role-3"]), toCreate["role-3"])
-	// should not contain default role
-	assert.Empty(t, toCreate[approle.DefaultAppRoleValue])
-}
+		assert.Len(t, toCreate, 2)
+		// should contain new roles to be created
+		assert.Equal(t, approle.FromPermission(desired["role-2"]), toCreate["role-2"])
+		assert.Equal(t, approle.FromPermission(desired["role-3"]), toCreate["role-3"])
+		// should not contain default role
+		assert.Empty(t, toCreate[approle.DefaultAppRoleValue])
+	})
 
-func TestMap_ToCreate_EmptyExisting_ShouldAddDefaultRole(t *testing.T) {
-	existing := make(approle.Map)
+	t.Run("without existing roles should add default role", func(t *testing.T) {
+		existing := make(approle.Map)
 
-	desired := make(permissions.Permissions)
-	desired.Add(permissions.NewGenerateIdEnabled("role-1"))
+		desired := make(permissions.Permissions)
+		desired.Add(permissions.NewGenerateIdEnabled("role-1"))
 
-	toCreate := existing.ToCreate(desired)
-	assert.Len(t, toCreate, 2)
-	// should contain the new roles to be created
-	assert.Equal(t, approle.FromPermission(desired["role-1"]), toCreate["role-1"])
-	// should contain default role if not in existing
-	assert.Equal(t, approle.DefaultRole(), toCreate[approle.DefaultAppRoleValue])
+		toCreate := existing.ToCreate(desired)
+		assert.Len(t, toCreate, 2)
+		// should contain the new roles to be created
+		assert.Equal(t, approle.FromPermission(desired["role-1"]), toCreate["role-1"])
+		// should contain default role if not in existing
+		assert.Equal(t, approle.DefaultRole(), toCreate[approle.DefaultAppRoleValue])
+	})
 }
 
 func TestMap_ToDisable(t *testing.T) {
@@ -132,6 +134,7 @@ func TestMap_ToDisable(t *testing.T) {
 func TestMap_Unmodified(t *testing.T) {
 	existing := make(approle.Map)
 	existingRole1 := approle.NewGenerateId("existing-role-1")
+	existingRole1.AllowedMemberTypes = []string{"Application", "User"}
 	existingRole1.Description = ptr.String("non standard description")
 	existingRole1.DisplayName = ptr.String("non standard display name")
 	existingRole1.IsEnabled = ptr.Bool(false)

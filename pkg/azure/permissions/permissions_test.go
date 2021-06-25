@@ -23,33 +23,33 @@ func TestGenerateDesiredPermissionSet(t *testing.T) {
 		{
 			Application: "a",
 			Permissions: &naisiov1.AccessPolicyPermissions{
-				Roles:  []string{"read", "write"},
-				Scopes: []string{"admin"},
+				Roles:  []naisiov1.AccessPolicyPermission{"read", "write"},
+				Scopes: []naisiov1.AccessPolicyPermission{"admin"},
 			},
 		}, {
 			Application: "b",
 			Permissions: &naisiov1.AccessPolicyPermissions{
-				Roles:  []string{"read"},
-				Scopes: []string{"write"},
+				Roles:  []naisiov1.AccessPolicyPermission{"read"},
+				Scopes: []naisiov1.AccessPolicyPermission{"write"},
 			},
 		}, {
 			Application: "c",
 			Permissions: &naisiov1.AccessPolicyPermissions{
-				Roles:  []string{"write", "admin"},
-				Scopes: []string{"read"},
+				Roles:  []naisiov1.AccessPolicyPermission{"write", "admin"},
+				Scopes: []naisiov1.AccessPolicyPermission{"read"},
 			},
 		},
 	}
 
 	desired = permissions.GenerateDesiredPermissionSet(*app)
 	assert.Len(t, desired, 3)
-	assertPermissionsInPermissions(t, desired, []string{"read", "write", "admin"})
+	assertPermissionsInPermissions(t, desired, []naisiov1.AccessPolicyPermission{"read", "write", "admin"})
 }
 
 func TestExtractPermissions(t *testing.T) {
 	msgraphApp := minimalMsGraphApplication()
 	actual := permissions.ExtractPermissions(msgraphApp)
-	expected := []string{
+	expected := []naisiov1.AccessPolicyPermission{
 		"role-1", "role-2", "role-3",
 		"scope-1", "scope-2",
 		"common", "common-2",
@@ -67,20 +67,20 @@ func TestGenerateDesiredPermissionSetPreserveExisting(t *testing.T) {
 		{
 			Application: "a",
 			Permissions: &naisiov1.AccessPolicyPermissions{
-				Roles:  []string{"role-1"},
-				Scopes: []string{"scope-1", "common"},
+				Roles:  []naisiov1.AccessPolicyPermission{"role-1"},
+				Scopes: []naisiov1.AccessPolicyPermission{"scope-1", "common"},
 			},
 		}, {
 			Application: "b",
 			Permissions: &naisiov1.AccessPolicyPermissions{
-				Roles:  []string{"role-3", "common"},
-				Scopes: []string{"scope-2", "scope-3"},
+				Roles:  []naisiov1.AccessPolicyPermission{"role-3", "common"},
+				Scopes: []naisiov1.AccessPolicyPermission{"scope-2", "scope-3"},
 			},
 		},
 	}
 
 	desired := permissions.GenerateDesiredPermissionSetPreserveExisting(*app, *existing)
-	expected := []string{"role-1", "role-3", "scope-1", "scope-2", "scope-3", "common"}
+	expected := []naisiov1.AccessPolicyPermission{"role-1", "role-3", "scope-1", "scope-2", "scope-3", "common"}
 
 	// length of desired set is set of roles + set of scopes in .Spec.PreAuthorizedApplications
 	assert.Len(t, desired, len(expected))
@@ -144,9 +144,53 @@ func TestPermissions_PermissionIDs(t *testing.T) {
 	assert.Contains(t, permissionIDs, string(result["permission-3"].ID))
 }
 
-func assertPermissionsInPermissions(t assert.TestingT, actual permissions.Permissions, expected []string) {
+func TestPermissions_Enabled(t *testing.T) {
+	result := make(permissions.Permissions)
+	result.Add(permissions.NewGenerateIdEnabled("permission-1"))
+	result.Add(permissions.NewGenerateIdDisabled("permission-2"))
+	result.Add(permissions.NewGenerateIdEnabled("permission-3"))
+	result.Add(permissions.NewGenerateIdDisabled("permission-4"))
+
+	enabled := result.Enabled()
+
+	assert.Len(t, enabled, 2)
+	assert.Equal(t, enabled["permission-1"], result["permission-1"])
+	assert.Equal(t, enabled["permission-3"], result["permission-3"])
+	assert.Empty(t, enabled["permission-2"])
+	assert.Empty(t, enabled["permission-4"])
+}
+
+func TestPermissions_Disabled(t *testing.T) {
+	result := make(permissions.Permissions)
+	result.Add(permissions.NewGenerateIdEnabled("permission-1"))
+	result.Add(permissions.NewGenerateIdDisabled("permission-2"))
+	result.Add(permissions.NewGenerateIdEnabled("permission-3"))
+	result.Add(permissions.NewGenerateIdDisabled("permission-4"))
+
+	disabled := result.Disabled()
+
+	assert.Len(t, disabled, 2)
+	assert.Equal(t, disabled["permission-2"], result["permission-2"])
+	assert.Equal(t, disabled["permission-4"], result["permission-4"])
+	assert.Empty(t, disabled["permission-1"])
+	assert.Empty(t, disabled["permission-3"])
+}
+
+func TestPermissions_HasRoleID(t *testing.T) {
+	result := make(permissions.Permissions)
+	result.Add(permissions.New("id-1", "permission-1", true))
+	result.Add(permissions.New("id-2", "permission-2", true))
+	result.Add(permissions.New("id-3", "permission-3", false))
+
+	assert.True(t, result.HasRoleID("id-1"))
+	assert.True(t, result.HasRoleID("id-2"))
+	assert.True(t, result.HasRoleID("id-3"))
+	assert.False(t, result.HasRoleID("id-4"))
+}
+
+func assertPermissionsInPermissions(t assert.TestingT, actual permissions.Permissions, expected []naisiov1.AccessPolicyPermission) {
 	for _, v := range expected {
-		assertPermissionInPermissions(t, actual, v)
+		assertPermissionInPermissions(t, actual, string(v))
 	}
 }
 

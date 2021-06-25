@@ -9,7 +9,6 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/client/application/approle"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/result"
@@ -41,9 +40,6 @@ func NewPreAuthApps(runtimeClient azure.RuntimeClient) azure.PreAuthApps {
 }
 
 func (p preAuthApps) Process(tx transaction.Transaction, permissions permissions.Permissions) (*result.PreAuthorizedApps, error) {
-	// TODO(tronghn): assign/revoke scopes in preauthorizedapps
-	//  assign/revoke approles in approleassignment
-
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 	objectId := tx.Instance.GetObjectId()
 
@@ -57,9 +53,8 @@ func (p preAuthApps) Process(tx transaction.Transaction, permissions permissions
 		return nil, fmt.Errorf("patching preauthorizedapps for application: %w", err)
 	}
 
-	permission := permissions[approle.DefaultAppRoleValue]
-	err = p.AppRoleAssignments(permission.ID, servicePrincipalId).
-		ProcessForServicePrincipals(tx, preAuthorizedApps.Valid)
+	err = p.AppRoleAssignments(tx, servicePrincipalId).
+		ProcessForServicePrincipals(preAuthorizedApps.Valid, permissions)
 	if err != nil {
 		return nil, fmt.Errorf("updating approle assignments for service principals: %w", err)
 	}
@@ -81,17 +76,17 @@ func (p preAuthApps) Get(tx transaction.Transaction) (*result.PreAuthorizedApps,
 	if err != nil {
 		return nil, err
 	}
-	actual := app.API.PreAuthorizedApplications
+	actual := List(app.API.PreAuthorizedApplications)
 
 	// fetch current AppRole assignments from the ServicePrincipal resource
-	allAssignments, err := p.AppRoleAssignmentsNoRoleId(tx.Instance.GetServicePrincipalId()).
-		GetAllServicePrincipals(tx.Ctx)
+	allAssignments, err := p.AppRoleAssignments(tx, tx.Instance.GetServicePrincipalId()).
+		GetAllServicePrincipals()
 	if err != nil {
 		return nil, err
 	}
 
 	for _, valid := range desired.Valid {
-		if !resourceInPreAuthorizedApps(valid, actual) || !resourceInAssignments(valid, allAssignments) {
+		if !actual.HasResource(valid) || !allAssignments.HasResource(valid) {
 			unassigned = append(unassigned, valid)
 			continue
 		}
@@ -207,25 +202,4 @@ func ensureFieldsAreSet(tx transaction.Transaction, rule v1.AccessPolicyRule) v1
 	}
 
 	return rule
-}
-
-func resourceInPreAuthorizedApps(resource resource.Resource, apps []msgraph.PreAuthorizedApplication) bool {
-	for _, app := range apps {
-		if *app.AppID == resource.ClientId {
-			return true
-		}
-	}
-	return false
-}
-
-func resourceInAssignments(in resource.Resource, assignments []msgraph.AppRoleAssignment) bool {
-	for _, a := range assignments {
-		equalPrincipalID := *a.PrincipalID == msgraph.UUID(in.ObjectId)
-		equalPrincipalType := resource.PrincipalType(*a.PrincipalType) == in.PrincipalType
-
-		if equalPrincipalID && equalPrincipalType {
-			return true
-		}
-	}
-	return false
 }

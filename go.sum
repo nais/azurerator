@@ -240,6 +240,8 @@ github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRW
 github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f/go.mod h1:ZdcZmHo+o7JKHSa8/e818NopupXU1YMK5fe1lsApnBw=
 github.com/nais/liberator v0.0.0-20210616075639-9bc7b472fcb1 h1:noMF+QgErR+JYYEcSpGkdkCRwTCyB8WKPFkRPw6dI6o=
 github.com/nais/liberator v0.0.0-20210616075639-9bc7b472fcb1/go.mod h1:Dw7TPRYZkyLJwwFarV86XIFR5u4ZhEgz2YBuBZkZIhs=
+github.com/nais/liberator v0.0.0-20210625073655-9c9da62ad93c h1:h7SGo8T4w4hs+6M5l/JRlrFFWM1RH5unCx1AY21v0/c=
+github.com/nais/liberator v0.0.0-20210625073655-9c9da62ad93c/go.mod h1:Dw7TPRYZkyLJwwFarV86XIFR5u4ZhEgz2YBuBZkZIhs=
 github.com/nais/msgraph.go v0.1.5 h1:Sf9/DUZ8mMipgG2bDE249mHTo8E9qV8tBJpAbuuQsJw=
 github.com/nais/msgraph.go v0.1.5/go.mod h1:WhEs+KY7Nrt3rpUZwCpSKtwy2CiL+YG+OJ+vhh2/ZMU=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=

@@ -13,138 +13,142 @@ import (
 	"github.com/nais/azureator/pkg/azure/permissions"
 )
 
-func TestAppRoles_DescribeCreate_DesiredIsEmpty_ShouldAddDefaultRole(t *testing.T) {
-	desired := make(permissions.Permissions)
-	roles := application.Application{}.AppRoles().DescribeCreate(desired).GetResult()
+func TestAppRoles_DescribeCreate(t *testing.T) {
+	t.Run("desired is empty should add default role", func(t *testing.T) {
+		desired := make(permissions.Permissions)
+		roles := application.Application{}.AppRoles().DescribeCreate(desired).GetResult()
 
-	assert.Len(t, roles, 1)
-	assertContainsDefaultRole(t, roles)
-}
+		assert.Len(t, roles, 1)
+		assertContainsDefaultRole(t, roles)
+	})
 
-func TestAppRoles_DescribeCreate_DisabledDefaultRoleInDesired_ShouldNotDisable(t *testing.T) {
-	desired := make(permissions.Permissions)
-	defaultRole := approle.DefaultRole()
-	defaultRole.IsEnabled = ptr.Bool(false)
-	desired.Add(permissions.FromAppRole(defaultRole))
+	t.Run("disabled default role in desired should not actually disable", func(t *testing.T) {
+		desired := make(permissions.Permissions)
+		defaultRole := approle.DefaultRole()
+		defaultRole.IsEnabled = ptr.Bool(false)
+		desired.Add(permissions.FromAppRole(defaultRole))
 
-	roles := application.Application{}.AppRoles().DescribeCreate(desired).GetResult()
+		roles := application.Application{}.AppRoles().DescribeCreate(desired).GetResult()
 
-	assert.Len(t, roles, 1)
-	assertContainsDefaultRole(t, roles)
-}
+		assert.Len(t, roles, 1)
+		assertContainsDefaultRole(t, roles)
+	})
 
-func TestAppRoles_DescribeCreate_CustomRoles_ShouldAddCustomRolesAndDefaultRole(t *testing.T) {
-	role1 := approle.NewGenerateId("role-1")
-	role2 := approle.NewGenerateId("role-2")
+	t.Run("with only custom roles should add custom roles and default role", func(t *testing.T) {
+		role1 := approle.NewGenerateId("role-1")
+		role2 := approle.NewGenerateId("role-2")
 
-	desired := make(permissions.Permissions)
-	desired.Add(permissions.FromAppRole(role1))
-	desired.Add(permissions.FromAppRole(role2))
+		desired := make(permissions.Permissions)
+		desired.Add(permissions.FromAppRole(role1))
+		desired.Add(permissions.FromAppRole(role2))
 
-	roles := application.Application{}.AppRoles().DescribeCreate(desired).GetResult()
+		roles := application.Application{}.AppRoles().DescribeCreate(desired).GetResult()
 
-	assertContainsRole(t, role1, roles)
-	assertContainsRole(t, role2, roles)
-	assertContainsDefaultRole(t, roles)
+		assertContainsRole(t, role1, roles)
+		assertContainsRole(t, role2, roles)
+		assertContainsDefaultRole(t, roles)
 
-	// assert that length of AppRoles equals length of the resulting union set of (desired + Default AppRole)
-	assert.Len(t, roles, len(desired)+1)
-}
-
-func TestAppRoles_DescribeUpdate_DefaultRoleNotExistsInDesiredNorExisting_ShouldAdd(t *testing.T) {
-	desired := make(permissions.Permissions)
-	existing := make([]msgraph.AppRole, 0)
-	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
-
-	assert.Len(t, roles, 1)
-	assertContainsDefaultRole(t, roles)
-}
-
-func TestAppRoles_DescribeUpdate_DefaultRoleAlreadyExists_ShouldOnlyEnable(t *testing.T) {
-	desired := make(permissions.Permissions)
-	existing := []msgraph.AppRole{
-		approle.DefaultRole(),
-	}
-	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
-
-	assert.Len(t, roles, 1)
-	assertContainsDefaultRole(t, roles)
-
-	// test case where the default role was previously created by another entity with differing values in the fields
-	id := msgraph.UUID(uuid.New().String())
-	existing = []msgraph.AppRole{
-		{
-			AllowedMemberTypes: []string{"Application"},
-			Description:        ptr.String("Description"),
-			DisplayName:        ptr.String("DisplayName"),
-			ID:                 &id,
-			IsEnabled:          ptr.Bool(false),
-			Value:              ptr.String(approle.DefaultAppRoleValue),
-		},
-	}
-	roles = application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
-
-	assert.Len(t, roles, 1)
-	assertContainsDefaultRoleWithLambda(t, roles, func(t assert.TestingT, expected, actual msgraph.AppRole) {
-		assert.Len(t, actual.AllowedMemberTypes, 1)
-		assert.Contains(t, actual.AllowedMemberTypes, "Application")
-		assert.Equal(t, *actual.Description, approle.DefaultAppRoleValue)
-		assert.Equal(t, *actual.DisplayName, approle.DefaultAppRoleValue)
-		assert.Equal(t, *actual.ID, id)
-		assert.True(t, *actual.IsEnabled)
-		assert.Equal(t, *actual.Value, approle.DefaultAppRoleValue)
+		// assert that length of AppRoles equals length of the resulting union set of (desired + Default AppRole)
+		assert.Len(t, roles, len(desired)+1)
 	})
 }
 
-func TestAppRoles_DescribeUpdate_DisabledDefaultRoleInDesired_ShouldNotDisable(t *testing.T) {
-	desired := make(permissions.Permissions)
-	desired.Add(permissions.NewGenerateIdDisabled(approle.DefaultAppRoleValue))
+func TestAppRoles_DescribeUpdate(t *testing.T) {
+	t.Run("default role not found in desired nor existing should add default role", func(t *testing.T) {
+		desired := make(permissions.Permissions)
+		existing := make([]msgraph.AppRole, 0)
+		roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
 
-	existing := make([]msgraph.AppRole, 0)
-	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
-
-	assert.Len(t, roles, 1)
-	assertContainsDefaultRole(t, roles)
-}
-
-func TestAppRoles_DescribeUpdate_CustomRoles_ShouldAddDesiredAndRemoveNonDesiredRoles(t *testing.T) {
-	role1 := approle.NewGenerateId("role-1")
-	role2 := approle.NewGenerateId("role-2")
-	role3 := approle.NewGenerateId("role-3")
-
-	desired := make(permissions.Permissions)
-	desired.Add(permissions.NewGenerateIdDisabled(approle.DefaultAppRoleValue))
-	desired.Add(permissions.FromAppRole(role1))
-	desired.Add(permissions.FromAppRole(role2))
-
-	existing := []msgraph.AppRole{
-		approle.DefaultRole(),
-		role1,
-		role3,
-	}
-
-	roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
-
-	// assert that role "role-1" still exists and is unmodified
-	assertContainsRole(t, role1, roles)
-	// assert that role "role-2" is added
-	assertContainsRole(t, role2, roles)
-	// assert that the default role still exists and is unmodified
-	assertContainsDefaultRole(t, roles)
-
-	// assert that the non-desired role "role-3" still exists and is set to disabled
-	assertContainsRoleWithLambda(t, role3, roles, func(t assert.TestingT, expected, actual msgraph.AppRole) {
-		assert.Equal(t, *expected.Value, *actual.Value)
-		assert.Equal(t, *expected.ID, *actual.ID)
-		assert.Equal(t, *expected.Value, *actual.DisplayName)
-		assert.Equal(t, *expected.Value, *actual.Description)
-		assert.False(t, *actual.IsEnabled)
-		assert.Contains(t, actual.AllowedMemberTypes, "Application")
-		assert.Len(t, actual.AllowedMemberTypes, 1)
+		assert.Len(t, roles, 1)
+		assertContainsDefaultRole(t, roles)
 	})
 
-	// assert that length of AppRoles equals length of the resulting union set of (existing + desired)
-	assert.Len(t, roles, len(desired)+1)
+	t.Run("default role already exists should ensure that it is enabled", func(t *testing.T) {
+		desired := make(permissions.Permissions)
+		existing := []msgraph.AppRole{
+			approle.DefaultRole(),
+		}
+		roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
+
+		assert.Len(t, roles, 1)
+		assertContainsDefaultRole(t, roles)
+
+		// test case where the default role was previously created by another entity with differing values in the fields
+		id := msgraph.UUID(uuid.New().String())
+		existing = []msgraph.AppRole{
+			{
+				AllowedMemberTypes: []string{"Application"},
+				Description:        ptr.String("Description"),
+				DisplayName:        ptr.String("DisplayName"),
+				ID:                 &id,
+				IsEnabled:          ptr.Bool(false),
+				Value:              ptr.String(approle.DefaultAppRoleValue),
+			},
+		}
+		roles = application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
+
+		assert.Len(t, roles, 1)
+		assertContainsDefaultRoleWithLambda(t, roles, func(t assert.TestingT, expected, actual msgraph.AppRole) {
+			assert.Len(t, actual.AllowedMemberTypes, 1)
+			assert.Contains(t, actual.AllowedMemberTypes, "Application")
+			assert.Equal(t, *actual.Description, approle.DefaultAppRoleValue)
+			assert.Equal(t, *actual.DisplayName, approle.DefaultAppRoleValue)
+			assert.Equal(t, *actual.ID, id)
+			assert.True(t, *actual.IsEnabled)
+			assert.Equal(t, *actual.Value, approle.DefaultAppRoleValue)
+		})
+	})
+
+	t.Run("disabled default role in desired should not actually disable", func(t *testing.T) {
+		desired := make(permissions.Permissions)
+		desired.Add(permissions.NewGenerateIdDisabled(approle.DefaultAppRoleValue))
+
+		existing := make([]msgraph.AppRole, 0)
+		roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
+
+		assert.Len(t, roles, 1)
+		assertContainsDefaultRole(t, roles)
+	})
+
+	t.Run("custom roles should add desired and remove non-desired roles", func(t *testing.T) {
+		role1 := approle.NewGenerateId("role-1")
+		role2 := approle.NewGenerateId("role-2")
+		role3 := approle.NewGenerateId("role-3")
+
+		desired := make(permissions.Permissions)
+		desired.Add(permissions.NewGenerateIdDisabled(approle.DefaultAppRoleValue))
+		desired.Add(permissions.FromAppRole(role1))
+		desired.Add(permissions.FromAppRole(role2))
+
+		existing := []msgraph.AppRole{
+			approle.DefaultRole(),
+			role1,
+			role3,
+		}
+
+		roles := application.Application{}.AppRoles().DescribeUpdate(desired, existing).GetResult()
+
+		// assert that role "role-1" still exists and is unmodified
+		assertContainsRole(t, role1, roles)
+		// assert that role "role-2" is added
+		assertContainsRole(t, role2, roles)
+		// assert that the default role still exists and is unmodified
+		assertContainsDefaultRole(t, roles)
+
+		// assert that the non-desired role "role-3" still exists and is set to disabled
+		assertContainsRoleWithLambda(t, role3, roles, func(t assert.TestingT, expected, actual msgraph.AppRole) {
+			assert.Equal(t, *expected.Value, *actual.Value)
+			assert.Equal(t, *expected.ID, *actual.ID)
+			assert.Equal(t, *expected.Value, *actual.DisplayName)
+			assert.Equal(t, *expected.Value, *actual.Description)
+			assert.False(t, *actual.IsEnabled)
+			assert.Contains(t, actual.AllowedMemberTypes, "Application")
+			assert.Len(t, actual.AllowedMemberTypes, 1)
+		})
+
+		// assert that length of AppRoles equals length of the resulting union set of (existing + desired)
+		assert.Len(t, roles, len(desired)+1)
+	})
 }
 
 func defaultRoleAsserter() func(t assert.TestingT, expected, actual msgraph.AppRole) {
