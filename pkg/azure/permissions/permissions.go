@@ -177,7 +177,7 @@ func ExtractPermissions(app *msgraph.Application) Permissions {
 }
 
 func flattenScopes(in naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermission {
-	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyRule) []naisiov1.AccessPolicyPermission {
+	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyInboundRule) []naisiov1.AccessPolicyPermission {
 		if rule.Permissions != nil && len(rule.Permissions.Scopes) > 0 {
 			return rule.Permissions.Scopes
 		} else {
@@ -187,7 +187,7 @@ func flattenScopes(in naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermis
 }
 
 func flattenRoles(in naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermission {
-	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyRule) []naisiov1.AccessPolicyPermission {
+	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyInboundRule) []naisiov1.AccessPolicyPermission {
 		if rule.Permissions != nil && len(rule.Permissions.Roles) > 0 {
 			return rule.Permissions.Roles
 		} else {
@@ -196,7 +196,7 @@ func flattenRoles(in naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermiss
 	})
 }
 
-func flatten(in []naisiov1.AccessPolicyRule, rule func(rule naisiov1.AccessPolicyRule) []naisiov1.AccessPolicyPermission) []naisiov1.AccessPolicyPermission {
+func flatten(in []naisiov1.AccessPolicyInboundRule, rule func(rule naisiov1.AccessPolicyInboundRule) []naisiov1.AccessPolicyPermission) []naisiov1.AccessPolicyPermission {
 	result := make([]naisiov1.AccessPolicyPermission, 0)
 
 	for _, app := range in {

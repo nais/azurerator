@@ -87,12 +87,12 @@ func AzurePreAuthorizedApps(instance v1.AzureAdApplication) *result.PreAuthorize
 	return &preAuthApps
 }
 
-func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) result.PreAuthorizedApps {
+func mapToInternalPreAuthApps(apps []v1.AccessPolicyInboundRule) result.PreAuthorizedApps {
 	valid := make([]resource.Resource, 0)
 	invalid := make([]resource.Resource, 0)
 
 	for _, app := range apps {
-		if strings.Contains(customresources.GetUniqueName(app), "invalid") {
+		if strings.Contains(customresources.GetUniqueName(app.AccessPolicyRule), "invalid") {
 			invalid = append(invalid, mapToInternalPreAuthApp(app))
 		} else {
 			valid = append(valid, mapToInternalPreAuthApp(app))
@@ -105,7 +105,7 @@ func mapToInternalPreAuthApps(apps []v1.AccessPolicyRule) result.PreAuthorizedAp
 	}
 }
 
-func mapToInternalPreAuthApp(app v1.AccessPolicyRule) resource.Resource {
+func mapToInternalPreAuthApp(app v1.AccessPolicyInboundRule) resource.Resource {
 	clientId := uuid.New().String()
 	objectId := uuid.New().String()
 	name := getOrGenerate(kubernetes.UniformResourceName(&metav1.ObjectMeta{
@@ -114,11 +114,11 @@ func mapToInternalPreAuthApp(app v1.AccessPolicyRule) resource.Resource {
 		ClusterName: app.Cluster,
 	}))
 	return resource.Resource{
-		Name:             name,
-		ClientId:         clientId,
-		ObjectId:         objectId,
-		PrincipalType:    resource.PrincipalTypeServicePrincipal,
-		AccessPolicyRule: app,
+		Name:                    name,
+		ClientId:                clientId,
+		ObjectId:                objectId,
+		PrincipalType:           resource.PrincipalTypeServicePrincipal,
+		AccessPolicyInboundRule: app,
 	}
 }
 
