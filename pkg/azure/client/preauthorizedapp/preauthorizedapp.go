@@ -99,8 +99,8 @@ func (p preAuthApps) Get(tx transaction.Transaction) (*result.PreAuthorizedApps,
 	}, nil
 }
 
-func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyRule) (*msgraph.Application, bool, error) {
-	return p.Application().ExistsByFilter(ctx, util.FilterByName(customresources.GetUniqueName(app)))
+func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyInboundRule) (*msgraph.Application, bool, error) {
+	return p.Application().ExistsByFilter(ctx, util.FilterByName(customresources.GetUniqueName(app.AccessPolicyRule)))
 }
 
 func (p preAuthApps) mapToResources(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
@@ -114,7 +114,7 @@ func (p preAuthApps) mapToResources(tx transaction.Transaction) (*result.PreAuth
 
 		res, exists, err := p.mapToResource(tx, app)
 		if err != nil {
-			return nil, fmt.Errorf("looking up existence of PreAuthorizedApp '%s': %w", customresources.GetUniqueName(app), err)
+			return nil, fmt.Errorf("looking up existence of PreAuthorizedApp '%s': %w", customresources.GetUniqueName(app.AccessPolicyRule), err)
 		}
 
 		if !exists {
@@ -148,7 +148,7 @@ func (p preAuthApps) mapToGraphRequest(resources []resource.Resource, permission
 	return appPatch{API: preAuthAppPatch{PreAuthorizedApplications: apps}}
 }
 
-func (p preAuthApps) mapToResource(tx transaction.Transaction, app v1.AccessPolicyRule) (*resource.Resource, bool, error) {
+func (p preAuthApps) mapToResource(tx transaction.Transaction, app v1.AccessPolicyInboundRule) (*resource.Resource, bool, error) {
 	a, exists, err := p.exists(tx.Ctx, app)
 	if err != nil || !exists {
 		return invalidResource(app), false, err
@@ -160,21 +160,21 @@ func (p preAuthApps) mapToResource(tx transaction.Transaction, app v1.AccessPoli
 	}
 
 	return &resource.Resource{
-		Name:             *a.DisplayName,
-		ClientId:         *a.AppID,
-		ObjectId:         *servicePrincipal.ID,
-		PrincipalType:    resource.PrincipalTypeServicePrincipal,
-		AccessPolicyRule: app,
+		Name:                    *a.DisplayName,
+		ClientId:                *a.AppID,
+		ObjectId:                *servicePrincipal.ID,
+		PrincipalType:           resource.PrincipalTypeServicePrincipal,
+		AccessPolicyInboundRule: app,
 	}, true, nil
 }
 
-func invalidResource(app v1.AccessPolicyRule) *resource.Resource {
+func invalidResource(app v1.AccessPolicyInboundRule) *resource.Resource {
 	return &resource.Resource{
-		Name:             customresources.GetUniqueName(app),
-		ClientId:         "",
-		ObjectId:         "",
-		PrincipalType:    resource.PrincipalTypeServicePrincipal,
-		AccessPolicyRule: app,
+		Name:                    customresources.GetUniqueName(app.AccessPolicyRule),
+		ClientId:                "",
+		ObjectId:                "",
+		PrincipalType:           resource.PrincipalTypeServicePrincipal,
+		AccessPolicyInboundRule: app,
 	}
 }
 
@@ -184,15 +184,17 @@ func toResource(instance v1.AzureAdApplication) resource.Resource {
 		ClientId:      instance.Status.ClientId,
 		ObjectId:      instance.Status.ServicePrincipalId,
 		PrincipalType: resource.PrincipalTypeServicePrincipal,
-		AccessPolicyRule: v1.AccessPolicyRule{
-			Application: instance.GetName(),
-			Namespace:   instance.GetNamespace(),
-			Cluster:     instance.GetClusterName(),
+		AccessPolicyInboundRule: v1.AccessPolicyInboundRule{
+			AccessPolicyRule: v1.AccessPolicyRule{
+				Application: instance.GetName(),
+				Namespace:   instance.GetNamespace(),
+				Cluster:     instance.GetClusterName(),
+			},
 		},
 	}
 }
 
-func ensureFieldsAreSet(tx transaction.Transaction, rule v1.AccessPolicyRule) v1.AccessPolicyRule {
+func ensureFieldsAreSet(tx transaction.Transaction, rule v1.AccessPolicyInboundRule) v1.AccessPolicyInboundRule {
 	if len(rule.Cluster) == 0 {
 		rule.Cluster = tx.Instance.GetClusterName()
 	}

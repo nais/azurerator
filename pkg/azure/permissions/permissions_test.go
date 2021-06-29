@@ -19,21 +19,27 @@ func TestGenerateDesiredPermissionSet(t *testing.T) {
 	desired := permissions.GenerateDesiredPermissionSet(*app)
 	assert.Empty(t, desired)
 
-	app.Spec.PreAuthorizedApplications = []naisiov1.AccessPolicyRule{
+	app.Spec.PreAuthorizedApplications = []naisiov1.AccessPolicyInboundRule{
 		{
-			Application: "a",
+			AccessPolicyRule: naisiov1.AccessPolicyRule{
+				Application: "a",
+			},
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"read", "write"},
 				Scopes: []naisiov1.AccessPolicyPermission{"admin"},
 			},
 		}, {
-			Application: "b",
+			AccessPolicyRule: naisiov1.AccessPolicyRule{
+				Application: "b",
+			},
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"read"},
 				Scopes: []naisiov1.AccessPolicyPermission{"write"},
 			},
 		}, {
-			Application: "c",
+			AccessPolicyRule: naisiov1.AccessPolicyRule{
+				Application: "c",
+			},
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"write", "admin"},
 				Scopes: []naisiov1.AccessPolicyPermission{"read"},
@@ -63,15 +69,19 @@ func TestExtractPermissions(t *testing.T) {
 func TestGenerateDesiredPermissionSetPreserveExisting(t *testing.T) {
 	existing := minimalMsGraphApplication()
 	app := minimalApplication()
-	app.Spec.PreAuthorizedApplications = []naisiov1.AccessPolicyRule{
+	app.Spec.PreAuthorizedApplications = []naisiov1.AccessPolicyInboundRule{
 		{
-			Application: "a",
+			AccessPolicyRule: naisiov1.AccessPolicyRule{
+				Application: "a",
+			},
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"role-1"},
 				Scopes: []naisiov1.AccessPolicyPermission{"scope-1", "common"},
 			},
 		}, {
-			Application: "b",
+			AccessPolicyRule: naisiov1.AccessPolicyRule{
+				Application: "b",
+			},
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"role-3", "common"},
 				Scopes: []naisiov1.AccessPolicyPermission{"scope-2", "scope-3"},

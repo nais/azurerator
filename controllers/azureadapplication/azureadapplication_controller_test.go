@@ -165,16 +165,16 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotR
 	previousSyncTime := instance.Status.SynchronizationTime
 	previousPreAuthorizedApps := instance.Spec.PreAuthorizedApplications
 
-	invalidPreAuthorizedApp := v1.AccessPolicyRule{
+	invalidPreAuthorizedApp := v1.AccessPolicyInboundRule{AccessPolicyRule: v1.AccessPolicyRule{
 		Application: "invalid-app",
 		Namespace:   "some-namespace",
 		Cluster:     "some-cluster",
-	}
-	validPreAuthorizedApp := v1.AccessPolicyRule{
+	}}
+	validPreAuthorizedApp := v1.AccessPolicyInboundRule{AccessPolicyRule: v1.AccessPolicyRule{
 		Application: "valid-app",
 		Namespace:   "some-namespace",
 		Cluster:     "some-cluster",
-	}
+	}}
 	instance.Spec.PreAuthorizedApplications = append(previousPreAuthorizedApps, invalidPreAuthorizedApp, validPreAuthorizedApp)
 
 	// sleep to allow sync time to elapse (non-millisecond precision)
@@ -697,15 +697,15 @@ func assertSecretsAreNotRotated(t *testing.T, previous *corev1.Secret, new *core
 	}
 }
 
-func assertPreAuthorizedAppsStatusIsValid(t *testing.T, expected []v1.AccessPolicyRule, actual *v1.AzureAdPreAuthorizedAppsStatus) {
+func assertPreAuthorizedAppsStatusIsValid(t *testing.T, expected []v1.AccessPolicyInboundRule, actual *v1.AzureAdPreAuthorizedAppsStatus) {
 	expectedInvalid := make([]v1.AccessPolicyRule, 0)
 	expectedValid := make([]v1.AccessPolicyRule, 0)
 
 	for _, a := range expected {
 		if strings.HasPrefix(a.Application, "invalid") {
-			expectedInvalid = append(expectedInvalid, a)
+			expectedInvalid = append(expectedInvalid, a.AccessPolicyRule)
 		} else {
-			expectedValid = append(expectedValid, a)
+			expectedValid = append(expectedValid, a.AccessPolicyRule)
 		}
 	}
 

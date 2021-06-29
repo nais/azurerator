@@ -28,11 +28,13 @@ func TestSecretData(t *testing.T) {
 		},
 		Spec: v1.AzureAdApplicationSpec{
 			SecretName: "test-secret",
-			PreAuthorizedApplications: []v1.AccessPolicyRule{
+			PreAuthorizedApplications: []v1.AccessPolicyInboundRule{
 				{
-					Application: "test-app-2",
-					Namespace:   "test",
-					Cluster:     "test-cluster",
+					AccessPolicyRule: v1.AccessPolicyRule{
+						Application: "test-app-2",
+						Namespace:   "test",
+						Cluster:     "test-cluster",
+					},
 				},
 			},
 		},
