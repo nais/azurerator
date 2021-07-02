@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	DeleteKey             = "azure.nais.io/delete"
+	PreserveKey           = "azure.nais.io/preserve"
 	NotInTeamNamespaceKey = "azure.nais.io/not-in-team-namespace"
 	ResynchronizeKey      = "azure.nais.io/resync"
 	RotateKey             = "azure.nais.io/rotate"

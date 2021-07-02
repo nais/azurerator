@@ -20,16 +20,16 @@ type FinalizerOptions struct {
 func (b optionsBuilder) Finalizer() FinalizerOptions {
 	hasFinalizer := finalizer.HasFinalizer(&b.instance, FinalizerName)
 	finalize := hasFinalizer && finalizer.IsBeingDeleted(&b.instance)
-	deleteFromAzure := ShouldDeleteFromAzure(&b.instance)
+	shouldPreserve := ShouldPreserve(&b.instance)
 
 	return FinalizerOptions{
 		Finalize:        finalize,
 		Register:        !hasFinalizer,
-		DeleteFromAzure: deleteFromAzure,
+		DeleteFromAzure: !shouldPreserve,
 	}
 }
 
-func ShouldDeleteFromAzure(instance *v1.AzureAdApplication) bool {
-	_, found := annotations.HasAnnotation(instance, annotations.DeleteKey)
+func ShouldPreserve(instance *v1.AzureAdApplication) bool {
+	_, found := annotations.HasAnnotation(instance, annotations.PreserveKey)
 	return found
 }
