@@ -199,7 +199,8 @@ func (r *Reconciler) Complete(tx reconciler.Transaction) (ctrl.Result, error) {
 	tx.Instance.Status.SynchronizationSecretName = tx.Instance.Spec.SecretName
 	now := metav1.Now()
 	tx.Instance.Status.SynchronizationTime = &now
-	tx.Instance.Status.SynchronizationTenant = r.Config.Azure.Tenant.String()
+	tx.Instance.Status.SynchronizationTenant = r.Config.Azure.Tenant.Id
+	tx.Instance.Status.SynchronizationTenantName = r.Config.Azure.Tenant.Name
 
 	newHash, err := tx.Instance.Hash()
 	if err != nil {

@@ -802,6 +802,7 @@ func setup() (*envtest.Environment, error) {
 		return nil, err
 	}
 	azureratorCfg.SecretRotation.MaxAge = maxSecretAge
+	azureratorCfg.Azure.Tenant.Id = "some-id"
 
 	azureOpenIDConfig := fake.AzureOpenIdConfig()
 
