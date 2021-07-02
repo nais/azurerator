@@ -23,6 +23,11 @@ spec:
     - application: some-other-app
       cluster: test-cluster
       namespace: myteam
+      permissions:
+        roles:
+          - "my-custom-role"
+        scopes:
+          - "my-scope-scope"
   replyUrls:
     - url: "http://localhost:3000/oauth2/callback"
   secretKeyPrefix: "" # defaults to 'AZURE' if empty or undefined
