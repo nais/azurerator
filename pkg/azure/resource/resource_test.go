@@ -40,7 +40,8 @@ func TestResource_ToPreAuthorizedApp(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, expected, preAuthorizedApp)
+	assert.Equal(t, expected.AppID, preAuthorizedApp.AppID)
+	assert.ElementsMatch(t, expected.DelegatedPermissionIDs, preAuthorizedApp.DelegatedPermissionIDs)
 }
 
 func TestResource_ToAppRoleAssignment(t *testing.T) {
