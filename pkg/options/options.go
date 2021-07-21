@@ -4,6 +4,7 @@ import (
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/secrets"
 )
 
 type TransactionOptions struct {
@@ -15,13 +16,15 @@ type TransactionOptions struct {
 
 type optionsBuilder struct {
 	instance v1.AzureAdApplication
-	Config   config.Config
+	config   config.Config
+	secrets  secrets.TransactionSecrets
 }
 
-func NewOptions(instance v1.AzureAdApplication, cfg config.Config) (TransactionOptions, error) {
+func NewOptions(instance v1.AzureAdApplication, cfg config.Config, secrets secrets.TransactionSecrets) (TransactionOptions, error) {
 	builder := optionsBuilder{
 		instance: instance,
-		Config:   cfg,
+		config:   cfg,
+		secrets:  secrets,
 	}
 
 	process, err := builder.Process()

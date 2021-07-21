@@ -165,7 +165,7 @@ func (a azureReconciler) ValidateCredentials(tx reconciler.Transaction) (bool, e
 		return false, err
 	}
 
-	if !exists || !tx.Secrets.Credentials.Valid || tx.Secrets.Credentials.Set == nil {
+	if !exists || !tx.Options.Process.Secret.Valid {
 		return false, nil
 	}
 

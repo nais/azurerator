@@ -47,7 +47,7 @@ func NewSecretsReconciler(
 	}
 }
 
-func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdApplication) (*reconciler.TransactionSecrets, error) {
+func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdApplication) (*secrets.TransactionSecrets, error) {
 	dataKeys := secrets.NewSecretDataKeys(instance.Spec.SecretKeyPrefix)
 
 	managedSecrets, err := s.getManaged(ctx, instance)
@@ -69,8 +69,8 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 		return nil, fmt.Errorf("extracting credentials set from secret: %w", err)
 	}
 
-	return &reconciler.TransactionSecrets{
-		Credentials: reconciler.TransactionCredentials{
+	return &secrets.TransactionSecrets{
+		Credentials: secrets.TransactionCredentials{
 			Set:   credentialsSet,
 			Valid: validCredentials,
 		},

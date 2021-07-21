@@ -144,18 +144,15 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*reconciler
 
 	instance.Status.CorrelationId = correlationId
 
-	opts, err := options.NewOptions(*instance, *r.Config)
-	if err != nil {
-		return nil, fmt.Errorf("preparing transaction options: %w", err)
-	}
-
 	transactionSecrets, err := r.Secrets().Prepare(ctx, instance)
 	if err != nil {
 		return nil, fmt.Errorf("preparing transaction secrets: %w", err)
 	}
 
-	// invalidate credentials if cluster resource status/spec conditions are not met
-	opts.Process.Secret.Valid = opts.Process.Secret.Valid && transactionSecrets.Credentials.Valid
+	opts, err := options.NewOptions(*instance, *r.Config, *transactionSecrets)
+	if err != nil {
+		return nil, fmt.Errorf("preparing transaction options: %w", err)
+	}
 
 	return &reconciler.Transaction{
 		Ctx:      ctx,

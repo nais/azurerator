@@ -17,19 +17,19 @@ func (b optionsBuilder) Process() (ProcessOptions, error) {
 	secretNameChanged := customresources.SecretNameChanged(instance)
 	hasResynchronizeAnnotation := customresources.HasResynchronizeAnnotation(instance)
 	hasRotateAnnotation := customresources.HasRotateAnnotation(instance)
-	hasExpiredSecrets := customresources.HasExpiredSecrets(instance, b.Config.SecretRotation.MaxAge)
-	tenantUnchanged := strings.Contains(instance.Status.SynchronizationTenant, b.Config.Azure.Tenant.Id)
+	hasExpiredSecrets := customresources.HasExpiredSecrets(instance, b.config.SecretRotation.MaxAge)
+	tenantUnchanged := strings.Contains(instance.Status.SynchronizationTenant, b.config.Azure.Tenant.Id)
 
 	needsSynchronization := hashChanged || secretNameChanged || hasExpiredSecrets || hasResynchronizeAnnotation || hasRotateAnnotation
 	needsAzureSynchronization := hashChanged || hasResynchronizeAnnotation
-	hasValidSecrets := !hasExpiredSecrets && tenantUnchanged
+	hasValidSecrets := !hasExpiredSecrets && tenantUnchanged && b.secrets.Credentials.Valid && b.secrets.Credentials.Set != nil
 	needsSecretRotation := secretNameChanged || hasRotateAnnotation
 
 	return ProcessOptions{
 		Synchronize: needsSynchronization,
 		Azure: AzureOptions{
 			Synchronize:    needsAzureSynchronization,
-			CleanupOrphans: b.Config.Azure.Features.CleanupOrphans.Enabled,
+			CleanupOrphans: b.config.Azure.Features.CleanupOrphans.Enabled,
 		},
 		Secret: SecretOptions{
 			Rotate: needsSecretRotation,

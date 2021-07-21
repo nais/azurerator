@@ -7,6 +7,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/result"
+	"github.com/nais/azureator/pkg/secrets"
 )
 
 type AzureAdApplication interface {
@@ -40,6 +41,6 @@ type Namespace interface {
 }
 
 type Secrets interface {
-	Prepare(ctx context.Context, instance *v1.AzureAdApplication) (*TransactionSecrets, error)
+	Prepare(ctx context.Context, instance *v1.AzureAdApplication) (*secrets.TransactionSecrets, error)
 	Process(tx Transaction, applicationResult *result.Application) error
 }
