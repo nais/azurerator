@@ -5,16 +5,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type Result interface {
+	GetResult() []msgraph.PermissionScope
+	Log(logger log.Entry)
+}
+
 type createResult struct {
 	toCreate Map
 }
 
-func NewCreateResult(toCreate Map) CreateResult {
+func NewCreateResult(toCreate Map) Result {
 	return createResult{toCreate: toCreate}
-}
-
-func (a createResult) GetCreate() Map {
-	return a.toCreate
 }
 
 func (a createResult) GetResult() []msgraph.PermissionScope {
@@ -22,7 +23,7 @@ func (a createResult) GetResult() []msgraph.PermissionScope {
 }
 
 func (a createResult) Log(logger log.Entry) {
-	a.GetCreate().ToPermissionList().Log(logger, "creating desired scopes")
+	a.toCreate.ToPermissionList().Log(logger, "creating desired scopes")
 }
 
 type updateResult struct {
@@ -32,7 +33,7 @@ type updateResult struct {
 	result     []msgraph.PermissionScope
 }
 
-func NewUpdateResult(toCreate Map, toDisable Map, unmodified Map, result []msgraph.PermissionScope) UpdateResult {
+func NewUpdateResult(toCreate Map, toDisable Map, unmodified Map, result []msgraph.PermissionScope) Result {
 	return updateResult{
 		toCreate:   toCreate,
 		toDisable:  toDisable,
@@ -41,24 +42,12 @@ func NewUpdateResult(toCreate Map, toDisable Map, unmodified Map, result []msgra
 	}
 }
 
-func (a updateResult) GetCreate() Map {
-	return a.toCreate
-}
-
-func (a updateResult) GetDisable() Map {
-	return a.toDisable
-}
-
-func (a updateResult) GetUnmodified() Map {
-	return a.unmodified
-}
-
 func (a updateResult) GetResult() []msgraph.PermissionScope {
 	return a.result
 }
 
 func (a updateResult) Log(logger log.Entry) {
-	a.GetCreate().ToPermissionList().Log(logger, "creating desired scopes")
-	a.GetDisable().ToPermissionList().Log(logger, "disabling non-desired scopes")
-	a.GetUnmodified().ToPermissionList().Log(logger, "unmodified scopes")
+	a.toCreate.ToPermissionList().Log(logger, "creating desired scopes")
+	a.toDisable.ToPermissionList().Log(logger, "disabling non-desired scopes")
+	a.unmodified.ToPermissionList().Log(logger, "unmodified scopes")
 }

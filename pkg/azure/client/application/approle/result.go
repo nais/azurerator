@@ -5,24 +5,25 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type Result interface {
+	GetResult() []msgraph.AppRole
+	Log(logger log.Entry)
+}
+
 type createResult struct {
 	toCreate Map
 }
 
-func NewCreateResult(toCreate Map) CreateResult {
+func NewCreateResult(toCreate Map) Result {
 	return createResult{toCreate: toCreate}
 }
 
-func (a createResult) GetCreate() Map {
-	return a.toCreate
-}
-
 func (a createResult) GetResult() []msgraph.AppRole {
-	return a.GetCreate().ToSlice()
+	return a.toCreate.ToSlice()
 }
 
 func (a createResult) Log(logger log.Entry) {
-	a.GetCreate().ToPermissionList().Log(logger, "creating desired roles")
+	a.toCreate.ToPermissionList().Log(logger, "creating desired roles")
 }
 
 type updateResult struct {
@@ -32,7 +33,7 @@ type updateResult struct {
 	result     []msgraph.AppRole
 }
 
-func NewUpdateResult(toCreate Map, toDisable Map, unmodified Map, result []msgraph.AppRole) UpdateResult {
+func NewUpdateResult(toCreate Map, toDisable Map, unmodified Map, result []msgraph.AppRole) Result {
 	return updateResult{
 		toCreate:   toCreate,
 		toDisable:  toDisable,
@@ -41,24 +42,12 @@ func NewUpdateResult(toCreate Map, toDisable Map, unmodified Map, result []msgra
 	}
 }
 
-func (a updateResult) GetCreate() Map {
-	return a.toCreate
-}
-
-func (a updateResult) GetDisable() Map {
-	return a.toDisable
-}
-
-func (a updateResult) GetUnmodified() Map {
-	return a.unmodified
-}
-
 func (a updateResult) GetResult() []msgraph.AppRole {
 	return a.result
 }
 
 func (a updateResult) Log(logger log.Entry) {
-	a.GetCreate().ToPermissionList().Log(logger, "creating desired roles")
-	a.GetDisable().ToPermissionList().Log(logger, "disabling non-desired roles")
-	a.GetUnmodified().ToPermissionList().Log(logger, "unmodified roles")
+	a.toCreate.ToPermissionList().Log(logger, "creating desired roles")
+	a.toDisable.ToPermissionList().Log(logger, "disabling non-desired roles")
+	a.unmodified.ToPermissionList().Log(logger, "unmodified roles")
 }

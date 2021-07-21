@@ -59,8 +59,8 @@ type Application interface {
 }
 
 type AppRoles interface {
-	DescribeCreate(desired permissions.Permissions) approle.CreateResult
-	DescribeUpdate(desired permissions.Permissions, existing []msgraph.AppRole) approle.UpdateResult
+	DescribeCreate(desired permissions.Permissions) approle.Result
+	DescribeUpdate(desired permissions.Permissions, existing []msgraph.AppRole) approle.Result
 }
 
 type IdentifierUri interface {
@@ -68,8 +68,8 @@ type IdentifierUri interface {
 }
 
 type OAuth2PermissionScope interface {
-	DescribeCreate(desired permissions.Permissions) permissionscope.CreateResult
-	DescribeUpdate(desired permissions.Permissions, existing []msgraph.PermissionScope) permissionscope.UpdateResult
+	DescribeCreate(desired permissions.Permissions) permissionscope.Result
+	DescribeUpdate(desired permissions.Permissions, existing []msgraph.PermissionScope) permissionscope.Result
 }
 
 type ApplicationOwners interface {

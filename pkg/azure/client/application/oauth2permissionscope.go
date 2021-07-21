@@ -17,7 +17,7 @@ func NewOAuth2PermissionScopes(application azure.Application) azure.OAuth2Permis
 }
 
 // DescribeCreate returns a slice describing the desired msgraph.PermissionScope to be created without actually creating them.
-func (o oAuth2PermissionScopes) DescribeCreate(desired permissions.Permissions) permissionscope.CreateResult {
+func (o oAuth2PermissionScopes) DescribeCreate(desired permissions.Permissions) permissionscope.Result {
 	existingSet := make(permissionscope.Map)
 	return permissionscope.NewCreateResult(existingSet.ToCreate(desired))
 }
@@ -26,7 +26,7 @@ func (o oAuth2PermissionScopes) DescribeCreate(desired permissions.Permissions) 
 // 1) add any non-existing, desired scopes.
 // 2) disable existing, non-desired scopes.
 // It does not perform any modifying operations on the remote state in Azure AD.
-func (o oAuth2PermissionScopes) DescribeUpdate(desired permissions.Permissions, existing []msgraph.PermissionScope) permissionscope.UpdateResult {
+func (o oAuth2PermissionScopes) DescribeUpdate(desired permissions.Permissions, existing []msgraph.PermissionScope) permissionscope.Result {
 	result := make([]msgraph.PermissionScope, 0)
 
 	existingSet := permissionscope.ToMap(existing)
