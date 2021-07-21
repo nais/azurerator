@@ -71,14 +71,15 @@ func run() error {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
-	azureClient, err := client.New(ctx, &cfg.Azure)
+	azureCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
+	azureClient, err := client.New(azureCtx, &cfg.Azure)
 	if err != nil {
-		return fmt.Errorf("unable to create Azure client: %w", err)
+		return fmt.Errorf("instantiating Azure client: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
-	defer cancel()
-	azureOpenIDConfig, err := config.NewAzureOpenIdConfig(ctx, cfg.Azure.Tenant)
+	azureOpenIDConfig, err := config.NewAzureOpenIdConfig(azureCtx, cfg.Azure.Tenant)
 	if err != nil {
 		return fmt.Errorf("fetching Azure OpenID Configuration: %w", err)
 	}
@@ -99,7 +100,7 @@ func run() error {
 
 	setupLog.Info("starting metrics refresh goroutine")
 	clusterMetrics := azureMetrics.New(mgr.GetAPIReader())
-	go clusterMetrics.Refresh(context.Background())
+	go clusterMetrics.Refresh(ctx)
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
