@@ -16,14 +16,12 @@ import (
 type namespaceReconciler struct {
 	reconciler.AzureAdApplication
 	client client.Client
-	reader client.Reader
 }
 
-func NewNamespaceReconciler(reconciler reconciler.AzureAdApplication, client client.Client, reader client.Reader) reconciler.Namespace {
+func NewNamespaceReconciler(reconciler reconciler.AzureAdApplication, client client.Client) reconciler.Namespace {
 	return namespaceReconciler{
 		AzureAdApplication: reconciler,
 		client:             client,
-		reader:             reader,
 	}
 }
 
@@ -87,7 +85,7 @@ func (n namespaceReconciler) inSharedNamespace(tx *reconciler.Transaction) (bool
 func (n namespaceReconciler) getNamespace(ctx context.Context, namespaceName string) (corev1.Namespace, error) {
 	var namespace corev1.Namespace
 
-	err := n.reader.Get(ctx, client.ObjectKey{
+	err := n.client.Get(ctx, client.ObjectKey{
 		Name: namespaceName,
 	}, &namespace)
 

@@ -256,7 +256,7 @@ func (r Reconciler) Finalizer() reconciler.Finalizer {
 }
 
 func (r Reconciler) Namespace() reconciler.Namespace {
-	return namespace.NewNamespaceReconciler(&r, r.Client, r.Reader)
+	return namespace.NewNamespaceReconciler(&r, r.Client)
 }
 
 func (r Reconciler) Secrets() reconciler.Secrets {
