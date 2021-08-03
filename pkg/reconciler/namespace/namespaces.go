@@ -11,6 +11,7 @@ import (
 
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/reconciler"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 type namespaceReconciler struct {
@@ -33,7 +34,7 @@ const (
 	sharedNamespaceLabelKey = "shared"
 )
 
-func (n namespaceReconciler) Process(tx *reconciler.Transaction) (bool, error) {
+func (n namespaceReconciler) Process(tx *transaction.Transaction) (bool, error) {
 	if tx.Options.Namespace.HasIgnoreAnnotation {
 		tx.Logger.Debug(fmt.Sprintf("Resource is annotated with '%s'. Skipping processing...", annotations.NotInTeamNamespaceKey))
 		return true, nil
@@ -64,7 +65,7 @@ func (n namespaceReconciler) Process(tx *reconciler.Transaction) (bool, error) {
 	return inSharedNamespace, nil
 }
 
-func (n namespaceReconciler) inSharedNamespace(tx *reconciler.Transaction) (bool, error) {
+func (n namespaceReconciler) inSharedNamespace(tx *transaction.Transaction) (bool, error) {
 	namespaceName := tx.Instance.GetNamespace()
 
 	namespace, found := namespaceCache[namespaceName]

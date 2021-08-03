@@ -25,12 +25,13 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/metrics"
-	"github.com/nais/azureator/pkg/options"
 	"github.com/nais/azureator/pkg/reconciler"
 	azureReconciler "github.com/nais/azureator/pkg/reconciler/azure"
 	"github.com/nais/azureator/pkg/reconciler/finalizer"
 	"github.com/nais/azureator/pkg/reconciler/namespace"
 	"github.com/nais/azureator/pkg/reconciler/secrets"
+	"github.com/nais/azureator/pkg/transaction"
+	"github.com/nais/azureator/pkg/transaction/options"
 )
 
 const (
@@ -127,7 +128,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return r.Complete(*tx)
 }
 
-func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*reconciler.Transaction, error) {
+func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transaction.Transaction, error) {
 	instance := &v1.AzureAdApplication{}
 	if err := r.Reader.Get(ctx, req.NamespacedName, instance); err != nil {
 		return nil, err
@@ -154,7 +155,7 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*reconciler
 		return nil, fmt.Errorf("preparing transaction options: %w", err)
 	}
 
-	return &reconciler.Transaction{
+	return &transaction.Transaction{
 		Ctx:      ctx,
 		Instance: instance,
 		Logger:   logger,
@@ -163,7 +164,7 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*reconciler
 	}, nil
 }
 
-func (r *Reconciler) Process(tx reconciler.Transaction) error {
+func (r *Reconciler) Process(tx transaction.Transaction) error {
 	applicationResult, err := r.Azure().Process(tx)
 	if err != nil {
 		return err
@@ -177,7 +178,7 @@ func (r *Reconciler) Process(tx reconciler.Transaction) error {
 	return nil
 }
 
-func (r *Reconciler) HandleError(tx reconciler.Transaction, err error) (ctrl.Result, error) {
+func (r *Reconciler) HandleError(tx transaction.Transaction, err error) (ctrl.Result, error) {
 	tx.Logger.Error(fmt.Errorf("failed to process Azure application: %w", err))
 	r.ReportEvent(tx, corev1.EventTypeWarning, v1.EventFailedSynchronization, "Failed to synchronize Azure application")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.Instance.Namespace)
@@ -186,7 +187,7 @@ func (r *Reconciler) HandleError(tx reconciler.Transaction, err error) (ctrl.Res
 	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *Reconciler) Complete(tx reconciler.Transaction) (ctrl.Result, error) {
+func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.Instance.Namespace)
 	r.ReportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
 
@@ -242,7 +243,7 @@ func (r *Reconciler) UpdateApplication(ctx context.Context, app *v1.AzureAdAppli
 	return updateFunc(existing)
 }
 
-func (r *Reconciler) ReportEvent(tx reconciler.Transaction, eventType, event, message string) {
+func (r *Reconciler) ReportEvent(tx transaction.Transaction, eventType, event, message string) {
 	tx.Instance.Status.SynchronizationState = event
 	r.Recorder.Event(tx.Instance, eventType, event, message)
 }
@@ -263,7 +264,7 @@ func (r Reconciler) Secrets() reconciler.Secrets {
 	return secrets.NewSecretsReconciler(&r, r.AzureOpenIDConfig, r.Client, r.Reader, r.Scheme)
 }
 
-func (r *Reconciler) updateAnnotations(tx reconciler.Transaction) error {
+func (r *Reconciler) updateAnnotations(tx transaction.Transaction) error {
 	err := r.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {
 		existing.SetAnnotations(tx.Instance.GetAnnotations())
 		return r.Update(tx.Ctx, existing)
@@ -275,7 +276,7 @@ func (r *Reconciler) updateAnnotations(tx reconciler.Transaction) error {
 	return nil
 }
 
-func (r *Reconciler) updateStatus(tx reconciler.Transaction) error {
+func (r *Reconciler) updateStatus(tx transaction.Transaction) error {
 	err := r.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {
 		existing.Status = tx.Instance.Status
 		return r.Status().Update(tx.Ctx, existing)

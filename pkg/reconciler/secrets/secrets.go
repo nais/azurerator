@@ -19,6 +19,8 @@ import (
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/reconciler"
 	"github.com/nais/azureator/pkg/secrets"
+	"github.com/nais/azureator/pkg/transaction"
+	transactionSecrets "github.com/nais/azureator/pkg/transaction/secrets"
 )
 
 // +kubebuilder:rbac:groups=*,resources=secrets,verbs=get;list;watch;create;delete;update;patch
@@ -47,7 +49,7 @@ func NewSecretsReconciler(
 	}
 }
 
-func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdApplication) (*secrets.TransactionSecrets, error) {
+func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdApplication) (*transactionSecrets.Secrets, error) {
 	dataKeys := secrets.NewSecretDataKeys(instance.Spec.SecretKeyPrefix)
 
 	managedSecrets, err := s.getManaged(ctx, instance)
@@ -69,8 +71,8 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 		return nil, fmt.Errorf("extracting credentials set from secret: %w", err)
 	}
 
-	return &secrets.TransactionSecrets{
-		Credentials: secrets.TransactionCredentials{
+	return &transactionSecrets.Secrets{
+		Credentials: transactionSecrets.Credentials{
 			Set:   credentialsSet,
 			Valid: validCredentials,
 		},
@@ -80,7 +82,7 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 	}, nil
 }
 
-func (s secretsReconciler) Process(tx reconciler.Transaction, applicationResult *result.Application) error {
+func (s secretsReconciler) Process(tx transaction.Transaction, applicationResult *result.Application) error {
 	// return early if no operations needed
 	if tx.Options.Process.Secret.Valid && !tx.Options.Process.Secret.Rotate && applicationResult.IsNotModified() {
 		return nil
@@ -122,7 +124,7 @@ func (s secretsReconciler) Process(tx reconciler.Transaction, applicationResult 
 	return nil
 }
 
-func (s secretsReconciler) createOrUpdate(tx reconciler.Transaction, result result.Application, set credentials.Set) error {
+func (s secretsReconciler) createOrUpdate(tx transaction.Transaction, result result.Application, set credentials.Set) error {
 	secretName := tx.Instance.Spec.SecretName
 	objectMeta := kubernetes.ObjectMeta(secretName, tx.Instance.GetNamespace(), labels.Labels(tx.Instance))
 
@@ -176,7 +178,7 @@ func (s secretsReconciler) getManaged(ctx context.Context, instance *v1.AzureAdA
 	return &podSecrets, nil
 }
 
-func (s secretsReconciler) deleteUnused(tx reconciler.Transaction) error {
+func (s secretsReconciler) deleteUnused(tx transaction.Transaction) error {
 	unused := tx.Secrets.ManagedSecrets.Unused
 
 	for i, oldSecret := range unused.Items {

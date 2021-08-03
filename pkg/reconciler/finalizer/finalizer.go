@@ -9,8 +9,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/nais/azureator/pkg/metrics"
-	"github.com/nais/azureator/pkg/options"
 	"github.com/nais/azureator/pkg/reconciler"
+	"github.com/nais/azureator/pkg/transaction"
+	"github.com/nais/azureator/pkg/transaction/options"
 )
 
 // Finalizers allow the controller to implement an asynchronous pre-delete hook
@@ -26,7 +27,7 @@ func NewFinalizer(reconciler reconciler.AzureAdApplication, client client.Client
 	}
 }
 
-func (f finalizer) Process(tx reconciler.Transaction) (processed bool, err error) {
+func (f finalizer) Process(tx transaction.Transaction) (processed bool, err error) {
 	processed = false
 
 	if tx.Options.Finalizer.Finalize {
@@ -44,7 +45,7 @@ func (f finalizer) Process(tx reconciler.Transaction) (processed bool, err error
 	return
 }
 
-func (f finalizer) register(tx reconciler.Transaction) error {
+func (f finalizer) register(tx transaction.Transaction) error {
 	tx.Logger.Debug("finalizer for object not found, registering...")
 
 	err := f.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {
@@ -60,7 +61,7 @@ func (f finalizer) register(tx reconciler.Transaction) error {
 	return nil
 }
 
-func (f finalizer) finalize(tx reconciler.Transaction) error {
+func (f finalizer) finalize(tx transaction.Transaction) error {
 	if tx.Options.Finalizer.Register {
 		return nil
 	}

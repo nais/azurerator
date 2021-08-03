@@ -31,8 +31,8 @@ import (
 	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/fixtures"
 	"github.com/nais/azureator/pkg/labels"
-	"github.com/nais/azureator/pkg/options"
 	"github.com/nais/azureator/pkg/secrets"
+	"github.com/nais/azureator/pkg/transaction/options"
 	"github.com/nais/azureator/pkg/util/test"
 )
 

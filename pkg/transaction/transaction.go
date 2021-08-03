@@ -1,4 +1,4 @@
-package reconciler
+package transaction
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/azure/transaction"
-	"github.com/nais/azureator/pkg/options"
-	"github.com/nais/azureator/pkg/secrets"
+	"github.com/nais/azureator/pkg/transaction/options"
+	"github.com/nais/azureator/pkg/transaction/secrets"
 )
 
 type Transaction struct {
@@ -16,7 +16,7 @@ type Transaction struct {
 	Instance *v1.AzureAdApplication
 	Logger   log.Entry
 	Options  options.TransactionOptions
-	Secrets  secrets.TransactionSecrets
+	Secrets  secrets.Secrets
 }
 
 func (t *Transaction) ToAzureTx() transaction.Transaction {

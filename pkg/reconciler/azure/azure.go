@@ -16,6 +16,7 @@ import (
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/reconciler"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 type azureReconciler struct {
@@ -39,7 +40,7 @@ func NewAzureReconciler(
 	}
 }
 
-func (a azureReconciler) Process(tx reconciler.Transaction) (*result.Application, error) {
+func (a azureReconciler) Process(tx transaction.Transaction) (*result.Application, error) {
 	var applicationResult *result.Application
 
 	exists, err := a.Exists(tx)
@@ -65,7 +66,7 @@ func (a azureReconciler) Process(tx reconciler.Transaction) (*result.Application
 	return applicationResult, nil
 }
 
-func (a azureReconciler) create(tx reconciler.Transaction) (*result.Application, error) {
+func (a azureReconciler) create(tx transaction.Transaction) (*result.Application, error) {
 	tx.Logger.Info("Azure application not found, registering...")
 
 	applicationResult, err := a.azureClient.Create(tx.ToAzureTx())
@@ -83,7 +84,7 @@ func (a azureReconciler) create(tx reconciler.Transaction) (*result.Application,
 	return applicationResult, nil
 }
 
-func (a azureReconciler) update(tx reconciler.Transaction) (*result.Application, error) {
+func (a azureReconciler) update(tx transaction.Transaction) (*result.Application, error) {
 	tx.Logger.Info("Azure application already exists, updating...")
 
 	applicationResult, err := a.azureClient.Update(tx.ToAzureTx())
@@ -97,7 +98,7 @@ func (a azureReconciler) update(tx reconciler.Transaction) (*result.Application,
 	return applicationResult, nil
 }
 
-func (a azureReconciler) notModified(tx reconciler.Transaction) (*result.Application, error) {
+func (a azureReconciler) notModified(tx transaction.Transaction) (*result.Application, error) {
 	apps, err := a.azureClient.GetPreAuthorizedApps(tx.ToAzureTx())
 	if err != nil {
 		return nil, fmt.Errorf("fetching pre-authorized apps: %w", err)
@@ -112,7 +113,7 @@ func (a azureReconciler) notModified(tx reconciler.Transaction) (*result.Applica
 	}, nil
 }
 
-func (a azureReconciler) AddCredentials(tx reconciler.Transaction, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
+func (a azureReconciler) AddCredentials(tx transaction.Transaction, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
 	tx.Logger.Info("adding credentials for Azure application...")
 
 	credentialsSet, err := a.azureClient.AddCredentials(tx.ToAzureTx())
@@ -127,7 +128,7 @@ func (a azureReconciler) AddCredentials(tx reconciler.Transaction, keyIdsInUse c
 	return &credentialsSet, keyIdsInUse, nil
 }
 
-func (a azureReconciler) RotateCredentials(tx reconciler.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
+func (a azureReconciler) RotateCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
 	tx.Logger.Info("rotating credentials for Azure application...")
 
 	credentialsSet, err := a.azureClient.RotateCredentials(tx.ToAzureTx(), existing, keyIdsInUse)
@@ -145,7 +146,7 @@ func (a azureReconciler) RotateCredentials(tx reconciler.Transaction, existing c
 	return &credentialsSet, keyIdsInUse, nil
 }
 
-func (a azureReconciler) PurgeCredentials(tx reconciler.Transaction) error {
+func (a azureReconciler) PurgeCredentials(tx transaction.Transaction) error {
 	exists, err := a.Exists(tx)
 	if err != nil {
 		return err
@@ -159,7 +160,7 @@ func (a azureReconciler) PurgeCredentials(tx reconciler.Transaction) error {
 	return a.azureClient.PurgeCredentials(tx.ToAzureTx())
 }
 
-func (a azureReconciler) ValidateCredentials(tx reconciler.Transaction) (bool, error) {
+func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, error) {
 	exists, err := a.Exists(tx)
 	if err != nil {
 		return false, err
@@ -184,7 +185,7 @@ func (a azureReconciler) ValidateCredentials(tx reconciler.Transaction) (bool, e
 	return valid, nil
 }
 
-func (a azureReconciler) Delete(tx reconciler.Transaction) error {
+func (a azureReconciler) Delete(tx transaction.Transaction) error {
 	tx.Logger.Info("deleting application in Azure AD...")
 	exists, err := a.Exists(tx)
 	if err != nil {
@@ -201,7 +202,7 @@ func (a azureReconciler) Delete(tx reconciler.Transaction) error {
 	return nil
 }
 
-func (a azureReconciler) Exists(tx reconciler.Transaction) (bool, error) {
+func (a azureReconciler) Exists(tx transaction.Transaction) (bool, error) {
 	application, exists, err := a.azureClient.Exists(tx.ToAzureTx())
 	if err != nil {
 		return false, fmt.Errorf("looking up existence of azure application: %w", err)
@@ -227,7 +228,7 @@ func (a azureReconciler) Exists(tx reconciler.Transaction) (bool, error) {
 	return exists, nil
 }
 
-func (a azureReconciler) ProcessOrphaned(tx reconciler.Transaction) error {
+func (a azureReconciler) ProcessOrphaned(tx transaction.Transaction) error {
 	exists, err := a.Exists(tx)
 	if err != nil {
 		return err
@@ -249,7 +250,7 @@ func (a azureReconciler) ProcessOrphaned(tx reconciler.Transaction) error {
 	return nil
 }
 
-func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx reconciler.Transaction, preAuthApps result.PreAuthorizedApps) {
+func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction.Transaction, preAuthApps result.PreAuthorizedApps) {
 	unassigned := make([]v1.AzureAdPreAuthorizedApp, 0)
 	assigned := make([]v1.AzureAdPreAuthorizedApp, 0)
 
