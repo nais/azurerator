@@ -73,16 +73,20 @@ func (a Application) Register(tx transaction.Transaction) (*msgraph.Application,
 		a.requiredResourceAccess().microsoftGraph(),
 	}
 	desiredPermissions := permissions.GenerateDesiredPermissionSet(tx.Instance)
+
 	roles := a.AppRoles().DescribeCreate(desiredPermissions)
 	roles.Log(tx.Log)
+
 	scopes := a.OAuth2PermissionScopes().DescribeCreate(desiredPermissions)
 	scopes.Log(tx.Log)
+
+	redirectUris := util.GetReplyUrlsStringSlice(tx.Instance)
 
 	req := util.Application(a.defaultTemplate(tx.Instance)).
 		ResourceAccess(access).
 		GroupMembershipClaims(groupmembershipclaim.GroupMembershipClaimApplicationGroup).
 		AppRoles(roles.GetResult()).
-		RedirectUris(util.GetReplyUrlsStringSlice(tx.Instance)).
+		RedirectUris(redirectUris, tx.Instance).
 		PermissionScopes(scopes.GetResult()).
 		Build()
 

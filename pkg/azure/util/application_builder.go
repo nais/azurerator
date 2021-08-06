@@ -1,6 +1,7 @@
 package util
 
 import (
+	naisiov1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
@@ -50,8 +51,26 @@ func (a ApplicationBuilder) AppRoles(appRoles []msgraph.AppRole) ApplicationBuil
 	return a
 }
 
-func (a ApplicationBuilder) RedirectUris(redirectUris []string) ApplicationBuilder {
+func (a ApplicationBuilder) RedirectUris(redirectUris []string, instance naisiov1.AzureAdApplication) ApplicationBuilder {
+	if instance.Spec.SinglePageApplication != nil && *instance.Spec.SinglePageApplication {
+		return a.singlePageAppRedirectUri(redirectUris)
+	}
+	return a.webAppRedirectUri(redirectUris)
+}
+
+func (a ApplicationBuilder) webAppRedirectUri(redirectUris []string) ApplicationBuilder {
+	if a.Web == nil {
+		a.Web = &msgraph.WebApplication{}
+	}
 	a.Web.RedirectUris = redirectUris
+	return a
+}
+
+func (a ApplicationBuilder) singlePageAppRedirectUri(redirectUris []string) ApplicationBuilder {
+	if a.Spa == nil {
+		a.Spa = &msgraph.SpaApplication{}
+	}
+	a.Spa.RedirectUris = redirectUris
 	return a
 }
 

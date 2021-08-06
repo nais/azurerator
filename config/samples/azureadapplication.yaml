@@ -30,5 +30,6 @@ spec:
           - "my-scope-scope"
   replyUrls:
     - url: "http://localhost:3000/oauth2/callback"
+  singlePageApplication: false
   secretKeyPrefix: "" # defaults to 'AZURE' if empty or undefined
   tenant: local.test
