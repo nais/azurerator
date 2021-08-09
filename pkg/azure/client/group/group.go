@@ -35,17 +35,9 @@ func (g group) GetOwnersFor(ctx context.Context, groupId string) ([]msgraph.Dire
 func (g group) Process(tx transaction.Transaction) error {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
 
-	groups, err := g.mapGroupClaimsToResources(tx)
+	groups, err := g.getGroups(tx)
 	if err != nil {
-		return fmt.Errorf("mapping group claims to resources: %w", err)
-	}
-
-	if len(groups) == 0 {
-		groups, err = g.mapAllUserGroupToResources(tx)
-
-		if err != nil {
-			return fmt.Errorf("mapping all-users group to resources: %w", err)
-		}
+		return err
 	}
 
 	// TODO(tronghn): if there exists an AppRole where AllowedMemberTypes includes "User", then we cannot use the default AppRole `00000000-0000-0000-0000-000000000000`.
@@ -60,6 +52,67 @@ func (g group) Process(tx transaction.Transaction) error {
 	}
 
 	return nil
+}
+
+func (g group) getGroups(tx transaction.Transaction) (resource.Resources, error) {
+	groups, err := g.getGroupsFromClaims(tx)
+	if err != nil {
+		return nil, fmt.Errorf("mapping group claims to resources: %w", err)
+	}
+
+	allUsersGroup, err := g.getAllUsersGroup(tx)
+	if err != nil {
+		return nil, fmt.Errorf("mapping all-users group to resources: %w", err)
+	}
+
+	noGroupsLegacyBehaviour := len(groups) == 0 && tx.Instance.Spec.AllowAllUsers == nil
+	allowAllUsersEnabled := tx.Instance.Spec.AllowAllUsers != nil && *tx.Instance.Spec.AllowAllUsers == true
+
+	if noGroupsLegacyBehaviour || allowAllUsersEnabled {
+		groups.Add(*allUsersGroup)
+	}
+
+	return groups, nil
+}
+
+func (g group) getGroupsFromClaims(tx transaction.Transaction) (resource.Resources, error) {
+	resources := make(resource.Resources, 0)
+
+	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0 {
+		return resources, nil
+	}
+
+	for _, group := range tx.Instance.Spec.Claims.Groups {
+		exists, groupResult, err := g.getById(tx, group.ID)
+		if err != nil {
+			return nil, fmt.Errorf("getting group '%s': %w", group, err)
+		}
+
+		if !exists {
+			tx.Log.Debugf("skipping Groups assignment: '%s' does not exist", group.ID)
+			continue
+		}
+
+		resources = append(resources, g.mapToResource(*groupResult))
+	}
+
+	return resources, nil
+}
+
+func (g group) getAllUsersGroup(tx transaction.Transaction) (*resource.Resource, error) {
+	allUsersGroupID := g.Config().Features.GroupsAssignment.AllUsersGroupId
+
+	exists, groupResult, err := g.getById(tx, allUsersGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("getting all-users group '%s': %w", allUsersGroupID, err)
+	}
+
+	if !exists {
+		return nil, fmt.Errorf("all-users group '%s' does not exist: %w", allUsersGroupID, err)
+	}
+
+	res := g.mapToResource(*groupResult)
+	return &res, nil
 }
 
 func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *msgraph.Group, error) {
@@ -86,50 +139,12 @@ func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *ms
 	return exists, group, nil
 }
 
-func (g group) mapGroupClaimsToResources(tx transaction.Transaction) ([]resource.Resource, error) {
-	resources := make([]resource.Resource, 0)
-
-	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0 {
-		return resources, nil
-	}
-
-	for _, group := range tx.Instance.Spec.Claims.Groups {
-		exists, groupResult, err := g.getById(tx, group.ID)
-		if err != nil {
-			return nil, fmt.Errorf("getting group '%s': %w", group, err)
-		}
-
-		if !exists {
-			tx.Log.Debugf("skipping Groups assignment: '%s' does not exist", group.ID)
-			continue
-		}
-
-		resources = append(resources, g.mapToResource(*groupResult))
-	}
-
-	return resources, nil
-}
-
-func (g group) mapAllUserGroupToResources(tx transaction.Transaction) ([]resource.Resource, error) {
-	allUsersGroupID := g.Config().Features.GroupsAssignment.AllUsersGroupId
-
-	exists, groupResult, err := g.getById(tx, allUsersGroupID)
-	if err != nil {
-		return nil, fmt.Errorf("getting all-users group '%s': %w", allUsersGroupID, err)
-	}
-
-	if !exists {
-		return nil, fmt.Errorf("all-users group '%s' does not exist: %w", allUsersGroupID, err)
-	}
-
-	return []resource.Resource{g.mapToResource(*groupResult)}, nil
-}
-
 func (g group) toGetRequestWithContext(ctx context.Context, r *msgraph.GroupRequest) (*http.Request, error) {
 	req, err := r.NewJSONRequest("GET", "", nil)
 	if err != nil {
 		return nil, err
 	}
+
 	req = req.WithContext(ctx)
 	return req, nil
 }

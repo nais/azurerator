@@ -295,3 +295,72 @@ func TestResources_ExtractDesiredAssignees(t *testing.T) {
 		assert.Contains(t, desired, group2)
 	})
 }
+
+func TestResources_Has(t *testing.T) {
+	group1 := resource.Resource{
+		Name:          "group-1",
+		ObjectId:      "group-1-id",
+		PrincipalType: resource.PrincipalTypeGroup,
+	}
+	group2 := resource.Resource{
+		Name:          "group-2",
+		ObjectId:      "group-2-id",
+		PrincipalType: resource.PrincipalTypeGroup,
+	}
+	group3 := resource.Resource{
+		Name:          "group-3",
+		ObjectId:      "group-3-id",
+		PrincipalType: resource.PrincipalTypeGroup,
+	}
+
+	groups := resource.Resources{group1, group2}
+
+	t.Run("non-matching group should return false", func(t *testing.T) {
+		found := groups.Has(group3)
+		assert.False(t, found)
+	})
+
+	t.Run("matching group should return true", func(t *testing.T) {
+		found := groups.Has(group1)
+		assert.True(t, found)
+
+		found = groups.Has(group2)
+		assert.True(t, found)
+	})
+}
+
+func TestResources_Add(t *testing.T) {
+	group1 := resource.Resource{
+		Name:          "group-1",
+		ObjectId:      "group-1-id",
+		PrincipalType: resource.PrincipalTypeGroup,
+	}
+	group2 := resource.Resource{
+		Name:          "group-2",
+		ObjectId:      "group-2-id",
+		PrincipalType: resource.PrincipalTypeGroup,
+	}
+	group3 := resource.Resource{
+		Name:          "group-3",
+		ObjectId:      "group-3-id",
+		PrincipalType: resource.PrincipalTypeGroup,
+	}
+
+	t.Run("adding non-existing group should modify slice", func(t *testing.T) {
+		groups := resource.Resources{group1, group2}
+		groups.Add(group3)
+		assert.Len(t, groups, 3)
+		assert.ElementsMatch(t, resource.Resources{group1, group2, group3}, groups)
+	})
+
+	t.Run("adding existing group should not modify slice", func(t *testing.T) {
+		groups := resource.Resources{group1, group2}
+		groups.Add(group1)
+		assert.Len(t, groups, 2)
+		assert.ElementsMatch(t, resource.Resources{group1, group2}, groups)
+
+		groups.Add(group2)
+		assert.Len(t, groups, 2)
+		assert.ElementsMatch(t, resource.Resources{group1, group2}, groups)
+	})
+}

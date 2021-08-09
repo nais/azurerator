@@ -104,6 +104,25 @@ func (r Resources) ExtractDesiredAssignees(principalType PrincipalType, role per
 	return r.FilterByRole(role)
 }
 
+func (r Resources) Has(other Resource) bool {
+	for _, existing := range r {
+		principalTypeMatches := existing.PrincipalType == other.PrincipalType
+		objectIdMatches := existing.ObjectId == other.ObjectId
+
+		if principalTypeMatches && objectIdMatches {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (r *Resources) Add(resource Resource) {
+	if !r.Has(resource) {
+		*r = append(*r, resource)
+	}
+}
+
 type PrincipalType string
 
 const (
