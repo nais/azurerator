@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	contextTimeout   = 1 * time.Minute
+	contextTimeout   = 3 * time.Minute
 	retryMinInterval = 1 * time.Second
 	retryMaxInterval = 15 * time.Minute
 )
@@ -79,7 +79,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 		err := r.Azure().ProcessOrphaned(*tx)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("processing orphaned resources: %w", err)
+			return r.HandleError(*tx, fmt.Errorf("processing orphaned resources: %w", err))
 		}
 
 		return ctrl.Result{}, nil
@@ -89,7 +89,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	finalizerProcessed, err := r.Finalizer().Process(*tx)
 	if err != nil {
-		return ctrl.Result{}, err
+		return r.HandleError(*tx, err)
 	}
 	if finalizerProcessed {
 		return ctrl.Result{}, nil
@@ -97,7 +97,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	inSharedNamespace, err := r.Namespace().Process(tx)
 	if err != nil {
-		return ctrl.Result{}, err
+		return r.HandleError(*tx, err)
 	}
 	if inSharedNamespace {
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsSkippedCount, tx.Instance.GetNamespace())
@@ -107,7 +107,7 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	// ensure that existing credentials set are in sync with Azure
 	validCredentials, err := r.Azure().ValidateCredentials(*tx)
 	if err != nil {
-		return ctrl.Result{}, err
+		return r.HandleError(*tx, err)
 	}
 	if !validCredentials {
 		tx.Options.Process.Synchronize = true
@@ -179,8 +179,8 @@ func (r *Reconciler) Process(tx transaction.Transaction) error {
 }
 
 func (r *Reconciler) HandleError(tx transaction.Transaction, err error) (ctrl.Result, error) {
-	tx.Logger.Error(fmt.Errorf("failed to process Azure application: %w", err))
-	r.ReportEvent(tx, corev1.EventTypeWarning, v1.EventFailedSynchronization, "Failed to synchronize Azure application")
+	tx.Logger.Error(fmt.Errorf("failed to process AzureAdApplication: %w", err))
+	r.ReportEvent(tx, corev1.EventTypeWarning, v1.EventFailedSynchronization, "Failed to synchronize AzureAdApplication")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.Instance.Namespace)
 
 	r.ReportEvent(tx, corev1.EventTypeNormal, v1.EventRetrying, "Retrying synchronization")
