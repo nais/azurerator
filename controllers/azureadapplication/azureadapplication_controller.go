@@ -66,7 +66,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), r.Config.Controller.ContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
 
 	tx, err := r.Prepare(ctx, req)

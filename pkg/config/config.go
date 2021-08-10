@@ -16,7 +16,6 @@ import (
 type Config struct {
 	Azure          AzureConfig    `json:"azure"`
 	ClusterName    string         `json:"cluster-name"`
-	Controller     Controller     `json:"controller"`
 	Debug          bool           `json:"debug"`
 	MetricsAddr    string         `json:"metrics-address"`
 	SecretRotation SecretRotation `json:"secret-rotation"`
@@ -88,10 +87,6 @@ type GroupsAssignment struct {
 	AllUsersGroupId string `json:"all-users-group-id"`
 }
 
-type Controller struct {
-	ContextTimeout time.Duration `json:"context-timeout"`
-}
-
 type SecretRotation struct {
 	MaxAge time.Duration `json:"max-age"`
 }
@@ -124,8 +119,6 @@ const (
 	AzureDelayBetweenCreations                        = "azure.delay.between-creations"
 	AzureDelayBetweenModifications                    = "azure.delay.between-modifications"
 	AzurePaginationMaxPages                           = "azure.pagination.max-pages"
-
-	ControllerContextTimeout = "controller.context-timeout"
 
 	ClusterName    = "cluster-name"
 	DebugEnabled   = "debug"
@@ -180,8 +173,6 @@ func init() {
 	flag.String(ClusterName, "", "The cluster in which this application should run")
 	flag.Bool(DebugEnabled, false, "Debug mode toggle")
 	flag.Bool(ValidationsTenantRequired, false, "If true, will only process resources that have a tenant defined in the spec")
-
-	flag.Duration(ControllerContextTimeout, 1*time.Minute, "Context timeout for the reconciliation loop in the controller.")
 
 	flag.Duration(SecretRotationMaxAge, 180*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
 }
