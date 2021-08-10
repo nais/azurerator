@@ -37,7 +37,7 @@ func (s servicePrincipal) Register(tx transaction.Transaction) (msgraph.ServiceP
 	clientId := tx.Instance.GetClientId()
 	request := &msgraph.ServicePrincipal{
 		AppID:                     &clientId,
-		AppRoleAssignmentRequired: ptr.Bool(false),
+		AppRoleAssignmentRequired: ptr.Bool(s.Config().Features.AppRoleAssignmentRequired.Enabled),
 		Tags:                      []string{TagHideApp},
 	}
 	servicePrincipal, err := s.GraphClient().ServicePrincipals().Request().Add(tx.Ctx, request)
