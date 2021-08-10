@@ -15,20 +15,21 @@ import (
 
 type Config struct {
 	Azure          AzureConfig    `json:"azure"`
-	MetricsAddr    string         `json:"metrics-address"`
 	ClusterName    string         `json:"cluster-name"`
+	Controller     Controller     `json:"controller"`
 	Debug          bool           `json:"debug"`
+	MetricsAddr    string         `json:"metrics-address"`
 	SecretRotation SecretRotation `json:"secret-rotation"`
 	Validations    Validations    `json:"validations"`
 }
 
 type AzureConfig struct {
 	Auth                      AzureAuth       `json:"auth"`
-	Tenant                    AzureTenant     `json:"tenant"`
-	PermissionGrantResourceId string          `json:"permissiongrant-resource-id"`
-	Features                  AzureFeatures   `json:"features"`
 	Delay                     AzureDelay      `json:"delay"`
+	Features                  AzureFeatures   `json:"features"`
 	Pagination                AzurePagination `json:"pagination"`
+	PermissionGrantResourceId string          `json:"permissiongrant-resource-id"`
+	Tenant                    AzureTenant     `json:"tenant"`
 }
 
 type AzureTenant struct {
@@ -55,11 +56,11 @@ type AzurePagination struct {
 }
 
 type AzureFeatures struct {
-	TeamsManagement           TeamsManagement           `json:"teams-management"`
-	ClaimsMappingPolicies     ClaimsMappingPolicies     `json:"claims-mapping-policies"`
-	GroupsAssignment          GroupsAssignment          `json:"groups-assignment"`
 	AppRoleAssignmentRequired AppRoleAssignmentRequired `json:"app-role-assignment-required"`
+	ClaimsMappingPolicies     ClaimsMappingPolicies     `json:"claims-mapping-policies"`
 	CleanupOrphans            CleanupOrphans            `json:"cleanup-orphans"`
+	GroupsAssignment          GroupsAssignment          `json:"groups-assignment"`
+	TeamsManagement           TeamsManagement           `json:"teams-management"`
 }
 
 type TeamsManagement struct {
@@ -69,9 +70,9 @@ type TeamsManagement struct {
 
 type ClaimsMappingPolicies struct {
 	Enabled         bool   `json:"enabled"`
-	NavIdent        string `json:"navident"`
-	AzpName         string `json:"azp_name"`
 	AllCustomClaims string `json:"all-custom-claims"`
+	AzpName         string `json:"azp_name"`
+	NavIdent        string `json:"navident"`
 }
 
 type AppRoleAssignmentRequired struct {
@@ -85,6 +86,10 @@ type CleanupOrphans struct {
 type GroupsAssignment struct {
 	Enabled         bool   `json:"enabled"`
 	AllUsersGroupId string `json:"all-users-group-id"`
+}
+
+type Controller struct {
+	ContextTimeout time.Duration `json:"context-timeout"`
 }
 
 type SecretRotation struct {
@@ -119,11 +124,15 @@ const (
 	AzureDelayBetweenCreations                        = "azure.delay.between-creations"
 	AzureDelayBetweenModifications                    = "azure.delay.between-modifications"
 	AzurePaginationMaxPages                           = "azure.pagination.max-pages"
-	MetricsAddress                                    = "metrics-address"
-	ClusterName                                       = "cluster-name"
-	DebugEnabled                                      = "debug"
-	ValidationsTenantRequired                         = "validations.tenant.required"
-	SecretRotationMaxAge                              = "secret-rotation.max-age"
+
+	ControllerContextTimeout = "controller.context-timeout"
+
+	ClusterName    = "cluster-name"
+	DebugEnabled   = "debug"
+	MetricsAddress = "metrics-address"
+
+	ValidationsTenantRequired = "validations.tenant.required"
+	SecretRotationMaxAge      = "secret-rotation.max-age"
 )
 
 func init() {
@@ -171,6 +180,8 @@ func init() {
 	flag.String(ClusterName, "", "The cluster in which this application should run")
 	flag.Bool(DebugEnabled, false, "Debug mode toggle")
 	flag.Bool(ValidationsTenantRequired, false, "If true, will only process resources that have a tenant defined in the spec")
+
+	flag.Duration(ControllerContextTimeout, 1*time.Minute, "Context timeout for the reconciliation loop in the controller.")
 
 	flag.Duration(SecretRotationMaxAge, 180*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
 }
