@@ -23,10 +23,12 @@ type Config struct {
 }
 
 type AzureConfig struct {
-	Auth                      AzureAuth     `json:"auth"`
-	Tenant                    AzureTenant   `json:"tenant"`
-	PermissionGrantResourceId string        `json:"permissiongrant-resource-id"`
-	Features                  AzureFeatures `json:"features"`
+	Auth                      AzureAuth       `json:"auth"`
+	Tenant                    AzureTenant     `json:"tenant"`
+	PermissionGrantResourceId string          `json:"permissiongrant-resource-id"`
+	Features                  AzureFeatures   `json:"features"`
+	Delay                     AzureDelay      `json:"delay"`
+	Pagination                AzurePagination `json:"pagination"`
 }
 
 type AzureTenant struct {
@@ -41,6 +43,15 @@ func (a AzureTenant) String() string {
 type AzureAuth struct {
 	ClientId     string `json:"client-id"`
 	ClientSecret string `json:"client-secret"`
+}
+
+type AzureDelay struct {
+	BetweenCreations     time.Duration `json:"between-creations"`
+	BetweenModifications time.Duration `json:"between-modifications"`
+}
+
+type AzurePagination struct {
+	MaxPages int `json:"max-pages"`
 }
 
 type AzureFeatures struct {
@@ -105,6 +116,9 @@ const (
 	AzureFeaturesGroupsAllUsersGroupId                = "azure.features.groups-assignment.all-users-group-id"
 	AzureFeaturesAppRoleAssignmentRequiredEnabled     = "azure.features.app-role-assignment-required.enabled"
 	AzureFeaturesCleanupOrphansEnabled                = "azure.features.cleanup-orphans.enabled"
+	AzureDelayBetweenCreations                        = "azure.delay.between-creations"
+	AzureDelayBetweenModifications                    = "azure.delay.between-modifications"
+	AzurePaginationMaxPages                           = "azure.pagination.max-pages"
 	MetricsAddress                                    = "metrics-address"
 	ClusterName                                       = "cluster-name"
 	DebugEnabled                                      = "debug"
@@ -147,6 +161,11 @@ func init() {
 	flag.Bool(AzureFeaturesAppRoleAssignmentRequiredEnabled, false, "Feature toggle to enable 'appRoleAssignmentRequired' for service principals.")
 
 	flag.Bool(AzureFeaturesCleanupOrphansEnabled, false, "Feature toggle to enable cleanup of orphaned resources.")
+
+	flag.Duration(AzureDelayBetweenCreations, 3*time.Second, "Delay between creation operations to the Graph API.")
+	flag.Duration(AzureDelayBetweenModifications, 2*time.Second, "Delay between modification operations to the Graph API.")
+
+	flag.Int(AzurePaginationMaxPages, 1000, "Max number of pages to fetch when fetching paginated resources from the Graph API.")
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
 	flag.String(ClusterName, "", "The cluster in which this application should run")

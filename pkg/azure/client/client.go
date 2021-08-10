@@ -27,12 +27,6 @@ import (
 	"github.com/nais/azureator/pkg/config"
 )
 
-const (
-	maxNumberOfPagesToFetch           = 1000
-	delayIntervalBetweenModifications = 3 * time.Second
-	delayIntervalBetweenCreations     = 5 * time.Second
-)
-
 type Client struct {
 	config      *config.AzureConfig
 	httpClient  *http.Client
@@ -52,15 +46,15 @@ func (c Client) GraphClient() *msgraph.GraphServiceRequestBuilder {
 }
 
 func (c Client) MaxNumberOfPagesToFetch() int {
-	return maxNumberOfPagesToFetch
+	return c.config.Pagination.MaxPages
 }
 
 func (c Client) DelayIntervalBetweenModifications() time.Duration {
-	return delayIntervalBetweenModifications
+	return c.config.Delay.BetweenModifications
 }
 
 func (c Client) DelayIntervalBetweenCreations() time.Duration {
-	return delayIntervalBetweenCreations
+	return c.config.Delay.BetweenCreations
 }
 
 func (c Client) Application() azure.Application {
@@ -127,7 +121,7 @@ func (c Client) Create(tx transaction.Transaction) (*result.Application, error) 
 	tx = tx.UpdateWithApplicationIDs(*app)
 
 	// sleep to allow replication across Microsoft's systems...
-	time.Sleep(delayIntervalBetweenCreations)
+	time.Sleep(c.DelayIntervalBetweenCreations())
 
 	servicePrincipal, err := c.ServicePrincipal().Register(tx)
 	if err != nil {
@@ -136,7 +130,7 @@ func (c Client) Create(tx transaction.Transaction) (*result.Application, error) 
 
 	tx = tx.UpdateWithServicePrincipalID(servicePrincipal)
 
-	time.Sleep(delayIntervalBetweenCreations)
+	time.Sleep(c.DelayIntervalBetweenCreations())
 
 	if err := c.Application().IdentifierUri().Set(tx); err != nil {
 		return nil, fmt.Errorf("setting identifier URIs for application: %w", err)
@@ -207,21 +201,21 @@ func (c Client) GetPreAuthorizedApps(tx transaction.Transaction) (*result.PreAut
 // AddCredentials adds credentials for an existing AAD application
 func (c Client) AddCredentials(tx transaction.Transaction) (credentials.Set, error) {
 	// sleep to prevent concurrent modification error from Microsoft
-	time.Sleep(delayIntervalBetweenModifications)
+	time.Sleep(c.DelayIntervalBetweenModifications())
 
 	currPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("adding current password credential: %w", err)
 	}
 
-	time.Sleep(delayIntervalBetweenModifications)
+	time.Sleep(c.DelayIntervalBetweenModifications())
 
 	nextPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("adding next password credential: %w", err)
 	}
 
-	time.Sleep(delayIntervalBetweenModifications)
+	time.Sleep(c.DelayIntervalBetweenModifications())
 
 	keyCredentialSet, err := c.KeyCredential().Add(tx)
 	if err != nil {
@@ -254,14 +248,14 @@ func (c Client) AddCredentials(tx transaction.Transaction) (credentials.Set, err
 
 // RotateCredentials rotates credentials for an existing AAD application
 func (c Client) RotateCredentials(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error) {
-	time.Sleep(delayIntervalBetweenModifications) // sleep to prevent concurrent modification error from Microsoft
+	time.Sleep(c.DelayIntervalBetweenModifications()) // sleep to prevent concurrent modification error from Microsoft
 
 	nextPasswordCredential, err := c.PasswordCredential().Rotate(tx, existing, inUse)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("rotating password credential: %w", err)
 	}
 
-	time.Sleep(delayIntervalBetweenModifications)
+	time.Sleep(c.DelayIntervalBetweenModifications())
 
 	nextKeyCredential, nextJwk, err := c.KeyCredential().Rotate(tx, existing, inUse)
 	if err != nil {
