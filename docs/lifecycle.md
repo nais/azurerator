@@ -21,6 +21,7 @@ The following is a short overview of operations performed.
     - [1.6 Credentials](#16-credentials)
     - [1.7 Owner Assignment](#17-owner-assignment)
     - [1.8 Group Assignment](#18-group-assignment)
+    - [1.9 Single-Page Applications](#19-single-page-applications)
 - [2 Existing applications](#2-existing-applications)
     - [2.1 Credential Rotation](#21-credential-rotation)
 - [3 Cluster Resources](#3-cluster-resources)
@@ -65,9 +66,12 @@ providing the scope `api://<clientId>/.default` or `api://app.namespace.cluster/
 
 #### OAuth2 Permission Scopes
 
-A default set
-of [OAuth2 permission scopes](https://docs.microsoft.com/en-us/graph/api/resources/permissionscope?view=graph-rest-1.0)
-are registered for the application. These are exposed to client applications.
+A default set of [OAuth2 permission scopes](https://docs.microsoft.com/en-us/graph/api/resources/permissionscope?view=graph-rest-1.0)
+are registered for the application. These are exposed to consumer/client (pre-authorized) applications for the on-behalf-of flow.
+
+Optionally, one can also define custom scopes for each consumer application if one desires more fine-grained access control.
+Details here: <https://doc.nais.io/security/auth/azure-ad/access-policy/#custom-scopes> 
+(`Spec.PreAuthorizedApplications[].Permissions.Scopes[]`).
 
 #### Redirect URIs (optional)
 
@@ -96,6 +100,11 @@ should validate that the calling application has been assigned the role and thus
 
 The role should be present in the `roles` claim within the access token obtained from the OAuth2 client credentials
 flow.
+
+As with _scopes_, the operator also supports custom definitions of roles that can be granted to client/consumer applications 
+that enables more fine-grained access control. 
+Details here: <https://doc.nais.io/security/auth/azure-ad/access-policy/#custom-roles> 
+(`Spec.PreAuthorizedApplications[].Permissions.Roles[]`).
 
 ### 1.3 (Pre-)Authorized Client Applications
 
@@ -184,9 +193,18 @@ the `AzureAdApplication` when using the application in a Web API flow such as th
 
 Additionally, any users that should be able to log in to the application using the OpenID Connect flows must be
 explicitly assigned to the application through one of the groups defined in `Spec.Claims.Groups[]`. The user _must_ be a
-direct member of the group; assignment does not cascade to nested groups. If `Spec.Claims.Groups[]` is not defined, we
-fall back to assigning a single group that should contain all users that should have access to the application by
-default.
+direct member of the group; assignment does not cascade to nested groups. 
+
+If `Spec.Claims.Groups[]` is not defined, we fall back to assigning a single group (configured by the 
+`azure.features.groups-assignment.all-users-group-id` flag) that should contain all users that should have 
+access to the application by default. This behaviour can also be explicitly controlled by specifying the `Spec.AllowAllUsers` 
+field.
+
+### 1.9 Single-Page Applications
+
+Azure AD supports the [OAuth 2.0 Auth Code Flow with PKCE](https://docs.microsoft.com/en-us/azure/active-directory/develop/scenario-spa-overview) for logins from client-side/browser single-page-applications.
+However, the support for this must be explicitly enabled to avoid issues with CORS by setting
+`Spec.SinglePageApplication` to `true`.
 
 ## 2 Existing applications
 
@@ -215,9 +233,13 @@ In order to ensure zero downtime when rotating credentials, the following algori
 1. If the application only has a single set of registered credentials in Azure, then these will not be revoked.
 2. The previous newest set of credentials will not be revoked.
 3. Additionally, any set of credentials that exist in `corev1.Secret` resources in use by existing pods will not be
-   revoked. A new set of credentials is registered to the application in Azure AD
+   revoked. A new set of credentials is registered to the application in Azure AD.
 5. Any other key registered in Azure AD not matching the above will be revoked, i.e. any key deemed to be unused.
-6. The Status subresource is updated with the identifiers for the new set of credentials
+6. The Status subresource is updated with the identifiers for the new set of credentials.
+
+Additionally, during reconciliation of the resource, the operator will attempt to add a new set of credentials to the application 
+if it detects that the period between last rotation and now is greater than the configured `secret-rotation.max-age` property (defaults to 6 months).
+It will update the existing Kubernetes Secret.
 
 ## 3 Cluster Resources
 
@@ -349,10 +371,11 @@ https://login.microsoftonline.com/77678b69-1daf-47b6-9072-771d270ac800/v2.0/.wel
 
 The operator implements a finalizer of type `finalizers.azurerator.nais.io`, which will be processed whenever the `AzureAdApplication` resource is deleted.
 
-If the annotation `azure.nais.io/delete=true` exists on the resource, the associated application is deleted from Azure Active Directory.
+The associated application is deleted from Azure Active Directory whenever the related Kubernetes resource is deleted.
 
-OwnerReferences for the aforementioned cluster resources are also registered and should accordingly be garbage collected
-by the cluster.
+OwnerReferences for the aforementioned child resources are also registered and should accordingly be automatically garbage collected.
+
+One can prevent deletion of the resource in Azure AD by applying the annotation `azure.nais.io/preserve=true`. 
 
 [authenticating to Azure AD with a certificate]: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#second-case-access-token-request-with-a-certificate
 
