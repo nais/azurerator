@@ -71,13 +71,13 @@ func run() error {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
-	azureCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
-	defer cancel()
-
-	azureClient, err := client.New(azureCtx, &cfg.Azure)
+	azureClient, err := client.New(ctx, &cfg.Azure)
 	if err != nil {
 		return fmt.Errorf("instantiating Azure client: %w", err)
 	}
+
+	azureCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
 
 	azureOpenIDConfig, err := config.NewAzureOpenIdConfig(azureCtx, cfg.Azure.Tenant)
 	if err != nil {

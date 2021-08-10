@@ -35,7 +35,6 @@ import (
 )
 
 const (
-	contextTimeout   = 3 * time.Minute
 	retryMinInterval = 1 * time.Second
 	retryMaxInterval = 15 * time.Minute
 )
