@@ -24,6 +24,8 @@ import (
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/customresources"
+	"github.com/nais/azureator/pkg/kafka"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/reconciler"
 	azureReconciler "github.com/nais/azureator/pkg/reconciler/azure"
@@ -50,6 +52,7 @@ type Reconciler struct {
 	Recorder          record.EventRecorder
 	Config            *config.Config
 	AzureOpenIDConfig config.AzureOpenIdConfig
+	KafkaClient       kafka.Client
 }
 
 // +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications,verbs=get;list;watch;create;update;patch;delete
@@ -160,6 +163,7 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 		Logger:   logger,
 		Secrets:  *transactionSecrets,
 		Options:  opts,
+		ID:       correlationId,
 	}, nil
 }
 
@@ -189,9 +193,6 @@ func (r *Reconciler) HandleError(tx transaction.Transaction, err error) (ctrl.Re
 func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.Instance.Namespace)
 	r.ReportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
-
-	annotations.RemoveAnnotation(tx.Instance, annotations.ResynchronizeKey)
-	annotations.RemoveAnnotation(tx.Instance, annotations.RotateKey)
 
 	tx.Instance.Status.SynchronizationSecretName = tx.Instance.Spec.SecretName
 	now := metav1.Now()
@@ -248,7 +249,7 @@ func (r *Reconciler) ReportEvent(tx transaction.Transaction, eventType, event, m
 }
 
 func (r Reconciler) Azure() reconciler.Azure {
-	return azureReconciler.NewAzureReconciler(&r, r.AzureClient, *r.Config, r.Recorder)
+	return azureReconciler.NewAzureReconciler(&r, r.AzureClient, *r.Config, r.Recorder, r.KafkaClient)
 }
 
 func (r Reconciler) Finalizer() reconciler.Finalizer {
@@ -265,7 +266,22 @@ func (r Reconciler) Secrets() reconciler.Secrets {
 
 func (r *Reconciler) updateAnnotations(tx transaction.Transaction) error {
 	err := r.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {
-		existing.SetAnnotations(tx.Instance.GetAnnotations())
+		// remove annotations if we've already processed them.
+		if customresources.HasResynchronizeAnnotation(tx.Instance) {
+			annotations.RemoveAnnotation(tx.Instance, annotations.ResynchronizeKey)
+			annotations.RemoveAnnotation(existing, annotations.ResynchronizeKey)
+		}
+		if customresources.HasRotateAnnotation(tx.Instance) {
+			annotations.RemoveAnnotation(tx.Instance, annotations.RotateKey)
+			annotations.RemoveAnnotation(existing, annotations.RotateKey)
+		}
+
+		merged := existing.GetAnnotations()
+		for k, v := range tx.Instance.GetAnnotations() {
+			merged[k] = v
+		}
+
+		existing.SetAnnotations(merged)
 		return r.Update(tx.Ctx, existing)
 	})
 	if err != nil {

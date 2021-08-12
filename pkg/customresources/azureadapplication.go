@@ -7,6 +7,7 @@ import (
 	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 
 	"github.com/nais/azureator/pkg/annotations"
+	"github.com/nais/azureator/pkg/event"
 )
 
 func HasExtraPolicy(in *nais_io_v1.AzureAdClaims, policyName nais_io_v1.AzureAdExtraClaim) bool {
@@ -50,4 +51,18 @@ func HasResynchronizeAnnotation(in *nais_io_v1.AzureAdApplication) bool {
 func HasRotateAnnotation(in *nais_io_v1.AzureAdApplication) bool {
 	_, found := annotations.HasAnnotation(in, annotations.RotateKey)
 	return found
+}
+
+func ShouldResynchronize(in nais_io_v1.AzureAdApplication, event event.Event) bool {
+	for _, preAuthApp := range in.Spec.PreAuthorizedApplications {
+		nameMatches := preAuthApp.Application == event.Application.Name
+		namespaceMatches := preAuthApp.Namespace == event.Application.Namespace
+		clusterMatches := preAuthApp.Cluster == event.Application.Cluster
+
+		if nameMatches && namespaceMatches && clusterMatches {
+			return true
+		}
+	}
+
+	return false
 }

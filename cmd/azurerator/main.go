@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
 	"github.com/go-logr/zapr"
+	"github.com/nais/liberator/pkg/tlsutil"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -16,8 +19,10 @@ import (
 	"github.com/nais/azureator/controllers/azureadapplication"
 	"github.com/nais/azureator/pkg/azure/client"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/kafka"
 	"github.com/nais/azureator/pkg/logger"
 	azureMetrics "github.com/nais/azureator/pkg/metrics"
+	"github.com/nais/azureator/pkg/synchronizer"
 
 	naisiov1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	// +kubebuilder:scaffold:imports
@@ -84,6 +89,37 @@ func run() error {
 		return fmt.Errorf("fetching Azure OpenID Configuration: %w", err)
 	}
 
+	var kafkaClient kafka.Client
+	if cfg.Kafka.Enabled {
+		var tlsConfig *tls.Config
+
+		if cfg.Kafka.TLS.Enabled {
+			tlsConfig, err = tlsutil.TLSConfigFromFiles(cfg.Kafka.TLS.CertificatePath, cfg.Kafka.TLS.PrivateKeyPath, cfg.Kafka.TLS.CAPath)
+			if err != nil {
+				return fmt.Errorf("loading Kafka TLS credentials: %w", err)
+			}
+		}
+
+		kafkaClient = kafka.NewClient(*cfg, tlsConfig)
+
+		syncer := synchronizer.NewSynchronizer(
+			kafkaClient,
+			mgr.GetClient(),
+			mgr.GetAPIReader(),
+			*cfg,
+		)
+
+		setupLog.Info("starting kafka synchronizer goroutine")
+		go syncer.Synchronize()
+
+		defer func(syncer synchronizer.Synchronizer) {
+			err := syncer.Close()
+			if err != nil {
+				log.Fatalln(fmt.Errorf("closing synchronizer: %w", err))
+			}
+		}(syncer)
+	}
+
 	if err = (&azureadapplication.Reconciler{
 		Client:            mgr.GetClient(),
 		Reader:            mgr.GetAPIReader(),
@@ -92,6 +128,7 @@ func run() error {
 		Config:            cfg,
 		Recorder:          mgr.GetEventRecorderFor("azurerator"),
 		AzureOpenIDConfig: *azureOpenIDConfig,
+		KafkaClient:       kafkaClient,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller: %w", err)
 	}

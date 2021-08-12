@@ -17,3 +17,15 @@ type Application struct {
 func (a Application) IsNotModified() bool {
 	return a.Result == OperationNotModified
 }
+
+func (a Application) IsCreated() bool {
+	return a.Result == OperationCreated
+}
+
+func (a Application) IsUpdated() bool {
+	return a.Result == OperationUpdated
+}
+
+func (a Application) IsModified() bool {
+	return a.IsCreated() || a.IsUpdated()
+}

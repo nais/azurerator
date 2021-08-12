@@ -18,6 +18,7 @@ type Config struct {
 	ClusterName    string         `json:"cluster-name"`
 	Controller     Controller     `json:"controller"`
 	Debug          bool           `json:"debug"`
+	Kafka          KafkaConfig    `json:"kafka"`
 	MetricsAddr    string         `json:"metrics-address"`
 	SecretRotation SecretRotation `json:"secret-rotation"`
 	Validations    Validations    `json:"validations"`
@@ -92,6 +93,20 @@ type Controller struct {
 	ContextTimeout time.Duration `json:"context-timeout"`
 }
 
+type KafkaConfig struct {
+	Enabled bool     `json:"enabled"`
+	Brokers []string `json:"brokers"`
+	Topic   string   `json:"topic"`
+	TLS     KafkaTLS `json:"tls"`
+}
+
+type KafkaTLS struct {
+	Enabled         bool   `json:"enabled"`
+	CAPath          string `json:"ca-path"`
+	CertificatePath string `json:"certificate-path"`
+	PrivateKeyPath  string `json:"private-key-path"`
+}
+
 type SecretRotation struct {
 	MaxAge time.Duration `json:"max-age"`
 }
@@ -127,6 +142,15 @@ const (
 
 	ControllerContextTimeout = "controller.context-timeout"
 
+	KafkaEnabled = "kafka.enabled"
+	KafkaBrokers = "kafka.brokers"
+	KafkaTopic   = "kafka.topic"
+
+	KafkaTLSEnabled         = "kafka.tls.enabled"
+	KafkaTLSCAPath          = "kafka.tls.ca-path"
+	KafkaTLSCertificatePath = "kafka.tls.certificate-path"
+	KafkaTLSPrivateKeyPath  = "kafka.tls.private-key-path"
+
 	ClusterName    = "cluster-name"
 	DebugEnabled   = "debug"
 	MetricsAddress = "metrics-address"
@@ -134,6 +158,13 @@ const (
 	ValidationsTenantRequired = "validations.tenant.required"
 	SecretRotationMaxAge      = "secret-rotation.max-age"
 )
+
+func bindNAIS() {
+	viper.BindEnv(KafkaBrokers, "KAFKA_BROKERS")
+	viper.BindEnv(KafkaTLSCAPath, "KAFKA_CA_PATH")
+	viper.BindEnv(KafkaTLSCertificatePath, "KAFKA_CERTIFICATE_PATH")
+	viper.BindEnv(KafkaTLSPrivateKeyPath, "KAFKA_PRIVATE_KEY_PATH")
+}
 
 func init() {
 	// Automatically read configuration options from environment variables.
@@ -147,6 +178,9 @@ func init() {
 	viper.SetConfigName("azurerator")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("/etc/azurerator")
+
+	// Ensure NAIS Kafka variables are used
+	bindNAIS()
 
 	flag.String(AzureClientId, "", "Client ID for Azure AD authentication")
 	flag.String(AzureClientSecret, "", "Client secret for Azure AD authentication")
@@ -182,6 +216,14 @@ func init() {
 	flag.Bool(ValidationsTenantRequired, false, "If true, will only process resources that have a tenant defined in the spec")
 
 	flag.Duration(ControllerContextTimeout, 1*time.Minute, "Context timeout for the reconciliation loop in the controller.")
+
+	flag.Bool(KafkaEnabled, false, "Toggle for enabling Kafka to allow synchronization of events between Azurerator instances.")
+	flag.String(KafkaTopic, "azurerator-events", "Name of the Kafka topic that Azurerator should use.")
+	flag.StringSlice(KafkaBrokers, []string{"localhost:9092"}, "Comma-separated list of Kafka brokers, HOST:PORT.")
+	flag.Bool(KafkaTLSEnabled, false, "Use TLS for connecting to Kafka.")
+	flag.String(KafkaTLSCAPath, "", "Path to Kafka TLS CA certificate.")
+	flag.String(KafkaTLSCertificatePath, "", "Path to Kafka TLS certificate.")
+	flag.String(KafkaTLSPrivateKeyPath, "", "Path to Kafka TLS private key.")
 
 	flag.Duration(SecretRotationMaxAge, 180*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
 }

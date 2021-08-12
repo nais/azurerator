@@ -17,6 +17,7 @@ type Transaction struct {
 	Logger   log.Entry
 	Options  options.TransactionOptions
 	Secrets  secrets.Secrets
+	ID       string
 }
 
 func (t *Transaction) ToAzureTx() transaction.Transaction {
