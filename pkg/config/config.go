@@ -171,8 +171,8 @@ func init() {
 
 	flag.Bool(AzureFeaturesCleanupOrphansEnabled, false, "Feature toggle to enable cleanup of orphaned resources.")
 
-	flag.Duration(AzureDelayBetweenCreations, 3*time.Second, "Delay between creation operations to the Graph API.")
-	flag.Duration(AzureDelayBetweenModifications, 2*time.Second, "Delay between modification operations to the Graph API.")
+	flag.Duration(AzureDelayBetweenCreations, 5*time.Second, "Delay between creation operations to the Graph API.")
+	flag.Duration(AzureDelayBetweenModifications, 3*time.Second, "Delay between modification operations to the Graph API.")
 
 	flag.Int(AzurePaginationMaxPages, 1000, "Max number of pages to fetch when fetching paginated resources from the Graph API.")
 
