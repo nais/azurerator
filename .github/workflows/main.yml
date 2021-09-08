@@ -41,12 +41,7 @@ jobs:
         version=$(./version.sh)
         echo "version=${version}" >> $GITHUB_ENV
         echo "IMAGE=${image}:${version}" >> $GITHUB_ENV
-        echo "NAIS_YAML=${GITHUB_WORKSPACE}/nais-yaml" >> $GITHUB_ENV
-        pwd
     - name: Bump version in nais-yaml
-      env:
-        DEPLOY_KEY: ${{ secrets.NAIS_YAML_DEPLOY_KEY }}
-        GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
       run: |
         eval "$(ssh-agent -s)"
         ssh-add - <<< "${DEPLOY_KEY}"
