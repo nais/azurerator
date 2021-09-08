@@ -13,7 +13,7 @@ jobs:
     name: Checkout code and setup node
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: Generate image environment variable
         run: |
           version=$(./version.sh)
@@ -35,21 +35,26 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
+      with:
+        path: azurerator
+    - name: Checkout nais-yaml
+      uses: actions/checkout@v2
+      with:
+        repository: navikt/nais-yaml
+        token: ${{ secrets.SRVNAIS_REPO_PUSH_PAT }}
+        path: nais-yaml
     - name: Generate image environment variable
       run: |
+        cd azurerator
         version=$(./version.sh)
         echo "version=${version}" >> $GITHUB_ENV
         echo "IMAGE=${image}:${version}" >> $GITHUB_ENV
     - name: Bump version in nais-yaml
       run: |
-        eval "$(ssh-agent -s)"
-        ssh-add - <<< "${DEPLOY_KEY}"
-        mkdir -p $NAIS_YAML
-        git clone git@github.com:navikt/nais-yaml.git $NAIS_YAML
-        cd $NAIS_YAML
-        git config user.email "aura@nav.no"
-        git config user.name "NAIS deploy pipeline"
+        cd nais-yaml
+        git config user.name "$GITHUB_ACTOR"
+        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
         sed -E -i "s#image: ghcr.io/nais/azurerator.+#image: ${IMAGE}#" vars/global.yaml
         git add .
         git --no-pager diff --cached
