@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
@@ -85,7 +84,6 @@ func (c consumer) Close() error {
 func kafkaReader(clientID string, config config.Config, tlsConfig *tls.Config) *kafka.Reader {
 	dialer := &kafka.Dialer{
 		ClientID:  clientID,
-		Timeout:   10 * time.Second,
 		DualStack: true,
 	}
 
