@@ -1,7 +1,9 @@
 package azure
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
@@ -18,6 +20,7 @@ import (
 	"github.com/nais/azureator/pkg/kafka"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/reconciler"
+	"github.com/nais/azureator/pkg/retry"
 	"github.com/nais/azureator/pkg/transaction"
 )
 
@@ -68,10 +71,7 @@ func (a azureReconciler) Process(tx transaction.Transaction) (*result.Applicatio
 		a.reportPreAuthorizedApplicationStatus(tx, applicationResult.PreAuthorizedApps)
 	}
 
-	err = a.produceEvent(tx, applicationResult)
-	if err != nil {
-		tx.Logger.Errorf("producing kafka event: %+v", err)
-	}
+	go a.produceEvent(tx, applicationResult)
 
 	return applicationResult, nil
 }
@@ -123,17 +123,39 @@ func (a azureReconciler) notModified(tx transaction.Transaction) (*result.Applic
 	}, nil
 }
 
-func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result.Application) error {
+func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result.Application) {
 	if !a.config.Kafka.Enabled {
+		return
+	}
+
+	var eventName event.Name
+
+	switch {
+	case result.IsCreated():
+		eventName = event.Created
+	default:
+		return
+	}
+
+	e := event.NewEvent(tx.ID, eventName, tx.Instance)
+
+	retryable := func(ctx context.Context) error {
+		err := a.kafkaClient.ProduceEvent(ctx, e)
+		if err != nil {
+			tx.Logger.Warnf("producing kafka event: %+v; retrying...", err)
+			return retry.RetryableError(err)
+		}
+
 		return nil
 	}
 
-	if result.IsCreated() {
-		e := event.NewEvent(tx.ID, event.Created, tx.Instance)
-		return a.kafkaClient.ProduceEvent(tx.Ctx, e)
-	}
+	err := retry.Fibonacci(1*time.Second).
+		WithMaxDuration(5*time.Minute).
+		Do(context.Background(), retryable)
 
-	return nil
+	if err != nil {
+		tx.Logger.Errorf("producing kafka event: %+v; retries exhausted", err)
+	}
 }
 
 func (a azureReconciler) AddCredentials(tx transaction.Transaction, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {

@@ -10,7 +10,8 @@ require (
 	github.com/nais/msgraph.go v0.1.5
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.0.0
-	github.com/segmentio/kafka-go v0.4.17
+	github.com/segmentio/kafka-go v0.4.19
+	github.com/sethvargo/go-retry v0.1.1-0.20210407011123-eb868fa054ca
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
@@ -34,7 +35,7 @@ require (
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
 	github.com/golang/protobuf v1.3.2 // indirect
-	github.com/golang/snappy v0.0.1 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/googleapis/gnostic v0.3.1 // indirect
@@ -42,7 +43,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/json-iterator/go v1.1.8 // indirect
-	github.com/klauspost/compress v1.9.8 // indirect
+	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/magiconair/properties v1.8.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
@@ -51,7 +52,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/onsi/gomega v1.8.1 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
-	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
+	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.4.1 // indirect
