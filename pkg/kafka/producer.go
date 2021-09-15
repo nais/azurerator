@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 
@@ -54,7 +55,9 @@ func (p producer) Close() error {
 
 func kafkaWriter(clientID string, config config.Config, tlsConfig *tls.Config) *kafka.Writer {
 	transport := &kafka.Transport{
-		ClientID: clientID,
+		ClientID:    clientID,
+		DialTimeout: 1 * time.Minute,
+		IdleTimeout: 15 * time.Minute,
 	}
 
 	if config.Kafka.TLS.Enabled {
