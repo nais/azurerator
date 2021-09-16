@@ -2,10 +2,11 @@ package synchronizer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
-	"time"
 
+	"github.com/Shopify/sarama"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,21 +20,17 @@ import (
 
 // Synchronizer ensures that the Azure AD applications between multiple Azurerator instances/clusters are up-to-date and eventually consistent.
 type Synchronizer interface {
-	Synchronize()
-	Close() error
+	Callback() kafka.Callback
 }
 
 type synchronizer struct {
-	kafkaClient kafka.Client
-	kubeClient  client.Client
-	kubeReader  client.Reader
-	config      config.Config
-	logger      *log.Entry
-	stopChan    chan struct{}
+	kubeClient client.Client
+	kubeReader client.Reader
+	config     config.Config
+	stopChan   chan struct{}
 }
 
 func NewSynchronizer(
-	kafkaClient kafka.Client,
 	kubeClient client.Client,
 	kubeReader client.Reader,
 	config config.Config,
@@ -41,85 +38,53 @@ func NewSynchronizer(
 	stopChan := make(chan struct{}, 1)
 
 	return synchronizer{
-		kafkaClient: kafkaClient,
-		kubeClient:  kubeClient,
-		kubeReader:  kubeReader,
-		config:      config,
-		stopChan:    stopChan,
+		kubeClient: kubeClient,
+		kubeReader: kubeReader,
+		config:     config,
+		stopChan:   stopChan,
 	}
 }
 
-func (s synchronizer) Synchronize() {
-	ctx := context.Background()
-	messages := s.kafkaClient.Consume(ctx)
+func (s synchronizer) Callback() kafka.Callback {
+	return func(msg *sarama.ConsumerMessage, logger *log.Entry) (bool, error) {
+		logger.Debugf("incoming message from Kafka")
 
-	for {
-		select {
-		case msg, ok := <-messages:
-			if !ok {
-				log.Errorf("lost connection to kafka; retrying...")
-				time.Sleep(5 * time.Second)
-				messages = s.kafkaClient.Consume(ctx)
-				continue
-			}
-
-			cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-
-			err := s.sync(cctx, msg)
-			cancel()
-			if err != nil {
-				s.logger.Errorf("synchronizing event: %v", err)
-				time.Sleep(10 * time.Second)
-				s.logger.Debugf("retrying...")
-				messages <- msg
-			}
-		case <-s.stopChan:
-			return
+		eventMsg := &event.Event{}
+		err := json.Unmarshal(msg.Value, &eventMsg)
+		if err != nil {
+			return false, fmt.Errorf("unmarshalling message to event; ignoring: %w", err)
 		}
+
+		logger = logger.WithFields(log.Fields{
+			"CorrelationID": eventMsg.ID,
+			"application":   eventMsg.Application,
+			"event_name":    eventMsg.EventName,
+		})
+
+		err = s.processEvent(context.Background(), *eventMsg, logger)
+		if err != nil {
+			return true, fmt.Errorf("processing event: %w", err)
+		}
+
+		logger.Info("event synchronized")
+		return false, nil
 	}
 }
 
-func (s synchronizer) Close() error {
-	close(s.stopChan)
-	return s.kafkaClient.Close()
-}
-
-func (s synchronizer) sync(ctx context.Context, msg kafka.EventMessage) error {
-	s.logger = log.WithFields(log.Fields{
-		"CorrelationID": msg.ID,
-		"application":   msg.Application,
-		"event_name":    msg.EventName,
-		"kafka":         msg.Metadata(),
-	})
-
-	err := s.processEvent(ctx, msg.Event)
-	if err != nil {
-		return fmt.Errorf("processing event: %w", err)
-	}
-
-	err = s.kafkaClient.CommitRead(ctx, msg.Message)
-	if err != nil {
-		return err
-	}
-
-	s.logger.Info("event synchronized.")
-	return nil
-}
-
-func (s synchronizer) processEvent(ctx context.Context, e event.Event) error {
+func (s synchronizer) processEvent(ctx context.Context, e event.Event, logger *log.Entry) error {
 	if e.EventName != event.Created {
-		s.logger.Debugf("ignoring event '%s'", e.EventName)
+		logger.Debugf("ignoring event '%s'", e.EventName)
 		return nil
 	}
 
-	s.logger.Infof("processing event '%s' for '%s:%s:%s'...", e.EventName, e.Application.Cluster, e.Application.Namespace, e.Application.Name)
+	logger.Infof("processing event '%s' for '%s:%s:%s'...", e.EventName, e.Application.Cluster, e.Application.Namespace, e.Application.Name)
 
 	candidates, err := s.findResyncCandidates(ctx, e)
 	if err != nil {
 		return err
 	}
 
-	return s.resyncAll(ctx, candidates)
+	return s.resyncAll(ctx, candidates, logger)
 }
 
 func (s synchronizer) findResyncCandidates(ctx context.Context, e event.Event) ([]v1.AzureAdApplication, error) {
@@ -149,9 +114,9 @@ func (s synchronizer) fetchAzureAdApplicationsFromCluster(ctx context.Context) (
 	return apps.Items, nil
 }
 
-func (s synchronizer) resyncAll(ctx context.Context, candidates []v1.AzureAdApplication) error {
+func (s synchronizer) resyncAll(ctx context.Context, candidates []v1.AzureAdApplication, logger *log.Entry) error {
 	candidateCount := len(candidates)
-	s.logger.Debugf("found %d candidates to resync", candidateCount)
+	logger.Debugf("found %d candidates to resync", candidateCount)
 
 	for i, candidate := range candidates {
 		candidateID := fmt.Sprintf("%s:%s:%s", s.config.ClusterName, candidate.GetNamespace(), candidate.GetName())
@@ -161,7 +126,7 @@ func (s synchronizer) resyncAll(ctx context.Context, candidates []v1.AzureAdAppl
 			return fmt.Errorf("resyncing %s: %w", candidateID, err)
 		}
 
-		s.logger.Infof("[%d/%d] marked '%s' for resync", i+1, candidateCount, candidateID)
+		logger.Infof("[%d/%d] marked '%s' for resync", i+1, candidateCount, candidateID)
 	}
 
 	return nil

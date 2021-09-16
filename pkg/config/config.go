@@ -94,10 +94,12 @@ type Controller struct {
 }
 
 type KafkaConfig struct {
-	Enabled bool     `json:"enabled"`
-	Brokers []string `json:"brokers"`
-	Topic   string   `json:"topic"`
-	TLS     KafkaTLS `json:"tls"`
+	Enabled           bool          `json:"enabled"`
+	Brokers           []string      `json:"brokers"`
+	Topic             string        `json:"topic"`
+	TLS               KafkaTLS      `json:"tls"`
+	RetryInterval     time.Duration `json:"retry-interval"`
+	MaxProcessingTime time.Duration `json:"max-processing-time"`
 }
 
 type KafkaTLS struct {
@@ -142,9 +144,11 @@ const (
 
 	ControllerContextTimeout = "controller.context-timeout"
 
-	KafkaEnabled = "kafka.enabled"
-	KafkaBrokers = "kafka.brokers"
-	KafkaTopic   = "kafka.topic"
+	KafkaEnabled           = "kafka.enabled"
+	KafkaBrokers           = "kafka.brokers"
+	KafkaTopic             = "kafka.topic"
+	KafkaRetryInterval     = "kafka.retry-interval"
+	KafkaMaxProcessingTime = "kafka.max-processing-time"
 
 	KafkaTLSEnabled         = "kafka.tls.enabled"
 	KafkaTLSCAPath          = "kafka.tls.ca-path"
@@ -220,6 +224,8 @@ func init() {
 	flag.Bool(KafkaEnabled, false, "Toggle for enabling Kafka to allow synchronization of events between Azurerator instances.")
 	flag.String(KafkaTopic, "azurerator-events", "Name of the Kafka topic that Azurerator should use.")
 	flag.StringSlice(KafkaBrokers, []string{"localhost:9092"}, "Comma-separated list of Kafka brokers, HOST:PORT.")
+	flag.Duration(KafkaRetryInterval, 5*time.Second, "Retry interval for Kafka operations.")
+	flag.Duration(KafkaMaxProcessingTime, 10*time.Second, "Maximum processing time of Kafka messages.")
 	flag.Bool(KafkaTLSEnabled, false, "Use TLS for connecting to Kafka.")
 	flag.String(KafkaTLSCAPath, "", "Path to Kafka TLS CA certificate.")
 	flag.String(KafkaTLSCertificatePath, "", "Path to Kafka TLS certificate.")

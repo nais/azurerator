@@ -3,103 +3,112 @@ package kafka
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
+	"os"
+	"time"
 
-	"github.com/segmentio/kafka-go"
+	"github.com/Shopify/sarama"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/event"
 )
 
-type Consumer interface {
-	Consume(context.Context) chan EventMessage
-	CommitRead(context.Context, ...kafka.Message) error
-	Close() error
+type Consumer struct {
+	callback      Callback
+	cancel        context.CancelFunc
+	consumer      sarama.ConsumerGroup
+	ctx           context.Context
+	groupID       string
+	logger        *log.Logger
+	retryInterval time.Duration
+	topic         string
 }
 
-type consumer struct {
-	reader *kafka.Reader
-}
-
-func NewConsumer(clientID string, config config.Config, tlsConfig *tls.Config) Consumer {
-	reader := kafkaReader(clientID, config, tlsConfig)
-	return consumer{reader: reader}
-}
-
-func (c consumer) Consume(ctx context.Context) chan EventMessage {
-	messages := make(chan EventMessage)
-
-	go func(ctx context.Context, messages chan EventMessage) {
-		defer close(messages)
-		cctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
-		for {
-			msg, err := c.reader.FetchMessage(cctx)
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					log.Errorf("fetching message from kafka: %+v", err)
-				}
-				return
-			}
-
-			eventMsg := &event.Event{}
-			err = json.Unmarshal(msg.Value, &eventMsg)
-			if err != nil {
-				log.Errorf("unmarshalling message to event; ignoring: %+v", err)
-
-				err = c.CommitRead(ctx, msg)
-				if err != nil {
-					log.Error(err)
-					return
-				}
-
-				continue
-			}
-
-			messages <- NewEventMessage(*eventMsg, msg)
-		}
-	}(ctx, messages)
-
-	return messages
-}
-
-func (c consumer) CommitRead(ctx context.Context, messages ...kafka.Message) error {
-	err := c.reader.CommitMessages(ctx, messages...)
-	if err != nil {
-		return fmt.Errorf("commiting offset to kafka: %w", err)
-	}
-
+// Setup is run at the beginning of a new session, before ConsumeClaim
+func (c *Consumer) Setup(_ sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-func (c consumer) Close() error {
-	return c.reader.Close()
+// Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
+func (c *Consumer) Cleanup(_ sarama.ConsumerGroupSession) error {
+	return nil
 }
 
-func kafkaReader(clientID string, config config.Config, tlsConfig *tls.Config) *kafka.Reader {
-	dialer := &kafka.Dialer{
-		ClientID:  clientID,
-		DualStack: true,
+// ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
+func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	var retry = true
+	var err error
+
+	for message := range claim.Messages() {
+		for retry {
+			logger := c.logger.WithFields(log.Fields{
+				"kafka_offset":    message.Offset,
+				"kafka_partition": message.Partition,
+				"kafka_topic":     message.Topic,
+			})
+			retry, err = c.callback(message, logger)
+			if err != nil {
+				logger.Errorf("consuming Kafka message: %s", err)
+				if retry {
+					time.Sleep(c.retryInterval)
+				}
+			}
+		}
+		retry, err = true, nil
+		session.MarkMessage(message, "")
+	}
+	return nil
+}
+
+func NewConsumer(cfg config.Config, tlsConfig *tls.Config, logger *log.Logger, callback Callback) (*Consumer, error) {
+	consumerCfg := sarama.NewConfig()
+	consumerCfg.Net.TLS.Enable = cfg.Kafka.TLS.Enabled
+	consumerCfg.Net.TLS.Config = tlsConfig
+	consumerCfg.Version = sarama.V2_6_0_0
+	consumerCfg.Consumer.Offsets.Initial = sarama.OffsetNewest
+	consumerCfg.Consumer.MaxProcessingTime = cfg.Kafka.MaxProcessingTime
+	consumerCfg.ClientID, _ = os.Hostname()
+	sarama.Logger = logger
+
+	groupID := fmt.Sprintf("azurerator-%s-%s-v1", cfg.ClusterName, cfg.Azure.Tenant.Id)
+
+	consumer, err := sarama.NewConsumerGroup(cfg.Kafka.Brokers, groupID, consumerCfg)
+	if err != nil {
+		return nil, err
 	}
 
-	if config.Kafka.TLS.Enabled {
-		dialer.TLS = tlsConfig
+	c := &Consumer{
+		callback:      callback,
+		consumer:      consumer,
+		groupID:       groupID,
+		logger:        logger,
+		retryInterval: cfg.Kafka.RetryInterval,
+		topic:         cfg.Kafka.Topic,
 	}
 
-	groupID := fmt.Sprintf("azurerator-%s-%s-v1", config.ClusterName, config.Azure.Tenant.Id)
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 
-	readerCfg := kafka.ReaderConfig{
-		Brokers:               config.Kafka.Brokers,
-		GroupID:               groupID,
-		Topic:                 config.Kafka.Topic,
-		Dialer:                dialer,
-		StartOffset:           kafka.LastOffset,
-		WatchPartitionChanges: true,
-	}
-	return kafka.NewReader(readerCfg)
+	go func() {
+		for err := range c.consumer.Errors() {
+			c.logger.Errorf("Consumer encountered error: %s", err)
+		}
+	}()
+
+	go func() {
+		for {
+			c.logger.Infof("(re-)starting consumer on topic %s", cfg.Kafka.Topic)
+			err := c.consumer.Consume(c.ctx, []string{cfg.Kafka.Topic}, c)
+			if err != nil {
+				c.logger.Errorf("Error setting up consumer: %s", err)
+			}
+			// check if context was cancelled, signaling that the consumer should stop
+			if c.ctx.Err() != nil {
+				c.logger.Errorf("Consumer context error: %s", c.ctx.Err())
+				c.ctx, c.cancel = context.WithCancel(context.Background())
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
+	return c, nil
 }

@@ -1,74 +1,64 @@
 package kafka
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
+	"os"
 	"time"
 
-	"github.com/segmentio/kafka-go"
+	"github.com/Shopify/sarama"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/event"
 )
 
 type Producer interface {
-	Produce(context.Context, kafka.Message) error
-	ProduceEvent(context.Context, event.Event) error
-	Close() error
+	Produce(msg Message) (int64, error)
+	ProduceEvent(event.Event) (int64, error)
 }
 
 type producer struct {
-	writer *kafka.Writer
+	producer sarama.SyncProducer
+	topic    string
 }
 
-func NewProducer(clientID string, config config.Config, tlsConfig *tls.Config) Producer {
-	writer := kafkaWriter(clientID, config, tlsConfig)
-	return producer{writer: writer}
-}
+func NewProducer(config config.Config, tlsConfig *tls.Config, logger *log.Logger) (Producer, error) {
+	cfg := sarama.NewConfig()
+	cfg.Net.TLS.Enable = true
+	cfg.Net.TLS.Config = tlsConfig
+	cfg.Producer.RequiredAcks = sarama.WaitForAll
+	cfg.Producer.Return.Errors = true
+	cfg.Producer.Return.Successes = true
+	cfg.ClientID, _ = os.Hostname()
+	sarama.Logger = logger
 
-func (p producer) Produce(ctx context.Context, msg kafka.Message) error {
-	err := p.writer.WriteMessages(ctx, msg)
+	syncProducer, err := sarama.NewSyncProducer(config.Kafka.Brokers, cfg)
 	if err != nil {
-		return fmt.Errorf("writing message to kafka: %w", err)
+		return nil, err
 	}
 
-	return nil
+	return &producer{
+		producer: syncProducer,
+		topic:    config.Kafka.Topic,
+	}, nil
 }
 
-func (p producer) ProduceEvent(ctx context.Context, eventMsg event.Event) error {
-	key := []byte(eventMsg.ID)
+func (p *producer) Produce(msg Message) (offset int64, err error) {
+	producerMessage := &sarama.ProducerMessage{
+		Topic:     p.topic,
+		Value:     sarama.ByteEncoder(msg),
+		Timestamp: time.Now(),
+	}
+	_, offset, err = p.producer.SendMessage(producerMessage)
+	return
+}
 
-	value, err := eventMsg.Marshal()
+func (p *producer) ProduceEvent(e event.Event) (int64, error) {
+	message, err := e.Marshal()
 	if err != nil {
-		return fmt.Errorf("marshalling event: %w", err)
+		return -1, fmt.Errorf("marshalling event: %w", err)
 	}
 
-	kafkaMsg := kafka.Message{Key: key, Value: value}
-
-	return p.Produce(ctx, kafkaMsg)
-}
-
-func (p producer) Close() error {
-	return p.writer.Close()
-}
-
-func kafkaWriter(clientID string, config config.Config, tlsConfig *tls.Config) *kafka.Writer {
-	transport := &kafka.Transport{
-		ClientID:    clientID,
-		DialTimeout: 1 * time.Minute,
-		IdleTimeout: 15 * time.Minute,
-	}
-
-	if config.Kafka.TLS.Enabled {
-		transport.TLS = tlsConfig
-	}
-
-	return &kafka.Writer{
-		Addr:         kafka.TCP(config.Kafka.Brokers...),
-		Topic:        config.Kafka.Topic,
-		RequiredAcks: kafka.RequireAll,
-		Transport:    transport,
-		BatchSize:    1,
-	}
+	return p.Produce(message)
 }

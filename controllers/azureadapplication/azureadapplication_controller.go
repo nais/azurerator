@@ -52,7 +52,7 @@ type Reconciler struct {
 	Recorder          record.EventRecorder
 	Config            *config.Config
 	AzureOpenIDConfig config.AzureOpenIdConfig
-	KafkaClient       kafka.Client
+	KafkaProducer     kafka.Producer
 }
 
 // +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications,verbs=get;list;watch;create;update;patch;delete
@@ -249,7 +249,7 @@ func (r *Reconciler) ReportEvent(tx transaction.Transaction, eventType, event, m
 }
 
 func (r Reconciler) Azure() reconciler.Azure {
-	return azureReconciler.NewAzureReconciler(&r, r.AzureClient, *r.Config, r.Recorder, r.KafkaClient)
+	return azureReconciler.NewAzureReconciler(&r, r.AzureClient, *r.Config, r.Recorder, r.KafkaProducer)
 }
 
 func (r Reconciler) Finalizer() reconciler.Finalizer {

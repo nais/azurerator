@@ -26,10 +26,10 @@ import (
 
 type azureReconciler struct {
 	reconciler.AzureAdApplication
-	azureClient azure.Client
-	config      config.Config
-	kafkaClient kafka.Client
-	recorder    record.EventRecorder
+	azureClient   azure.Client
+	config        config.Config
+	kafkaProducer kafka.Producer
+	recorder      record.EventRecorder
 }
 
 func NewAzureReconciler(
@@ -37,13 +37,13 @@ func NewAzureReconciler(
 	azureClient azure.Client,
 	config config.Config,
 	recorder record.EventRecorder,
-	kafkaClient kafka.Client,
+	kafkaProducer kafka.Producer,
 ) reconciler.Azure {
 	return azureReconciler{
 		AzureAdApplication: reconciler,
 		azureClient:        azureClient,
 		config:             config,
-		kafkaClient:        kafkaClient,
+		kafkaProducer:      kafkaProducer,
 		recorder:           recorder,
 	}
 }
@@ -138,9 +138,10 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 	}
 
 	e := event.NewEvent(tx.ID, eventName, tx.Instance)
+	tx.Logger.Debugf("producing '%s' event to kafka...", eventName)
 
 	retryable := func(ctx context.Context) error {
-		err := a.kafkaClient.ProduceEvent(ctx, e)
+		_, err := a.kafkaProducer.ProduceEvent(e)
 		if err != nil {
 			tx.Logger.Warnf("producing kafka event: %+v; retrying...", err)
 			return retry.RetryableError(err)
@@ -155,6 +156,8 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 
 	if err != nil {
 		tx.Logger.Errorf("producing kafka event: %+v; retries exhausted", err)
+	} else {
+		tx.Logger.Infof("successfully sent '%s' event to kafka", eventName)
 	}
 }
 

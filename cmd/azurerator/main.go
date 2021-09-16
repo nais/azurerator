@@ -4,12 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
 	"github.com/go-logr/zapr"
 	"github.com/nais/liberator/pkg/tlsutil"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -89,7 +89,9 @@ func run() error {
 		return fmt.Errorf("fetching Azure OpenID Configuration: %w", err)
 	}
 
-	var kafkaClient kafka.Client
+	kafkaLogger := logrus.StandardLogger()
+
+	var kafkaProducer kafka.Producer
 	if cfg.Kafka.Enabled {
 		var tlsConfig *tls.Config
 
@@ -100,24 +102,22 @@ func run() error {
 			}
 		}
 
-		kafkaClient = kafka.NewClient(*cfg, tlsConfig)
+		kafkaProducer, err = kafka.NewProducer(*cfg, tlsConfig, kafkaLogger)
+		if err != nil {
+			return fmt.Errorf("setting up kafka producer: %w", err)
+		}
 
 		syncer := synchronizer.NewSynchronizer(
-			kafkaClient,
 			mgr.GetClient(),
 			mgr.GetAPIReader(),
 			*cfg,
 		)
+		callback := syncer.Callback()
 
-		setupLog.Info("starting kafka synchronizer goroutine")
-		go syncer.Synchronize()
-
-		defer func(syncer synchronizer.Synchronizer) {
-			err := syncer.Close()
-			if err != nil {
-				log.Fatalln(fmt.Errorf("closing synchronizer: %w", err))
-			}
-		}(syncer)
+		_, err = kafka.NewConsumer(*cfg, tlsConfig, kafkaLogger, callback)
+		if err != nil {
+			return fmt.Errorf("setting up kafka consumer: %w", err)
+		}
 	}
 
 	if err = (&azureadapplication.Reconciler{
@@ -128,7 +128,7 @@ func run() error {
 		Config:            cfg,
 		Recorder:          mgr.GetEventRecorderFor("azurerator"),
 		AzureOpenIDConfig: *azureOpenIDConfig,
-		KafkaClient:       kafkaClient,
+		KafkaProducer:     kafkaProducer,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller: %w", err)
 	}
