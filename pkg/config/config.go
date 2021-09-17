@@ -19,6 +19,7 @@ type Config struct {
 	Controller     Controller     `json:"controller"`
 	Debug          bool           `json:"debug"`
 	Kafka          KafkaConfig    `json:"kafka"`
+	LeaderElection LeaderElection `json:"leader-election"`
 	MetricsAddr    string         `json:"metrics-address"`
 	SecretRotation SecretRotation `json:"secret-rotation"`
 	Validations    Validations    `json:"validations"`
@@ -109,6 +110,11 @@ type KafkaTLS struct {
 	PrivateKeyPath  string `json:"private-key-path"`
 }
 
+type LeaderElection struct {
+	Enabled   bool   `json:"enabled"`
+	Namespace string `json:"namespace"`
+}
+
 type SecretRotation struct {
 	MaxAge time.Duration `json:"max-age"`
 }
@@ -154,6 +160,9 @@ const (
 	KafkaTLSCAPath          = "kafka.tls.ca-path"
 	KafkaTLSCertificatePath = "kafka.tls.certificate-path"
 	KafkaTLSPrivateKeyPath  = "kafka.tls.private-key-path"
+
+	LeaderElectionEnabled   = "leader-election.enabled"
+	LeaderElectionNamespace = "leader-election.namespace"
 
 	ClusterName    = "cluster-name"
 	DebugEnabled   = "debug"
@@ -230,6 +239,9 @@ func init() {
 	flag.String(KafkaTLSCAPath, "", "Path to Kafka TLS CA certificate.")
 	flag.String(KafkaTLSCertificatePath, "", "Path to Kafka TLS certificate.")
 	flag.String(KafkaTLSPrivateKeyPath, "", "Path to Kafka TLS private key.")
+
+	flag.Bool(LeaderElectionEnabled, false, "Leader election toggle.")
+	flag.String(LeaderElectionNamespace, "", "Leader election namespace.")
 
 	flag.Duration(SecretRotationMaxAge, 180*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
 }

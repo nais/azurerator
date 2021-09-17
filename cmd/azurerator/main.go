@@ -68,9 +68,11 @@ func run() error {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: cfg.MetricsAddr,
-		LeaderElection:     false,
+		Scheme:                  scheme,
+		MetricsBindAddress:      cfg.MetricsAddr,
+		LeaderElection:          cfg.LeaderElection.Enabled,
+		LeaderElectionID:        fmt.Sprintf("azurerator.nais.io-%s", cfg.Azure.Tenant.Id),
+		LeaderElectionNamespace: cfg.LeaderElection.Namespace,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
