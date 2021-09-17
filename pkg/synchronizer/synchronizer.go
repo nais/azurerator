@@ -8,6 +8,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/nais/liberator/pkg/kubernetes"
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -24,24 +25,16 @@ type Synchronizer interface {
 }
 
 type synchronizer struct {
+	config     config.Config
 	kubeClient client.Client
 	kubeReader client.Reader
-	config     config.Config
-	stopChan   chan struct{}
 }
 
-func NewSynchronizer(
-	kubeClient client.Client,
-	kubeReader client.Reader,
-	config config.Config,
-) Synchronizer {
-	stopChan := make(chan struct{}, 1)
-
+func NewSynchronizer(config config.Config, kubeClient client.Client, kubeReader client.Reader) Synchronizer {
 	return synchronizer{
 		kubeClient: kubeClient,
 		kubeReader: kubeReader,
 		config:     config,
-		stopChan:   stopChan,
 	}
 }
 
@@ -50,8 +43,7 @@ func (s synchronizer) Callback() kafka.Callback {
 		logger.Debugf("incoming message from Kafka")
 
 		eventMsg := &event.Event{}
-		err := json.Unmarshal(msg.Value, &eventMsg)
-		if err != nil {
+		if err := json.Unmarshal(msg.Value, &eventMsg); err != nil {
 			return false, fmt.Errorf("unmarshalling message to event; ignoring: %w", err)
 		}
 
@@ -61,8 +53,7 @@ func (s synchronizer) Callback() kafka.Callback {
 			"event_name":    eventMsg.EventName,
 		})
 
-		err = s.processEvent(context.Background(), *eventMsg, logger)
-		if err != nil {
+		if err := s.process(context.Background(), *eventMsg, logger); err != nil {
 			return true, fmt.Errorf("processing event: %w", err)
 		}
 
@@ -71,72 +62,46 @@ func (s synchronizer) Callback() kafka.Callback {
 	}
 }
 
-func (s synchronizer) processEvent(ctx context.Context, e event.Event, logger *log.Entry) error {
-	if e.EventName != event.Created {
-		logger.Debugf("ignoring event '%s'", e.EventName)
+func (s synchronizer) process(ctx context.Context, e event.Event, logger *log.Entry) error {
+	if !e.IsCreated() {
+		logger.Debugf("ignoring event '%s'", e)
 		return nil
 	}
 
-	logger.Infof("processing event '%s' for '%s:%s:%s'...", e.EventName, e.Application.Cluster, e.Application.Namespace, e.Application.Name)
+	logger.Infof("processing event '%s' for '%s'...", e, e.Application)
 
-	candidates, err := s.findResyncCandidates(ctx, e)
-	if err != nil {
-		return err
-	}
-
-	return s.resyncAll(ctx, candidates, logger)
-}
-
-func (s synchronizer) findResyncCandidates(ctx context.Context, e event.Event) ([]v1.AzureAdApplication, error) {
-	candidates := make([]v1.AzureAdApplication, 0)
-	apps, err := s.fetchAzureAdApplicationsFromCluster(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fetching AzureAdApplications from cluster: %w", err)
-	}
-
-	for _, app := range apps {
-		if customresources.ShouldResynchronize(app, e) {
-			candidates = append(candidates, app)
-		}
-	}
-
-	return candidates, nil
-}
-
-func (s synchronizer) fetchAzureAdApplicationsFromCluster(ctx context.Context) ([]v1.AzureAdApplication, error) {
 	var apps v1.AzureAdApplicationList
-
 	err := s.kubeReader.List(ctx, &apps)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("fetching AzureAdApplications from cluster: %w", err)
 	}
 
-	return apps.Items, nil
-}
+	candidateCount := 0
 
-func (s synchronizer) resyncAll(ctx context.Context, candidates []v1.AzureAdApplication, logger *log.Entry) error {
-	candidateCount := len(candidates)
-	logger.Debugf("found %d candidates to resync", candidateCount)
+	for _, app := range apps.Items {
+		app.SetClusterName(s.config.ClusterName)
 
-	for i, candidate := range candidates {
-		candidateID := fmt.Sprintf("%s:%s:%s", s.config.ClusterName, candidate.GetNamespace(), candidate.GetName())
+		if customresources.ShouldResynchronize(app, e) {
+			candidateID := kubernetes.UniformResourceName(&app)
+			candidateCount += 1
 
-		err := s.resync(ctx, candidate)
-		if err != nil {
-			return fmt.Errorf("resyncing %s: %w", candidateID, err)
+			if err := s.resync(ctx, app); err != nil {
+				return fmt.Errorf("resyncing %s: %w", candidateID, err)
+			}
+
+			logger.Infof("marked '%s' for resync", candidateID)
 		}
-
-		logger.Infof("[%d/%d] marked '%s' for resync", i+1, candidateCount, candidateID)
 	}
 
+	logger.Infof("found and marked %d candidates for resync", candidateCount)
 	return nil
 }
 
 func (s synchronizer) resync(ctx context.Context, app v1.AzureAdApplication) error {
 	existing := &v1.AzureAdApplication{}
+	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
 
-	err := s.kubeReader.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, existing)
-	if err != nil {
+	if err := s.kubeReader.Get(ctx, key, existing); err != nil {
 		return fmt.Errorf("getting newest version from cluster: %s", err)
 	}
 

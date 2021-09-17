@@ -2,6 +2,7 @@ package event
 
 import (
 	"encoding/json"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -26,14 +27,10 @@ func (e Event) Marshal() ([]byte, error) {
 	return json.Marshal(e)
 }
 
-type Name string
+func (e Event) IsCreated() bool {
+	return e.EventName == Created
+}
 
-const (
-	Created Name = "Created"
-)
-
-type Application struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-	Cluster   string `json:"cluster"`
+func (e Event) String() string {
+	return fmt.Sprintf("%s (%s)", e.EventName, e.ID)
 }

@@ -89,10 +89,9 @@ func run() error {
 		return fmt.Errorf("fetching Azure OpenID Configuration: %w", err)
 	}
 
-	kafkaLogger := logrus.StandardLogger()
-
 	var kafkaProducer kafka.Producer
 	if cfg.Kafka.Enabled {
+		kafkaLogger := logrus.StandardLogger()
 		var tlsConfig *tls.Config
 
 		if cfg.Kafka.TLS.Enabled {
@@ -107,12 +106,7 @@ func run() error {
 			return fmt.Errorf("setting up kafka producer: %w", err)
 		}
 
-		syncer := synchronizer.NewSynchronizer(
-			mgr.GetClient(),
-			mgr.GetAPIReader(),
-			*cfg,
-		)
-		callback := syncer.Callback()
+		callback := synchronizer.NewSynchronizer(*cfg, mgr.GetClient(), mgr.GetAPIReader()).Callback()
 
 		_, err = kafka.NewConsumer(*cfg, tlsConfig, kafkaLogger, callback)
 		if err != nil {
