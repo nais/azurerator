@@ -85,7 +85,7 @@ func (s synchronizer) process(ctx context.Context, e event.Event, logger *log.En
 			candidateID := kubernetes.UniformResourceName(&app)
 			candidateCount += 1
 
-			if err := s.resync(ctx, app); err != nil {
+			if err := s.resync(ctx, app, e.ID); err != nil {
 				return fmt.Errorf("resyncing %s: %w", candidateID, err)
 			}
 
@@ -97,7 +97,7 @@ func (s synchronizer) process(ctx context.Context, e event.Event, logger *log.En
 	return nil
 }
 
-func (s synchronizer) resync(ctx context.Context, app v1.AzureAdApplication) error {
+func (s synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, correlationID string) error {
 	existing := &v1.AzureAdApplication{}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
 
@@ -106,6 +106,7 @@ func (s synchronizer) resync(ctx context.Context, app v1.AzureAdApplication) err
 	}
 
 	annotations.SetAnnotation(existing, annotations.ResynchronizeKey, strconv.FormatBool(true))
+	annotations.SetAnnotation(existing, v1.DeploymentCorrelationIDAnnotation, correlationID)
 
 	if err := s.kubeClient.Update(ctx, existing); err != nil {
 		return fmt.Errorf("setting resync annotation: %w", err)
