@@ -60,6 +60,13 @@ func (g group) getGroups(tx transaction.Transaction) (resource.Resources, error)
 		return nil, fmt.Errorf("mapping group claims to resources: %w", err)
 	}
 
+	undefinedAllUsereGroupID := len(g.Config().Features.GroupsAssignment.AllUsersGroupId) == 0
+	appRoleAssignmentNotRequired := !g.Config().Features.AppRoleAssignmentRequired.Enabled
+
+	if undefinedAllUsereGroupID || appRoleAssignmentNotRequired {
+		return groups, nil
+	}
+
 	allUsersGroup, err := g.getAllUsersGroup(tx)
 	if err != nil {
 		return nil, fmt.Errorf("mapping all-users group to resources: %w", err)
