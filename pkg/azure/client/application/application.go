@@ -11,7 +11,6 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
-	"github.com/nais/azureator/pkg/azure/client/application/groupmembershipclaim"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/transaction"
@@ -84,7 +83,7 @@ func (a Application) Register(tx transaction.Transaction) (*msgraph.Application,
 
 	req := util.Application(a.defaultTemplate(tx.Instance)).
 		ResourceAccess(access).
-		GroupMembershipClaims(groupmembershipclaim.GroupMembershipClaimApplicationGroup).
+		GroupMembershipClaims(a.Config().Features.GroupMembershipClaim.Default).
 		AppRoles(roles.GetResult()).
 		RedirectUris(redirectUris, tx.Instance).
 		PermissionScopes(scopes.GetResult()).
@@ -127,7 +126,7 @@ func (a Application) Update(tx transaction.Transaction) (*msgraph.Application, e
 
 	// todo: remove 'groupClaimsIsDefined' predicate after grace period
 	if a.Config().Features.GroupsAssignment.Enabled && groupClaimsIsDefined {
-		builder.GroupMembershipClaims(groupmembershipclaim.GroupMembershipClaimApplicationGroup)
+		builder.GroupMembershipClaims(a.Config().Features.GroupMembershipClaim.Default)
 	}
 
 	app := builder.Build()

@@ -11,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/nais/azureator/pkg/azure/client/application/groupmembershipclaim"
 )
 
 type Config struct {
@@ -62,6 +64,7 @@ type AzureFeatures struct {
 	ClaimsMappingPolicies     ClaimsMappingPolicies     `json:"claims-mapping-policies"`
 	CleanupOrphans            CleanupOrphans            `json:"cleanup-orphans"`
 	GroupsAssignment          GroupsAssignment          `json:"groups-assignment"`
+	GroupMembershipClaim      GroupMembershipClaim      `json:"group-membership-claim"`
 	TeamsManagement           TeamsManagement           `json:"teams-management"`
 }
 
@@ -88,6 +91,10 @@ type CleanupOrphans struct {
 type GroupsAssignment struct {
 	Enabled         bool   `json:"enabled"`
 	AllUsersGroupId string `json:"all-users-group-id"`
+}
+
+type GroupMembershipClaim struct {
+	Default groupmembershipclaim.GroupMembershipClaim `json:"default"`
 }
 
 type Controller struct {
@@ -142,6 +149,7 @@ const (
 	AzureFeaturesTeamsManagementServicePrincipalId    = "azure.features.teams-management.service-principal-id"
 	AzureFeaturesGroupsAssignmentEnabled              = "azure.features.groups-assignment.enabled"
 	AzureFeaturesGroupsAllUsersGroupId                = "azure.features.groups-assignment.all-users-group-id"
+	AzureFeaturesGroupMembershipClaimDefault          = "azure.features.group-membership-claim.default"
 	AzureFeaturesAppRoleAssignmentRequiredEnabled     = "azure.features.app-role-assignment-required.enabled"
 	AzureFeaturesCleanupOrphansEnabled                = "azure.features.cleanup-orphans.enabled"
 	AzureDelayBetweenCreations                        = "azure.delay.between-creations"
@@ -213,6 +221,8 @@ func init() {
 
 	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Feature toggle for assigning explicitly specified groups to applications")
 	flag.String(AzureFeaturesGroupsAllUsersGroupId, "", "Group ID that contains all users in the tenant. Assigned to all application by default unless overridden by user in the custom resource.")
+
+	flag.String(AzureFeaturesGroupMembershipClaimDefault, string(groupmembershipclaim.GroupMembershipClaimApplicationGroup), "Default group membership claim for Azure AD apps.")
 
 	flag.Bool(AzureFeaturesAppRoleAssignmentRequiredEnabled, false, "Feature toggle to enable 'appRoleAssignmentRequired' for service principals.")
 
