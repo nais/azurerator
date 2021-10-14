@@ -12,6 +12,7 @@ import (
 
 const (
 	KeyUseSignature string = "sig"
+	KeyAlgorithm    string = "RS256"
 )
 
 type Jwk struct {
@@ -39,6 +40,7 @@ func GenerateJwk(application v1.AzureAdApplication) (Jwk, error) {
 		Key:                         keyPair.Private,
 		KeyID:                       keyId,
 		Use:                         KeyUseSignature,
+		Algorithm:                   KeyAlgorithm,
 		Certificates:                certificates,
 		CertificateThumbprintSHA1:   x5tSHA1[:],
 		CertificateThumbprintSHA256: x5tSHA256[:],
