@@ -127,6 +127,7 @@ func (s secretsReconciler) Process(tx transaction.Transaction, applicationResult
 func (s secretsReconciler) createOrUpdate(tx transaction.Transaction, result result.Application, set credentials.Set) error {
 	secretName := tx.Instance.Spec.SecretName
 	objectMeta := kubernetes.ObjectMeta(secretName, tx.Instance.GetNamespace(), labels.Labels(tx.Instance))
+	objectMeta.Labels[labels.StakaterReloaderKey] = "true"
 
 	secret := &corev1.Secret{
 		ObjectMeta: objectMeta,

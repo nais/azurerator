@@ -642,8 +642,9 @@ func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplicati
 
 		actualLabels := secret.GetLabels()
 		expectedLabels := map[string]string{
-			labels.AppLabelKey:  instance.GetName(),
-			labels.TypeLabelKey: labels.TypeLabelValue,
+			labels.AppLabelKey:         instance.GetName(),
+			labels.TypeLabelKey:        labels.TypeLabelValue,
+			labels.StakaterReloaderKey: "true",
 		}
 		assert.NotEmpty(t, actualLabels, "Labels should not be empty")
 		assert.Equal(t, expectedLabels, actualLabels, "Labels should be set")
