@@ -25,7 +25,6 @@ type RuntimeClient interface {
 	HttpClient() *http.Client
 
 	DelayIntervalBetweenModifications() time.Duration
-	DelayIntervalBetweenCreations() time.Duration
 	MaxNumberOfPagesToFetch() int
 
 	Application() Application

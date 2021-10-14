@@ -51,7 +51,6 @@ type AzureAuth struct {
 }
 
 type AzureDelay struct {
-	BetweenCreations     time.Duration `json:"between-creations"`
 	BetweenModifications time.Duration `json:"between-modifications"`
 }
 
@@ -152,7 +151,6 @@ const (
 	AzureFeaturesGroupMembershipClaimDefault          = "azure.features.group-membership-claim.default"
 	AzureFeaturesAppRoleAssignmentRequiredEnabled     = "azure.features.app-role-assignment-required.enabled"
 	AzureFeaturesCleanupOrphansEnabled                = "azure.features.cleanup-orphans.enabled"
-	AzureDelayBetweenCreations                        = "azure.delay.between-creations"
 	AzureDelayBetweenModifications                    = "azure.delay.between-modifications"
 	AzurePaginationMaxPages                           = "azure.pagination.max-pages"
 
@@ -228,7 +226,6 @@ func init() {
 
 	flag.Bool(AzureFeaturesCleanupOrphansEnabled, false, "Feature toggle to enable cleanup of orphaned resources.")
 
-	flag.Duration(AzureDelayBetweenCreations, 5*time.Second, "Delay between creation operations to the Graph API.")
 	flag.Duration(AzureDelayBetweenModifications, 3*time.Second, "Delay between modification operations to the Graph API.")
 
 	flag.Int(AzurePaginationMaxPages, 1000, "Max number of pages to fetch when fetching paginated resources from the Graph API.")
@@ -238,7 +235,7 @@ func init() {
 	flag.Bool(DebugEnabled, false, "Debug mode toggle")
 	flag.Bool(ValidationsTenantRequired, false, "If true, will only process resources that have a tenant defined in the spec")
 
-	flag.Duration(ControllerContextTimeout, 1*time.Minute, "Context timeout for the reconciliation loop in the controller.")
+	flag.Duration(ControllerContextTimeout, 5*time.Minute, "Context timeout for the reconciliation loop in the controller.")
 
 	flag.Bool(KafkaEnabled, false, "Toggle for enabling Kafka to allow synchronization of events between Azurerator instances.")
 	flag.String(KafkaTopic, "azurerator-events", "Name of the Kafka topic that Azurerator should use.")
@@ -253,7 +250,7 @@ func init() {
 	flag.Bool(LeaderElectionEnabled, false, "Leader election toggle.")
 	flag.String(LeaderElectionNamespace, "", "Leader election namespace.")
 
-	flag.Duration(SecretRotationMaxAge, 180*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
+	flag.Duration(SecretRotationMaxAge, 120*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
 }
 
 // PrintAllExcept prints out all configuration options except secret stuff.

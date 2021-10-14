@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/nais/azureator/pkg/retry"
 	"net/http"
 	"time"
 
@@ -25,6 +26,11 @@ import (
 	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/config"
+)
+
+const (
+	RetryInitialDelay    = 1 * time.Second
+	RetryMaximumDuration = 30 * time.Second
 )
 
 type Client struct {
@@ -51,10 +57,6 @@ func (c Client) MaxNumberOfPagesToFetch() int {
 
 func (c Client) DelayIntervalBetweenModifications() time.Duration {
 	return c.config.Delay.BetweenModifications
-}
-
-func (c Client) DelayIntervalBetweenCreations() time.Duration {
-	return c.config.Delay.BetweenCreations
 }
 
 func (c Client) Application() azure.Application {
@@ -120,24 +122,32 @@ func (c Client) Create(tx transaction.Transaction) (*result.Application, error) 
 
 	tx = tx.UpdateWithApplicationIDs(*app)
 
-	// sleep to allow replication across Microsoft's systems...
-	time.Sleep(c.DelayIntervalBetweenCreations())
-
-	servicePrincipal, err := c.ServicePrincipal().Register(tx)
+	var servicePrincipal msgraph.ServicePrincipal
+	err = doRetry(tx.Ctx, func(ctx context.Context) error {
+		servicePrincipal, err = c.ServicePrincipal().Register(tx)
+		return retry.RetryableError(err)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("registering service principal for application: %w", err)
 	}
 
 	tx = tx.UpdateWithServicePrincipalID(servicePrincipal)
 
-	time.Sleep(c.DelayIntervalBetweenCreations())
-
-	if err := c.Application().IdentifierUri().Set(tx); err != nil {
+	err = doRetry(tx.Ctx, func(ctx context.Context) error {
+		err := c.Application().IdentifierUri().Set(tx)
+		return retry.RetryableError(err)
+	})
+	if err != nil {
 		return nil, fmt.Errorf("setting identifier URIs for application: %w", err)
 	}
 
 	actualPermissions := permissions.ExtractPermissions(app)
-	preAuthApps, err := c.process(tx, actualPermissions)
+
+	var preAuthApps *result.PreAuthorizedApps
+	err = doRetry(tx.Ctx, func(ctx context.Context) error {
+		preAuthApps, err = c.process(tx, actualPermissions)
+		return retry.RetryableError(err)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -378,4 +388,10 @@ func (c Client) process(tx transaction.Transaction, permissions permissions.Perm
 	}
 
 	return preAuthApps, nil
+}
+
+func doRetry(ctx context.Context, fn func(context.Context) error) error {
+	return retry.Fibonacci(RetryInitialDelay).
+		WithMaxDuration(RetryMaximumDuration).
+		Do(ctx, fn)
 }
