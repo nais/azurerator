@@ -82,6 +82,11 @@ func (a ApplicationBuilder) PermissionScopes(scopes []msgraph.PermissionScope) A
 	return a
 }
 
+func (a ApplicationBuilder) OptionalClaims(optionalClaims *msgraph.OptionalClaims) ApplicationBuilder {
+	a.Application.OptionalClaims = optionalClaims
+	return a
+}
+
 func (a ApplicationBuilder) Build() *msgraph.Application {
 	return a.Application
 }

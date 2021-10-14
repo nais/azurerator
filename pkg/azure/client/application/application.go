@@ -43,6 +43,10 @@ func (a Application) OAuth2PermissionScopes() azure.OAuth2PermissionScope {
 	return NewOAuth2PermissionScopes(a)
 }
 
+func (a Application) OptionalClaims() OptionalClaims {
+	return newOptionalClaims(a)
+}
+
 func (a Application) Owners() azure.ApplicationOwners {
 	return newOwners(a.RuntimeClient)
 }
@@ -81,12 +85,15 @@ func (a Application) Register(tx transaction.Transaction) (*msgraph.Application,
 
 	redirectUris := util.GetReplyUrlsStringSlice(tx.Instance)
 
+	optionalClaims := a.OptionalClaims().DescribeCreate()
+
 	req := util.Application(a.defaultTemplate(tx.Instance)).
-		ResourceAccess(access).
-		GroupMembershipClaims(a.Config().Features.GroupMembershipClaim.Default).
 		AppRoles(roles.GetResult()).
-		RedirectUris(redirectUris, tx.Instance).
+		GroupMembershipClaims(a.Config().Features.GroupMembershipClaim.Default).
+		OptionalClaims(optionalClaims).
 		PermissionScopes(scopes.GetResult()).
+		RedirectUris(redirectUris, tx.Instance).
+		ResourceAccess(access).
 		Build()
 
 	app, err := a.GraphClient().Applications().Request().Add(tx.Ctx, req)
@@ -117,10 +124,13 @@ func (a Application) Update(tx transaction.Transaction) (*msgraph.Application, e
 	scopes := a.OAuth2PermissionScopes().DescribeUpdate(desiredPermissions, existingScopes)
 	scopes.Log(tx.Log)
 
+	optionalClaims := a.OptionalClaims().DescribeUpdate(actualApp)
+
 	builder := util.Application(a.defaultTemplate(tx.Instance)).
+		AppRoles(roles.GetResult()).
 		IdentifierUriList(identifierUris).
-		PermissionScopes(scopes.GetResult()).
-		AppRoles(roles.GetResult())
+		OptionalClaims(optionalClaims).
+		PermissionScopes(scopes.GetResult())
 
 	groupClaimsIsDefined := tx.Instance.Spec.Claims != nil && len(tx.Instance.Spec.Claims.Groups) > 0
 
