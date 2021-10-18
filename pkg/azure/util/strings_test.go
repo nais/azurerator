@@ -34,6 +34,21 @@ func TestGetReplyUrlsStringSlice(t *testing.T) {
 		assert.Len(t, actual, 1)
 		assert.Contains(t, actual, url)
 	})
+
+	t.Run("Application with duplicate reply URLs should return set of reply URLs", func(t *testing.T) {
+		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{
+			ReplyUrls: []v1.AzureAdReplyUrl{
+				{Url: "https://test.host/callback"},
+				{Url: "https://test.host/callback"},
+				{Url: "https://test.host/other-callback"},
+				{Url: "https://test.host/other-callback"},
+			},
+		}}
+		actual := GetReplyUrlsStringSlice(p)
+		assert.NotEmpty(t, actual)
+		assert.Len(t, actual, 2)
+		assert.ElementsMatch(t, actual, []string{"https://test.host/callback", "https://test.host/other-callback"})
+	})
 }
 
 func TestFilters(t *testing.T) {
