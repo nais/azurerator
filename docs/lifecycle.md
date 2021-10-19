@@ -84,10 +84,10 @@ See <https://docs.microsoft.com/en-gb/azure/active-directory/develop/reply-url> 
 
 #### Logout URLs (optional)
 
-`Spec.LogoutUrl` defines the `post_logout_redirect_uri` that Azure should redirect to after sign-out in order to
-properly implement single-sign-out.
+`Spec.LogoutUrl` defines the `LogoutUrl` that Azure should send requests to after sign-out from another application
+in order to properly implement single-sign-out (front-channel logout).
 
-See <https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocols-oidc#send-a-sign-out-request> for
+See <https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocols-oidc#single-sign-out> for
 details.
 
 #### Application Roles
