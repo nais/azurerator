@@ -83,6 +83,7 @@ func (g group) getGroups(tx transaction.Transaction) (resource.Resources, error)
 }
 
 func (g group) getGroupsFromClaims(tx transaction.Transaction) (resource.Resources, error) {
+	seen := make(map[string]bool)
 	resources := make(resource.Resources, 0)
 
 	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0 {
@@ -100,7 +101,10 @@ func (g group) getGroupsFromClaims(tx transaction.Transaction) (resource.Resourc
 			continue
 		}
 
-		resources = append(resources, g.mapToResource(*groupResult))
+		if !seen[group.ID] {
+			resources = append(resources, g.mapToResource(*groupResult))
+			seen[group.ID] = true
+		}
 	}
 
 	return resources, nil
@@ -123,6 +127,10 @@ func (g group) getAllUsersGroup(tx transaction.Transaction) (*resource.Resource,
 }
 
 func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *msgraph.Group, error) {
+	if len(id) == 0 {
+		return false, nil, nil
+	}
+
 	r := g.GraphClient().Groups().ID(id).Request()
 
 	req, err := g.toGetRequestWithContext(tx.Ctx, r)
@@ -140,10 +148,14 @@ func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *ms
 	var group *msgraph.Group
 	exists, err := g.decodeJsonResponseForGetRequest(res, &group)
 	if err != nil {
-		return exists, nil, fmt.Errorf("decoding json response: %w", err)
+		return false, nil, fmt.Errorf("decoding json response: %w", err)
 	}
 
-	return exists, group, nil
+	if !exists || group == nil || group.ID == nil || group.DisplayName == nil {
+		return false, nil, nil
+	}
+
+	return true, group, nil
 }
 
 func (g group) toGetRequestWithContext(ctx context.Context, r *msgraph.GroupRequest) (*http.Request, error) {
@@ -159,16 +171,16 @@ func (g group) toGetRequestWithContext(ctx context.Context, r *msgraph.GroupRequ
 func (g group) decodeJsonResponseForGetRequest(res *http.Response, obj interface{}) (bool, error) {
 	switch res.StatusCode {
 	case http.StatusOK, http.StatusCreated:
-		if obj != nil {
-			err := jsonx.NewDecoder(res.Body).Decode(obj)
-			if err != nil {
-				return false, err
-			}
+		if obj == nil {
+			return false, nil
+		}
+
+		err := jsonx.NewDecoder(res.Body).Decode(obj)
+		if err != nil {
+			return false, err
 		}
 		return true, nil
-	case http.StatusNoContent:
-		return true, nil
-	case http.StatusNotFound:
+	case http.StatusNoContent, http.StatusNotFound:
 		return false, nil
 	default:
 		b, _ := ioutil.ReadAll(res.Body)
@@ -177,7 +189,7 @@ func (g group) decodeJsonResponseForGetRequest(res *http.Response, obj interface
 		if err != nil {
 			return false, fmt.Errorf("%s: %s", res.Status, string(b))
 		}
-		return true, errRes
+		return false, errRes
 	}
 }
 
