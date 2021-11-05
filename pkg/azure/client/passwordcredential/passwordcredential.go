@@ -39,6 +39,28 @@ func (p passwordCredential) Add(tx transaction.Transaction) (msgraph.PasswordCre
 	return *response, nil
 }
 
+func (p passwordCredential) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
+	app, err := p.Application().Get(tx)
+	if err != nil {
+		return err
+	}
+
+	passwordKeyIdsInUse := append(
+		keyIdsInUse.Password,
+		existing.Current.Password.KeyId,
+		existing.Next.Password.KeyId,
+	)
+
+	revocationCandidates := p.revocationCandidates(app, passwordKeyIdsInUse)
+	for _, cred := range revocationCandidates {
+		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (p passwordCredential) Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.PasswordCredential, error) {
 	app, err := p.Application().Get(tx)
 	if err != nil {
@@ -56,8 +78,6 @@ func (p passwordCredential) Rotate(tx transaction.Transaction, existing credenti
 		existing.Next.Password.KeyId,
 		string(*newCred.KeyID),
 	)
-
-	time.Sleep(p.DelayIntervalBetweenModifications()) // sleep to prevent concurrent modification error from Microsoft
 
 	revocationCandidates := p.revocationCandidates(app, passwordKeyIdsInUse)
 	for _, cred := range revocationCandidates {

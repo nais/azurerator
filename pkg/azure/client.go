@@ -18,8 +18,9 @@ type Client interface {
 	GetServicePrincipal(tx transaction.Transaction) (msgraph.ServicePrincipal, error)
 
 	AddCredentials(tx transaction.Transaction) (credentials.Set, error)
-	RotateCredentials(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error)
+	DeleteUnusedCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
 	PurgeCredentials(tx transaction.Transaction) error
+	RotateCredentials(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error)
 	ValidateCredentials(tx transaction.Transaction, existing credentials.Set) (bool, error)
 
 	Update(tx transaction.Transaction) (*result.Application, error)

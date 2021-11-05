@@ -69,6 +69,26 @@ func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCre
 	}, nil
 }
 
+func (k keyCredential) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
+	keyCredentialIdsInUse := append(
+		keyIdsInUse.Certificate,
+		existing.Current.Certificate.KeyId,
+		existing.Next.Certificate.KeyId,
+	)
+
+	keysInUse, err := k.mapToKeyCredentials(tx, keyCredentialIdsInUse)
+	if err != nil {
+		return err
+	}
+
+	app := util.EmptyApplication().Keys(keysInUse).Build()
+	if err := k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
+		return fmt.Errorf("updating application with keycredential: %w", err)
+	}
+
+	return nil
+}
+
 // Rotate generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
 // With the exception of new applications, there should always be two active keys available at any given time so that running applications are not interfered with.
 func (k keyCredential) Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error) {

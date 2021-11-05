@@ -28,6 +28,7 @@ type Azure interface {
 	ProcessOrphaned(tx transaction.Transaction) error
 
 	AddCredentials(tx transaction.Transaction, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error)
+	DeleteUnusedCredentials(tx transaction.Transaction) error
 	RotateCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error)
 	PurgeCredentials(tx transaction.Transaction) error
 	ValidateCredentials(tx transaction.Transaction) (bool, error)
@@ -44,4 +45,5 @@ type Namespace interface {
 type Secrets interface {
 	Prepare(ctx context.Context, instance *v1.AzureAdApplication) (*secrets.Secrets, error)
 	Process(tx transaction.Transaction, applicationResult *result.Application) error
+	DeleteUnused(tx transaction.Transaction) error
 }

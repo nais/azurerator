@@ -110,10 +110,6 @@ func (s secretsReconciler) Process(tx transaction.Transaction, applicationResult
 		return err
 	}
 
-	if err := s.deleteUnused(tx); err != nil {
-		return err
-	}
-
 	if !tx.Options.Process.Secret.Valid || tx.Options.Process.Secret.Rotate {
 		tx.Instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
 		tx.Instance.Status.PasswordKeyIds = keyIdsInUse.Password
@@ -179,7 +175,7 @@ func (s secretsReconciler) getManaged(ctx context.Context, instance *v1.AzureAdA
 	return &podSecrets, nil
 }
 
-func (s secretsReconciler) deleteUnused(tx transaction.Transaction) error {
+func (s secretsReconciler) DeleteUnused(tx transaction.Transaction) error {
 	unused := tx.Secrets.ManagedSecrets.Unused
 
 	for i, oldSecret := range unused.Items {

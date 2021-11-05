@@ -3,9 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/nais/azureator/pkg/retry"
 	"net/http"
 	"time"
+
+	"github.com/nais/azureator/pkg/retry"
 
 	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/nais/msgraph.go/msauth"
@@ -254,6 +255,21 @@ func (c Client) AddCredentials(tx transaction.Transaction) (credentials.Set, err
 			},
 		},
 	}, nil
+}
+
+// DeleteUnusedCredentials deletes unused credentials for an existing AAD application.
+func (c Client) DeleteUnusedCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
+	err := c.KeyCredential().DeleteUnused(tx, existing, keyIdsInUse)
+	if err != nil {
+		return fmt.Errorf("deleting unused key credentials: %w", err)
+	}
+
+	err = c.PasswordCredential().DeleteUnused(tx, existing, keyIdsInUse)
+	if err != nil {
+		return fmt.Errorf("deleting unused password credentials: %w", err)
+	}
+
+	return nil
 }
 
 // RotateCredentials rotates credentials for an existing AAD application

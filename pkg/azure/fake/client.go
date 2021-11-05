@@ -51,6 +51,10 @@ func (a fakeAzureClient) AddCredentials(tx transaction.Transaction) (credentials
 	return AzureCredentialsSet(tx.Instance), nil
 }
 
+func (a fakeAzureClient) DeleteUnusedCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
+	return nil
+}
+
 func (a fakeAzureClient) RotateCredentials(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error) {
 	newSet := AzureCredentialsSet(tx.Instance)
 	newSet.Current = existing.Next

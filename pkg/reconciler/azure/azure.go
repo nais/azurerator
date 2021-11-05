@@ -176,6 +176,18 @@ func (a azureReconciler) AddCredentials(tx transaction.Transaction, keyIdsInUse 
 	return &credentialsSet, keyIdsInUse, nil
 }
 
+func (a azureReconciler) DeleteUnusedCredentials(tx transaction.Transaction) error {
+	tx.Logger.Debug("deleting unused credentials for Azure application...")
+
+	err := a.azureClient.DeleteUnusedCredentials(tx.ToAzureTx(), *tx.Secrets.Credentials.Set, tx.Secrets.KeyIdsInUse)
+	if err != nil {
+		return fmt.Errorf("deleting unused credentials for Azure application: %w", err)
+	}
+
+	tx.Logger.Debug("successfully deleted unused credentials for Azure application")
+	return nil
+}
+
 func (a azureReconciler) RotateCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
 	tx.Logger.Info("rotating credentials for Azure application...")
 

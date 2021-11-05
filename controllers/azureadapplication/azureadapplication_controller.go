@@ -116,7 +116,19 @@ func (r *Reconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		tx.Options.Process.Secret.Valid = false
 	}
 
-	// return early if no operations needed
+	err = r.Secrets().DeleteUnused(*tx)
+	if err != nil {
+		return r.HandleError(*tx, err)
+	}
+
+	if !tx.Options.Process.Secret.Rotate {
+		err = r.Azure().DeleteUnusedCredentials(*tx)
+		if err != nil {
+			return r.HandleError(*tx, err)
+		}
+	}
+
+	// return early if no other operations needed
 	if !tx.Options.Process.Synchronize {
 		return ctrl.Result{}, nil
 	}
@@ -227,7 +239,7 @@ func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 }
 
 func (r *Reconciler) UpdateApplication(ctx context.Context, app *v1.AzureAdApplication, updateFunc func(existing *v1.AzureAdApplication) error) error {
