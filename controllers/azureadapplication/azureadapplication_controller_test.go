@@ -17,7 +17,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,7 +44,7 @@ const (
 	unusedSecret       = "unused-secret"
 	newSecret          = "new-secret"
 
-	namespace = "default"
+	namespace = "aura"
 )
 
 var cli client.Client
@@ -621,10 +620,11 @@ func assertApplicationShouldNotProcess(t *testing.T, testName string, key client
 
 func assertAnnotationExists(t *testing.T, instance *v1.AzureAdApplication, annotationKey, annotationValue string) {
 	assert.Eventually(t, func() bool {
+		log.Infof("%+v", instance.GetAnnotations())
 		_, key := instance.Annotations[annotationKey]
 		return key
 	}, timeout, interval, fmt.Sprintf("Annotation '%s' should exist on resource", annotationKey))
-	assert.Equal(t, instance.Annotations[annotationKey], annotationValue, fmt.Sprintf("AzureAdApplication should contain annotation %s", annotationKey))
+	assert.Equal(t, annotationValue, instance.Annotations[annotationKey], fmt.Sprintf("AzureAdApplication should contain annotation %s", annotationKey))
 }
 
 func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplication) *corev1.Secret {
@@ -734,14 +734,14 @@ func assertPreAuthorizedAppsStatusIsValid(t *testing.T, expected []v1.AccessPoli
 	}
 }
 
-func resourceExists(key client.ObjectKey, instance runtime.Object) func() bool {
+func resourceExists(key client.ObjectKey, instance client.Object) func() bool {
 	return func() bool {
 		err := cli.Get(context.Background(), key, instance)
 		return !errors.IsNotFound(err)
 	}
 }
 
-func resourceDoesNotExist(key client.ObjectKey, instance runtime.Object) func() bool {
+func resourceDoesNotExist(key client.ObjectKey, instance client.Object) func() bool {
 	return func() bool {
 		err := cli.Get(context.Background(), key, instance)
 		return errors.IsNotFound(err)

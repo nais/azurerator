@@ -142,7 +142,7 @@ func (m metrics) InitWithNamespaceLabels() {
 
 func (m metrics) Refresh(ctx context.Context) {
 	var err error
-	exp := 1 * time.Minute
+	exp := 10 * time.Second
 
 	mLabels := client.MatchingLabels{
 		labels.TypeLabelKey: labels.TypeLabelValue,
@@ -155,7 +155,6 @@ func (m metrics) Refresh(ctx context.Context) {
 
 	t := time.NewTicker(exp)
 	for range t.C {
-		log.Debug("Refreshing metrics from cluster")
 		if err = m.reader.List(ctx, &secretList, mLabels); err != nil {
 			log.Errorf("failed to list secrets: %v", err)
 		}

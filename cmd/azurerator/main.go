@@ -132,7 +132,7 @@ func run() error {
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting metrics refresh goroutine")
-	clusterMetrics := azureMetrics.New(mgr.GetAPIReader())
+	clusterMetrics := azureMetrics.New(mgr.GetClient())
 	go clusterMetrics.Refresh(ctx)
 
 	setupLog.Info("starting manager")

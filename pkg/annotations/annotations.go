@@ -1,7 +1,7 @@
 package annotations
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -11,25 +11,25 @@ const (
 	RotateKey             = "azure.nais.io/rotate"
 )
 
-func SetAnnotation(resource v1.ObjectMetaAccessor, key, value string) {
-	a := resource.GetObjectMeta().GetAnnotations()
+func SetAnnotation(resource client.Object, key, value string) {
+	a := resource.GetAnnotations()
 	if a == nil {
 		a = make(map[string]string)
 	}
 	a[key] = value
-	resource.GetObjectMeta().SetAnnotations(a)
+	resource.SetAnnotations(a)
 }
 
-func HasAnnotation(resource v1.ObjectMetaAccessor, key string) (string, bool) {
-	value, found := resource.GetObjectMeta().GetAnnotations()[key]
+func HasAnnotation(resource client.Object, key string) (string, bool) {
+	value, found := resource.GetAnnotations()[key]
 	return value, found
 }
 
-func RemoveAnnotation(resource v1.ObjectMetaAccessor, key string) {
+func RemoveAnnotation(resource client.Object, key string) {
 	_, found := HasAnnotation(resource, key)
 	if found {
-		a := resource.GetObjectMeta().GetAnnotations()
+		a := resource.GetAnnotations()
 		delete(a, key)
-		resource.GetObjectMeta().SetAnnotations(a)
+		resource.SetAnnotations(a)
 	}
 }

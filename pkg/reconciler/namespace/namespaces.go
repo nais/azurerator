@@ -54,12 +54,20 @@ func (n namespaceReconciler) Process(tx *transaction.Transaction) (bool, error) 
 	annotations.SetAnnotation(tx.Instance, annotations.NotInTeamNamespaceKey, strconv.FormatBool(true))
 	n.ReportEvent(*tx, corev1.EventTypeWarning, v1.EventNotInTeamNamespace, msg)
 
-	if err := n.client.Status().Update(tx.Ctx, tx.Instance); err != nil {
+	err = n.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {
+		existing.SetAnnotations(tx.Instance.GetAnnotations())
+		return n.client.Update(tx.Ctx, existing)
+	})
+	if err != nil {
 		return inSharedNamespace, fmt.Errorf("failed to update resource with skip flag: %w", err)
 	}
 
-	if err := n.client.Update(tx.Ctx, tx.Instance); err != nil {
-		return inSharedNamespace, fmt.Errorf("failed to update resource with skip flag: %w", err)
+	err = n.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {
+		existing.Status = tx.Instance.Status
+		return n.client.Status().Update(tx.Ctx, existing)
+	})
+	if err != nil {
+		return inSharedNamespace, fmt.Errorf("updating status fields: %w", err)
 	}
 
 	return inSharedNamespace, nil

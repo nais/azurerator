@@ -3,6 +3,7 @@ package options
 import (
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/finalizer"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/nais/azureator/pkg/annotations"
 )
@@ -18,7 +19,7 @@ type FinalizerOptions struct {
 }
 
 func (b optionsBuilder) Finalizer() FinalizerOptions {
-	hasFinalizer := finalizer.HasFinalizer(&b.instance, FinalizerName)
+	hasFinalizer := controllerutil.ContainsFinalizer(&b.instance, FinalizerName)
 	finalize := hasFinalizer && finalizer.IsBeingDeleted(&b.instance)
 	shouldPreserve := ShouldPreserve(&b.instance)
 
