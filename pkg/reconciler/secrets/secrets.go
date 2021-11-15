@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/config"
@@ -123,7 +124,9 @@ func (s secretsReconciler) Process(tx transaction.Transaction, applicationResult
 func (s secretsReconciler) createOrUpdate(tx transaction.Transaction, result result.Application, set credentials.Set) error {
 	secretName := tx.Instance.Spec.SecretName
 	objectMeta := kubernetes.ObjectMeta(secretName, tx.Instance.GetNamespace(), labels.Labels(tx.Instance))
-	objectMeta.Labels[labels.StakaterReloaderKey] = "true"
+	objectMeta.SetAnnotations(map[string]string{
+		annotations.StakaterReloaderKey: "true",
+	})
 
 	secret := &corev1.Secret{
 		ObjectMeta: objectMeta,

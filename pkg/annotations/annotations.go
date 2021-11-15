@@ -9,6 +9,7 @@ const (
 	NotInTeamNamespaceKey = "azure.nais.io/not-in-team-namespace"
 	ResynchronizeKey      = "azure.nais.io/resync"
 	RotateKey             = "azure.nais.io/rotate"
+	StakaterReloaderKey   = "reloader.stakater.com/match"
 )
 
 func SetAnnotation(resource client.Object, key, value string) {

@@ -5,10 +5,9 @@ import (
 )
 
 const (
-	AppLabelKey         string = "app"
-	TypeLabelKey        string = "type"
-	TypeLabelValue      string = "azurerator.nais.io"
-	StakaterReloaderKey string = "reloader.stakater.com/match"
+	AppLabelKey    string = "app"
+	TypeLabelKey   string = "type"
+	TypeLabelValue string = "azurerator.nais.io"
 )
 
 func Labels(instance *v1.AzureAdApplication) map[string]string {
