@@ -1,3 +1,8 @@
+KUBEBUILDER_VERSION := 3.2.0
+K8S_VERSION         := 1.22.1
+arch                := amd64
+os                  := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+
 # Run tests excluding integration tests
 test: fmt vet
 	go test ./... -coverprofile cover.out -short
@@ -13,3 +18,9 @@ fmt:
 # Run go vet against code
 vet:
 	go vet ./...
+
+kubebuilder:
+	test -d /usr/local/kubebuilder || (sudo mkdir -p /usr/local/kubebuilder && sudo chown "${USER}" /usr/local/kubebuilder)
+	curl -L "https://storage.googleapis.com/kubebuilder-tools/kubebuilder-tools-${K8S_VERSION}-$(os)-$(arch).tar.gz" | tar -xz -C /usr/local
+	curl -L -o /usr/local/kubebuilder/bin/kubebuilder https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_$(os)_$(arch)
+	chmod +x /usr/local/kubebuilder/bin/*
