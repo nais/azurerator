@@ -1,4 +1,4 @@
-package application
+package requiredresourceaccess
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestRequiredResourceAccess_microsoftGraph(t *testing.T) {
-	a := newRequiredResourceAccess(Application{}).microsoftGraph()
+	a := NewRequiredResourceAccess().MicrosoftGraph()
 	j, _ := json.Marshal(a)
 
 	assert.JSONEq(t, `

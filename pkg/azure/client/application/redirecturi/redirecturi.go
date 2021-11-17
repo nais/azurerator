@@ -1,6 +1,8 @@
-package application
+package redirecturi
 
 import (
+	"context"
+
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
@@ -16,22 +18,30 @@ type emptiableRedirectUris struct {
 	RedirectUris []string `json:"redirectUris"`
 }
 
-type redirectUri struct {
-	azure.Application
+type RedirectUri interface {
+	Update(tx transaction.Transaction) error
 }
 
-func newRedirectUri(application azure.Application) azure.RedirectUri {
+type redirectUri struct {
+	Application
+}
+
+type Application interface {
+	Patch(ctx context.Context, id azure.ObjectId, application interface{}) error
+}
+
+func NewRedirectUri(application Application) RedirectUri {
 	return redirectUri{Application: application}
 }
 
 func (r redirectUri) Update(tx transaction.Transaction) error {
 	objectId := tx.Instance.GetObjectId()
-	app := RedirectUriApp(tx.Instance)
+	app := App(tx.Instance)
 
 	return r.Application.Patch(tx.Ctx, objectId, app)
 }
 
-func RedirectUriApp(instance v1.AzureAdApplication) interface{} {
+func App(instance v1.AzureAdApplication) interface{} {
 	redirectUris := util.GetReplyUrlsStringSlice(instance)
 
 	if instance.Spec.SinglePageApplication != nil && *instance.Spec.SinglePageApplication {

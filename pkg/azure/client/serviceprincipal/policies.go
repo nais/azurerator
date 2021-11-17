@@ -18,13 +18,17 @@ const (
 	PolicyClaimAllCustomClaims = "all"
 )
 
+type Policies interface {
+	Process(tx transaction.Transaction) error
+}
+
 type policies struct {
 	azure.RuntimeClient
 	servicePrincipalID azure.ServicePrincipalId
 	validPolicies      *claimsmappingpolicy.ValidPolicies
 }
 
-func newPolicies(client azure.RuntimeClient) azure.ServicePrincipalPolicies {
+func newPolicies(client azure.RuntimeClient) Policies {
 	return &policies{
 		RuntimeClient: client,
 		validPolicies: &claimsmappingpolicy.ValidPolicies{

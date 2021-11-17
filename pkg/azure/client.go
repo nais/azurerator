@@ -13,15 +13,18 @@ type Client interface {
 	Delete(tx transaction.Transaction) error
 	Exists(tx transaction.Transaction) (*msgraph.Application, bool, error)
 	Get(tx transaction.Transaction) (msgraph.Application, error)
+	Update(tx transaction.Transaction) (*result.Application, error)
+
+	Credentials() Credentials
 
 	GetPreAuthorizedApps(tx transaction.Transaction) (*result.PreAuthorizedApps, error)
 	GetServicePrincipal(tx transaction.Transaction) (msgraph.ServicePrincipal, error)
+}
 
-	AddCredentials(tx transaction.Transaction) (credentials.Set, error)
-	DeleteUnusedCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
-	PurgeCredentials(tx transaction.Transaction) error
-	RotateCredentials(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error)
-	ValidateCredentials(tx transaction.Transaction, existing credentials.Set) (bool, error)
-
-	Update(tx transaction.Transaction) (*result.Application, error)
+type Credentials interface {
+	Add(tx transaction.Transaction) (credentials.Set, error)
+	DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
+	Purge(tx transaction.Transaction) error
+	Rotate(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error)
+	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }

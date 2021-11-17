@@ -6,16 +6,19 @@ import (
 
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
-	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/transaction"
 )
 
-type owners struct {
-	azure.RuntimeClient
+type Owners interface {
+	Process(tx transaction.Transaction) error
 }
 
-func newOwners(client azure.RuntimeClient) azure.TeamOwners {
-	return owners{RuntimeClient: client}
+type owners struct {
+	Client
+}
+
+func newOwners(client Client) Owners {
+	return owners{Client: client}
 }
 
 func (o owners) Process(tx transaction.Transaction) error {

@@ -10,18 +10,32 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
-type passwordCredential struct {
-	azure.RuntimeClient
+type PasswordCredential interface {
+	Add(tx transaction.Transaction) (msgraph.PasswordCredential, error)
+	DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
+	Purge(tx transaction.Transaction) error
+	Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.PasswordCredential, error)
+	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }
 
-func NewPasswordCredential(runtimeClient azure.RuntimeClient) azure.PasswordCredential {
-	return passwordCredential{RuntimeClient: runtimeClient}
+type passwordCredential struct {
+	Client
+}
+
+type Client interface {
+	azure.RuntimeClient
+	Application() application.Application
+}
+
+func NewPasswordCredential(client Client) PasswordCredential {
+	return passwordCredential{Client: client}
 }
 
 func (p passwordCredential) Add(tx transaction.Transaction) (msgraph.PasswordCredential, error) {

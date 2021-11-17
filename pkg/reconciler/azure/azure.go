@@ -164,7 +164,7 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 func (a azureReconciler) AddCredentials(tx transaction.Transaction, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
 	tx.Logger.Info("adding credentials for Azure application...")
 
-	credentialsSet, err := a.azureClient.AddCredentials(tx.ToAzureTx())
+	credentialsSet, err := a.azureClient.Credentials().Add(tx.ToAzureTx())
 	if err != nil {
 		return nil, credentials.KeyIdsInUse{}, err
 	}
@@ -179,7 +179,7 @@ func (a azureReconciler) AddCredentials(tx transaction.Transaction, keyIdsInUse 
 func (a azureReconciler) DeleteUnusedCredentials(tx transaction.Transaction) error {
 	tx.Logger.Debug("deleting unused credentials for Azure application...")
 
-	err := a.azureClient.DeleteUnusedCredentials(tx.ToAzureTx(), *tx.Secrets.Credentials.Set, tx.Secrets.KeyIdsInUse)
+	err := a.azureClient.Credentials().DeleteUnused(tx.ToAzureTx(), *tx.Secrets.Credentials.Set, tx.Secrets.KeyIdsInUse)
 	if err != nil {
 		return fmt.Errorf("deleting unused credentials for Azure application: %w", err)
 	}
@@ -191,7 +191,7 @@ func (a azureReconciler) DeleteUnusedCredentials(tx transaction.Transaction) err
 func (a azureReconciler) RotateCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
 	tx.Logger.Info("rotating credentials for Azure application...")
 
-	credentialsSet, err := a.azureClient.RotateCredentials(tx.ToAzureTx(), existing, keyIdsInUse)
+	credentialsSet, err := a.azureClient.Credentials().Rotate(tx.ToAzureTx(), existing, keyIdsInUse)
 	if err != nil {
 		return nil, credentials.KeyIdsInUse{}, err
 	}
@@ -217,7 +217,7 @@ func (a azureReconciler) PurgeCredentials(tx transaction.Transaction) error {
 	}
 
 	tx.Logger.Debug("purging existing credentials for Azure application...")
-	return a.azureClient.PurgeCredentials(tx.ToAzureTx())
+	return a.azureClient.Credentials().Purge(tx.ToAzureTx())
 }
 
 func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, error) {
@@ -231,7 +231,7 @@ func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, 
 	}
 
 	tx.Logger.Debug("validating existing credentials for Azure application...")
-	valid, err := a.azureClient.ValidateCredentials(tx.ToAzureTx(), *tx.Secrets.Credentials.Set)
+	valid, err := a.azureClient.Credentials().Validate(tx.ToAzureTx(), *tx.Secrets.Credentials.Set)
 	if err != nil {
 		return false, err
 	}

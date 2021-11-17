@@ -1,4 +1,4 @@
-package application_test
+package permissionscope_test
 
 import (
 	"testing"
@@ -8,7 +8,6 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/permissions"
 )
@@ -16,7 +15,7 @@ import (
 func TestPermissionScopes_DescribeCreate(t *testing.T) {
 	t.Run("desired is empty should add default scope", func(t *testing.T) {
 		desired := make(permissions.Permissions)
-		scopes := application.Application{}.OAuth2PermissionScopes().DescribeCreate(desired).GetResult()
+		scopes := permissionscope.NewOAuth2PermissionScopes().DescribeCreate(desired).GetResult()
 
 		assert.Len(t, scopes, 1)
 		assertContainsDefaultScope(t, scopes)
@@ -28,7 +27,7 @@ func TestPermissionScopes_DescribeCreate(t *testing.T) {
 		defaultScope.IsEnabled = ptr.Bool(false)
 		desired.Add(permissions.FromPermissionScope(defaultScope))
 
-		scopes := application.Application{}.OAuth2PermissionScopes().DescribeCreate(desired).GetResult()
+		scopes := permissionscope.NewOAuth2PermissionScopes().DescribeCreate(desired).GetResult()
 
 		assert.Len(t, scopes, 1)
 		assertContainsDefaultScope(t, scopes)
@@ -42,7 +41,7 @@ func TestPermissionScopes_DescribeCreate(t *testing.T) {
 		desired.Add(permissions.FromPermissionScope(scope1))
 		desired.Add(permissions.FromPermissionScope(scope2))
 
-		scopes := application.Application{}.OAuth2PermissionScopes().DescribeCreate(desired).GetResult()
+		scopes := permissionscope.NewOAuth2PermissionScopes().DescribeCreate(desired).GetResult()
 
 		assertContainsScope(t, scope1, scopes)
 		assertContainsScope(t, scope2, scopes)
@@ -57,7 +56,7 @@ func TestPermissionScopes_DescribeUpdate(t *testing.T) {
 	t.Run("default role not found in desired nor existing should add default role", func(t *testing.T) {
 		desired := make(permissions.Permissions)
 		existing := make([]msgraph.PermissionScope, 0)
-		scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
+		scopes := permissionscope.NewOAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 		assert.Len(t, scopes, 1)
 		assertContainsDefaultScope(t, scopes)
@@ -68,7 +67,7 @@ func TestPermissionScopes_DescribeUpdate(t *testing.T) {
 		existing := []msgraph.PermissionScope{
 			permissionscope.DefaultScope(),
 		}
-		scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
+		scopes := permissionscope.NewOAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 		assert.Len(t, scopes, 1)
 		assertContainsDefaultScope(t, scopes)
@@ -85,7 +84,7 @@ func TestPermissionScopes_DescribeUpdate(t *testing.T) {
 				Value:                   ptr.String(permissionscope.DefaultAccessScopeValue),
 			},
 		}
-		scopes = application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
+		scopes = permissionscope.NewOAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 		assert.Len(t, scopes, 1)
 		assertContainsDefaultScopeWithLambda(t, scopes, func(t assert.TestingT, expected, actual msgraph.PermissionScope) {
@@ -103,7 +102,7 @@ func TestPermissionScopes_DescribeUpdate(t *testing.T) {
 		desired.Add(permissions.NewGenerateIdDisabled(permissionscope.DefaultAccessScopeValue))
 
 		existing := make([]msgraph.PermissionScope, 0)
-		scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
+		scopes := permissionscope.NewOAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 		assert.Len(t, scopes, 1)
 		assertContainsDefaultScope(t, scopes)
@@ -125,7 +124,7 @@ func TestPermissionScopes_DescribeUpdate(t *testing.T) {
 			scope3,
 		}
 
-		scopes := application.Application{}.OAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
+		scopes := permissionscope.NewOAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 		// assert that scope "scope-1" still exists and is unmodified
 		assertContainsScope(t, scope1, scopes)

@@ -1,10 +1,11 @@
-package application_test
+package redirecturi_test
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/nais/azureator/pkg/azure/client/application"
+	"github.com/nais/azureator/pkg/azure/client/application/redirecturi"
+
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/msgraph.go/ptr"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ import (
 func TestRedirectUriApp(t *testing.T) {
 	t.Run("web application, default", func(t *testing.T) {
 		app := azureAdApp()
-		a := application.RedirectUriApp(app)
+		a := redirecturi.App(app)
 		expected := `
 {
   "web": {
@@ -33,7 +34,7 @@ func TestRedirectUriApp(t *testing.T) {
 		app := azureAdApp()
 		app.Spec.ReplyUrls = make([]v1.AzureAdReplyUrl, 0)
 
-		a := application.RedirectUriApp(app)
+		a := redirecturi.App(app)
 		expected := `
 {
   "web": {
@@ -51,7 +52,7 @@ func TestRedirectUriApp(t *testing.T) {
 		app := azureAdApp()
 		app.Spec.SinglePageApplication = (*v1.AzureAdSinglePageApplication)(ptr.Bool(true))
 
-		a := application.RedirectUriApp(app)
+		a := redirecturi.App(app)
 		expected := `
 {
   "web": {
@@ -72,7 +73,7 @@ func TestRedirectUriApp(t *testing.T) {
 		app.Spec.SinglePageApplication = (*v1.AzureAdSinglePageApplication)(ptr.Bool(true))
 		app.Spec.ReplyUrls = make([]v1.AzureAdReplyUrl, 0)
 
-		a := application.RedirectUriApp(app)
+		a := redirecturi.App(app)
 		expected := `
 {
   "web": {

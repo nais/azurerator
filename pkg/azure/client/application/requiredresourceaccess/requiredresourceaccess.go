@@ -1,22 +1,22 @@
-package application
+package requiredresourceaccess
 
 import (
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
-
-	"github.com/nais/azureator/pkg/azure"
 )
 
-type requiredResourceAccess struct {
-	azure.Application
+type RequiredResourceAccess interface {
+	MicrosoftGraph() msgraph.RequiredResourceAccess
 }
 
-func newRequiredResourceAccess(application azure.Application) requiredResourceAccess {
-	return requiredResourceAccess{Application: application}
+type requiredResourceAccess struct{}
+
+func NewRequiredResourceAccess() RequiredResourceAccess {
+	return requiredResourceAccess{}
 }
 
 // Access to Microsoft Graph API
-func (r requiredResourceAccess) microsoftGraph() msgraph.RequiredResourceAccess {
+func (r requiredResourceAccess) MicrosoftGraph() msgraph.RequiredResourceAccess {
 	userReadScopeId := msgraph.UUID("e1fe6dd8-ba31-4d61-89e7-88639da4683d")    // User.Read
 	openidScopeId := msgraph.UUID("37f7f235-527c-4136-accd-4a02d197296e")      // openid
 	groupMemberReadAll := msgraph.UUID("bc024368-1153-4739-b217-4326f2e966d0") // GroupMember.Read.All

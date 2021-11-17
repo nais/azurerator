@@ -11,6 +11,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
@@ -18,8 +19,20 @@ import (
 	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
+type KeyCredential interface {
+	Add(tx transaction.Transaction) (*credentials.AddedKeyCredentialSet, error)
+	DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
+	Purge(tx transaction.Transaction) error
+	Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error)
+	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
+}
+
 type keyCredential struct {
-	azure.RuntimeClient
+	Client
+}
+
+type Client interface {
+	Application() application.Application
 }
 
 // Workaround to include empty array of KeyCredentials in JSON serialization.
@@ -27,15 +40,15 @@ type keyCredential struct {
 // leaves the list of redirect URIs unchanged and non-empty.
 type app struct {
 	msgraph.DirectoryObject
-	KeyCredentials []azure.KeyCredential `json:"keyCredentials"`
+	KeyCredentials []msgraph.KeyCredential `json:"keyCredentials"`
 }
 
-func NewKeyCredential(runtimeClient azure.RuntimeClient) azure.KeyCredential {
-	return keyCredential{RuntimeClient: runtimeClient}
+func NewKeyCredential(client Client) KeyCredential {
+	return keyCredential{Client: client}
 }
 
 func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCredentialSet, error) {
-	application, err := k.RuntimeClient.Application().Get(tx)
+	application, err := k.Client.Application().Get(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +133,7 @@ func (k keyCredential) Rotate(tx transaction.Transaction, existing credentials.S
 
 func (k keyCredential) Purge(tx transaction.Transaction) error {
 	app := &app{
-		KeyCredentials: make([]azure.KeyCredential, 0),
+		KeyCredentials: make([]msgraph.KeyCredential, 0),
 	}
 
 	return k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app)
@@ -150,7 +163,7 @@ func (k keyCredential) Validate(tx transaction.Transaction, existing credentials
 func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction, keyIdsInUse []string) ([]msgraph.KeyCredential, error) {
 	keyIdsInUse = stringutils.RemoveDuplicates(keyIdsInUse)
 
-	application, err := k.RuntimeClient.Application().Get(tx)
+	application, err := k.Application().Get(tx)
 	if err != nil {
 		return nil, err
 	}

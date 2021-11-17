@@ -1,24 +1,26 @@
-package application
+package optionalclaims
 
 import (
-	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
-type OptionalClaims struct {
-	azure.Application
+type OptionalClaims interface {
+	DescribeCreate() *msgraph.OptionalClaims
+	DescribeUpdate(existing msgraph.Application) *msgraph.OptionalClaims
 }
 
-func newOptionalClaims(application azure.Application) OptionalClaims {
-	return OptionalClaims{Application: application}
+type optionalClaims struct{}
+
+func NewOptionalClaims() OptionalClaims {
+	return optionalClaims{}
 }
 
-func (o OptionalClaims) DescribeCreate() *msgraph.OptionalClaims {
+func (o optionalClaims) DescribeCreate() *msgraph.OptionalClaims {
 	return defaultClaims()
 }
 
-func (o OptionalClaims) DescribeUpdate(existing msgraph.Application) *msgraph.OptionalClaims {
+func (o optionalClaims) DescribeUpdate(existing msgraph.Application) *msgraph.OptionalClaims {
 	existingClaims := existing.OptionalClaims
 	if existingClaims == nil {
 		return defaultClaims()

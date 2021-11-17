@@ -23,6 +23,14 @@ const (
 
 const unknownRole = "UNKNOWN_ROLE"
 
+type AppRoleAssignments interface {
+	GetAll() (approleassignment.List, error)
+	GetAllGroups() (approleassignment.List, error)
+	GetAllServicePrincipals() (approleassignment.List, error)
+	ProcessForGroups(assignees resource.Resources, roles permissions.Permissions) error
+	ProcessForServicePrincipals(assignees resource.Resources, roles permissions.Permissions) error
+}
+
 type appRoleAssignments struct {
 	azure.RuntimeClient
 	tx        transaction.Transaction
@@ -30,7 +38,7 @@ type appRoleAssignments struct {
 	logFields log.Fields
 }
 
-func NewAppRoleAssignments(client azure.RuntimeClient, tx transaction.Transaction, targetId azure.ServicePrincipalId) azure.AppRoleAssignments {
+func NewAppRoleAssignments(client azure.RuntimeClient, tx transaction.Transaction, targetId azure.ServicePrincipalId) AppRoleAssignments {
 	return appRoleAssignments{
 		RuntimeClient: client,
 		tx:            tx,

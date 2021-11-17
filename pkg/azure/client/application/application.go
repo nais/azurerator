@@ -11,7 +11,12 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
+	"github.com/nais/azureator/pkg/azure/client/application/identifieruri"
+	"github.com/nais/azureator/pkg/azure/client/application/optionalclaims"
+	"github.com/nais/azureator/pkg/azure/client/application/owners"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
+	"github.com/nais/azureator/pkg/azure/client/application/redirecturi"
+	"github.com/nais/azureator/pkg/azure/client/application/requiredresourceaccess"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
@@ -23,57 +28,76 @@ const (
 	IaCAppTag        string = "azurerator_appreg"
 )
 
-type Application struct {
+type Application interface {
+	AppRoles() approle.AppRoles
+	IdentifierUri() identifieruri.IdentifierUri
+	OAuth2PermissionScopes() permissionscope.OAuth2PermissionScope
+	Owners() owners.Owners
+	RedirectUri() redirecturi.RedirectUri
+
+	Delete(tx transaction.Transaction) error
+	Exists(tx transaction.Transaction) (*msgraph.Application, bool, error)
+	ExistsByFilter(ctx context.Context, filter azure.Filter) (*msgraph.Application, bool, error)
+	Get(tx transaction.Transaction) (msgraph.Application, error)
+	GetByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error)
+	GetByClientId(ctx context.Context, id azure.ClientId) (msgraph.Application, error)
+	Patch(ctx context.Context, id azure.ObjectId, application interface{}) error
+	Register(tx transaction.Transaction) (*msgraph.Application, error)
+	RemoveDisabledPermissions(tx transaction.Transaction, application msgraph.Application) error
+	Update(tx transaction.Transaction) (*msgraph.Application, error)
+}
+
+type application struct {
 	azure.RuntimeClient
 }
 
-func NewApplication(runtimeClient azure.RuntimeClient) azure.Application {
-	return Application{RuntimeClient: runtimeClient}
+func NewApplication(runtimeClient azure.RuntimeClient) Application {
+	return application{RuntimeClient: runtimeClient}
 }
 
-func (a Application) AppRoles() azure.AppRoles {
-	return NewAppRoles(a)
+func (a application) AppRoles() approle.AppRoles {
+	return approle.NewAppRoles()
 }
 
-func (a Application) IdentifierUri() azure.IdentifierUri {
-	return newIdentifierUri(a)
+func (a application) IdentifierUri() identifieruri.IdentifierUri {
+	return identifieruri.NewIdentifierUri(a)
 }
 
-func (a Application) OAuth2PermissionScopes() azure.OAuth2PermissionScope {
-	return NewOAuth2PermissionScopes(a)
+func (a application) OAuth2PermissionScopes() permissionscope.OAuth2PermissionScope {
+	return permissionscope.NewOAuth2PermissionScopes()
 }
 
-func (a Application) OptionalClaims() OptionalClaims {
-	return newOptionalClaims(a)
+func (a application) OptionalClaims() optionalclaims.OptionalClaims {
+	return optionalclaims.NewOptionalClaims()
 }
 
-func (a Application) Owners() azure.ApplicationOwners {
-	return newOwners(a.RuntimeClient)
+func (a application) Owners() owners.Owners {
+	return owners.NewOwners(a.RuntimeClient)
 }
 
-func (a Application) RedirectUri() azure.RedirectUri {
-	return newRedirectUri(a)
+func (a application) RedirectUri() redirecturi.RedirectUri {
+	return redirecturi.NewRedirectUri(a)
 }
 
-func (a Application) requiredResourceAccess() requiredResourceAccess {
-	return newRequiredResourceAccess(a)
+func (a application) RequiredResourceAccess() requiredresourceaccess.RequiredResourceAccess {
+	return requiredresourceaccess.NewRequiredResourceAccess()
 }
 
-func (a Application) Exists(tx transaction.Transaction) (*msgraph.Application, bool, error) {
+func (a application) Exists(tx transaction.Transaction) (*msgraph.Application, bool, error) {
 	name := kubernetes.UniformResourceName(&tx.Instance)
 	return a.ExistsByFilter(tx.Ctx, util.FilterByName(name))
 }
 
-func (a Application) Delete(tx transaction.Transaction) error {
+func (a application) Delete(tx transaction.Transaction) error {
 	if err := a.GraphClient().Applications().ID(tx.Instance.GetObjectId()).Request().Delete(tx.Ctx); err != nil {
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	return nil
 }
 
-func (a Application) Register(tx transaction.Transaction) (*msgraph.Application, error) {
+func (a application) Register(tx transaction.Transaction) (*msgraph.Application, error) {
 	access := []msgraph.RequiredResourceAccess{
-		a.requiredResourceAccess().microsoftGraph(),
+		a.RequiredResourceAccess().MicrosoftGraph(),
 	}
 	desiredPermissions := permissions.GenerateDesiredPermissionSet(tx.Instance)
 
@@ -104,7 +128,7 @@ func (a Application) Register(tx transaction.Transaction) (*msgraph.Application,
 	return app, nil
 }
 
-func (a Application) Update(tx transaction.Transaction) (*msgraph.Application, error) {
+func (a application) Update(tx transaction.Transaction) (*msgraph.Application, error) {
 	objectId := tx.Instance.GetObjectId()
 	clientId := tx.Instance.GetClientId()
 	identifierUris := util.IdentifierUris(tx)
@@ -143,7 +167,7 @@ func (a Application) Update(tx transaction.Transaction) (*msgraph.Application, e
 	return app, a.Patch(tx.Ctx, objectId, app)
 }
 
-func (a Application) Patch(ctx context.Context, id azure.ObjectId, application interface{}) error {
+func (a application) Patch(ctx context.Context, id azure.ObjectId, application interface{}) error {
 	req := a.GraphClient().Applications().ID(id).Request()
 	if err := req.JSONRequest(ctx, "PATCH", "", application, nil); err != nil {
 		return fmt.Errorf("failed to update web application: %w", err)
@@ -151,7 +175,7 @@ func (a Application) Patch(ctx context.Context, id azure.ObjectId, application i
 	return nil
 }
 
-func (a Application) ExistsByFilter(ctx context.Context, filter azure.Filter) (*msgraph.Application, bool, error) {
+func (a application) ExistsByFilter(ctx context.Context, filter azure.Filter) (*msgraph.Application, bool, error) {
 	applications, err := a.getAll(ctx, filter)
 	if err != nil {
 		return nil, false, err
@@ -166,11 +190,11 @@ func (a Application) ExistsByFilter(ctx context.Context, filter azure.Filter) (*
 	}
 }
 
-func (a Application) Get(tx transaction.Transaction) (msgraph.Application, error) {
+func (a application) Get(tx transaction.Transaction) (msgraph.Application, error) {
 	return a.GetByName(tx.Ctx, kubernetes.UniformResourceName(&tx.Instance))
 }
 
-func (a Application) GetByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
+func (a application) GetByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
 	application, err := a.getSingleByFilterOrError(ctx, util.FilterByName(name))
 	if err != nil {
 		return msgraph.Application{}, fmt.Errorf("fetching application with name '%s': %w", name, err)
@@ -178,7 +202,7 @@ func (a Application) GetByName(ctx context.Context, name azure.DisplayName) (msg
 	return *application, nil
 }
 
-func (a Application) GetByClientId(ctx context.Context, id azure.ClientId) (msgraph.Application, error) {
+func (a application) GetByClientId(ctx context.Context, id azure.ClientId) (msgraph.Application, error) {
 	application, err := a.getSingleByFilterOrError(ctx, util.FilterByAppId(id))
 	if err != nil {
 		return msgraph.Application{}, fmt.Errorf("fetching application with clientId '%s': %w", id, err)
@@ -188,7 +212,7 @@ func (a Application) GetByClientId(ctx context.Context, id azure.ClientId) (msgr
 
 //	- we _CANNOT_ delete a disabled PermissionScope that has been granted to any pre-authorized app
 // 	- we _CAN_ however delete a disabled AppRole _without_ removing the associated approleassignments first
-func (a Application) RemoveDisabledPermissions(tx transaction.Transaction, application msgraph.Application) error {
+func (a application) RemoveDisabledPermissions(tx transaction.Transaction, application msgraph.Application) error {
 	objectId := tx.Instance.GetObjectId()
 
 	scopes := permissionscope.RemoveDisabled(application)
@@ -205,7 +229,7 @@ func (a Application) RemoveDisabledPermissions(tx transaction.Transaction, appli
 	return nil
 }
 
-func (a Application) getAll(ctx context.Context, filters ...azure.Filter) ([]msgraph.Application, error) {
+func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msgraph.Application, error) {
 	r := a.GraphClient().Applications().Request()
 	r.Filter(util.MapFiltersToFilter(filters))
 	applications, err := r.GetN(ctx, a.RuntimeClient.MaxNumberOfPagesToFetch())
@@ -215,7 +239,7 @@ func (a Application) getAll(ctx context.Context, filters ...azure.Filter) ([]msg
 	return applications, nil
 }
 
-func (a Application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Application {
+func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Application {
 	return &msgraph.Application{
 		DisplayName:    ptr.String(kubernetes.UniformResourceName(&resource)),
 		SignInAudience: ptr.String("AzureADMyOrg"),
@@ -237,7 +261,7 @@ func (a Application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 	}
 }
 
-func (a Application) getSingleByFilterOrError(ctx context.Context, filter azure.Filter) (*msgraph.Application, error) {
+func (a application) getSingleByFilterOrError(ctx context.Context, filter azure.Filter) (*msgraph.Application, error) {
 	applications, err := a.getAll(ctx, filter)
 	if err != nil {
 		return nil, err

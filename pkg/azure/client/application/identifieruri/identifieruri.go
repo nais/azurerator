@@ -1,6 +1,7 @@
-package application
+package identifieruri
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -8,11 +9,19 @@ import (
 	"github.com/nais/azureator/pkg/azure/util"
 )
 
-type identifierUri struct {
-	azure.Application
+type IdentifierUri interface {
+	Set(tx transaction.Transaction) error
 }
 
-func newIdentifierUri(application azure.Application) azure.IdentifierUri {
+type identifierUri struct {
+	Application
+}
+
+type Application interface {
+	Patch(ctx context.Context, id azure.ObjectId, application interface{}) error
+}
+
+func NewIdentifierUri(application Application) IdentifierUri {
 	return identifierUri{Application: application}
 }
 

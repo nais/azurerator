@@ -9,6 +9,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/client/application"
+	"github.com/nais/azureator/pkg/azure/client/serviceprincipal"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/result"
@@ -31,12 +33,24 @@ type appPatch struct {
 	API preAuthAppPatch `json:"api"`
 }
 
-type preAuthApps struct {
-	azure.RuntimeClient
+type PreAuthApps interface {
+	Get(tx transaction.Transaction) (*result.PreAuthorizedApps, error)
+	Process(tx transaction.Transaction, permissions permissions.Permissions) (*result.PreAuthorizedApps, error)
 }
 
-func NewPreAuthApps(runtimeClient azure.RuntimeClient) azure.PreAuthApps {
-	return preAuthApps{RuntimeClient: runtimeClient}
+type Client interface {
+	azure.RuntimeClient
+	Application() application.Application
+	AppRoleAssignments(tx transaction.Transaction, targetId azure.ObjectId) serviceprincipal.AppRoleAssignments
+	ServicePrincipal() serviceprincipal.ServicePrincipal
+}
+
+type preAuthApps struct {
+	Client
+}
+
+func NewPreAuthApps(client Client) PreAuthApps {
+	return preAuthApps{Client: client}
 }
 
 func (p preAuthApps) Process(tx transaction.Transaction, permissions permissions.Permissions) (*result.PreAuthorizedApps, error) {

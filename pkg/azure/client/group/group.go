@@ -11,17 +11,28 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
+	"github.com/nais/azureator/pkg/azure/client/serviceprincipal"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/transaction"
 )
 
-type group struct {
-	azure.RuntimeClient
+type Groups interface {
+	GetOwnersFor(ctx context.Context, groupId string) ([]msgraph.DirectoryObject, error)
+	Process(tx transaction.Transaction) error
 }
 
-func NewGroup(runtimeClient azure.RuntimeClient) azure.Groups {
-	return group{RuntimeClient: runtimeClient}
+type Client interface {
+	azure.RuntimeClient
+	AppRoleAssignments(tx transaction.Transaction, targetId azure.ObjectId) serviceprincipal.AppRoleAssignments
+}
+
+type group struct {
+	Client
+}
+
+func NewGroup(client Client) Groups {
+	return group{Client: client}
 }
 
 func (g group) GetOwnersFor(ctx context.Context, groupId string) ([]msgraph.DirectoryObject, error) {

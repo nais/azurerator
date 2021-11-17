@@ -17,19 +17,29 @@ const (
 	TagHideApp = "HideApp"
 )
 
+type ServicePrincipal interface {
+	Owners() Owners
+	Policies() Policies
+
+	Exists(ctx context.Context, id azure.ClientId) (bool, msgraph.ServicePrincipal, error)
+	Register(tx transaction.Transaction) (msgraph.ServicePrincipal, error)
+	SetAppRoleAssignmentRequired(tx transaction.Transaction) error
+	SetAppRoleAssignmentNotRequired(tx transaction.Transaction) error
+}
+
 type servicePrincipal struct {
 	azure.RuntimeClient
 }
 
-func NewServicePrincipal(runtimeClient azure.RuntimeClient) azure.ServicePrincipal {
+func NewServicePrincipal(runtimeClient azure.RuntimeClient) ServicePrincipal {
 	return servicePrincipal{RuntimeClient: runtimeClient}
 }
 
-func (s servicePrincipal) Owners() azure.ServicePrincipalOwners {
+func (s servicePrincipal) Owners() Owners {
 	return newOwners(s.RuntimeClient)
 }
 
-func (s servicePrincipal) Policies() azure.ServicePrincipalPolicies {
+func (s servicePrincipal) Policies() Policies {
 	return newPolicies(s.RuntimeClient)
 }
 

@@ -1,4 +1,4 @@
-package application
+package owners
 
 import (
 	"fmt"
@@ -10,11 +10,15 @@ import (
 	"github.com/nais/azureator/pkg/azure/transaction"
 )
 
+type Owners interface {
+	Process(tx transaction.Transaction, desired []msgraph.DirectoryObject) error
+}
+
 type owners struct {
 	azure.RuntimeClient
 }
 
-func newOwners(client azure.RuntimeClient) azure.ApplicationOwners {
+func NewOwners(client azure.RuntimeClient) Owners {
 	return owners{RuntimeClient: client}
 }
 

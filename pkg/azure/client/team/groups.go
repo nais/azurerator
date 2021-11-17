@@ -5,17 +5,20 @@ import (
 
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
-	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/approleassignment"
 	"github.com/nais/azureator/pkg/azure/transaction"
 )
 
-type groups struct {
-	azure.RuntimeClient
+type Groups interface {
+	Get(tx transaction.Transaction) (approleassignment.List, error)
 }
 
-func newGroups(client azure.RuntimeClient) azure.TeamGroups {
-	return groups{RuntimeClient: client}
+type groups struct {
+	Client
+}
+
+func newGroups(client Client) Groups {
+	return groups{Client: client}
 }
 
 func (g groups) Get(tx transaction.Transaction) (approleassignment.List, error) {

@@ -10,6 +10,7 @@ import (
 )
 
 type fakeAzureClient struct{}
+type fakeAzureCredentialsClient struct{}
 
 const (
 	ApplicationNotExistsName = "not-exists-in-azure"
@@ -47,25 +48,29 @@ func (a fakeAzureClient) GetPreAuthorizedApps(tx transaction.Transaction) (*resu
 	return AzurePreAuthorizedApps(tx.Instance), nil
 }
 
-func (a fakeAzureClient) AddCredentials(tx transaction.Transaction) (credentials.Set, error) {
+func (a fakeAzureClient) Credentials() azure.Credentials {
+	return fakeAzureCredentialsClient{}
+}
+
+func (a fakeAzureCredentialsClient) Add(tx transaction.Transaction) (credentials.Set, error) {
 	return AzureCredentialsSet(tx.Instance), nil
 }
 
-func (a fakeAzureClient) DeleteUnusedCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
+func (a fakeAzureCredentialsClient) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
 	return nil
 }
 
-func (a fakeAzureClient) RotateCredentials(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error) {
+func (a fakeAzureCredentialsClient) Rotate(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error) {
 	newSet := AzureCredentialsSet(tx.Instance)
 	newSet.Current = existing.Next
 	return newSet, nil
 }
 
-func (a fakeAzureClient) PurgeCredentials(tx transaction.Transaction) error {
+func (a fakeAzureCredentialsClient) Purge(tx transaction.Transaction) error {
 	return nil
 }
 
-func (a fakeAzureClient) ValidateCredentials(tx transaction.Transaction, existing credentials.Set) (bool, error) {
+func (a fakeAzureCredentialsClient) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
 	return true, nil
 }
 

@@ -1,12 +1,14 @@
-package application_test
+package optionalclaims_test
 
 import (
-	"github.com/nais/azureator/pkg/azure/client/application"
-	"github.com/nais/azureator/pkg/azure/util"
+	"testing"
+
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
-	"testing"
+
+	"github.com/nais/azureator/pkg/azure/client/application/optionalclaims"
+	"github.com/nais/azureator/pkg/azure/util"
 )
 
 func TestOptionalClaims_DescribeCreate(t *testing.T) {
@@ -19,7 +21,7 @@ func TestOptionalClaims_DescribeCreate(t *testing.T) {
 		},
 	}
 
-	create := application.Application{}.OptionalClaims().DescribeCreate()
+	create := optionalclaims.NewOptionalClaims().DescribeCreate()
 	assert.Equal(t, desired, *create)
 }
 
@@ -86,7 +88,7 @@ func TestOptionalClaims_DescribeUpdate(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			existingApp := util.EmptyApplication().OptionalClaims(&test.existing).Build()
-			actual := application.Application{}.OptionalClaims().DescribeUpdate(*existingApp)
+			actual := optionalclaims.NewOptionalClaims().DescribeUpdate(*existingApp)
 			assert.Equal(t, test.want, *actual)
 		})
 	}

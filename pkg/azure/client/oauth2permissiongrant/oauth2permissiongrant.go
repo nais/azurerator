@@ -11,11 +11,15 @@ import (
 	"github.com/nais/azureator/pkg/azure/util"
 )
 
+type OAuth2PermissionGrant interface {
+	Process(tx transaction.Transaction) error
+}
+
 type oAuth2PermissionGrant struct {
 	azure.RuntimeClient
 }
 
-func NewOAuth2PermissionGrant(runtimeClient azure.RuntimeClient) azure.OAuth2PermissionGrant {
+func NewOAuth2PermissionGrant(runtimeClient azure.RuntimeClient) OAuth2PermissionGrant {
 	return oAuth2PermissionGrant{RuntimeClient: runtimeClient}
 }
 
