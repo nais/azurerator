@@ -25,10 +25,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build an push the Docker image
+      - name: Build and push the Docker image
         run: |
-          docker build --pull --tag ${IMAGE} .
+          docker build --pull --tag ${IMAGE} . --tag ${{ env.image }}:latest
           docker push ${IMAGE}
+          docker push ${{ env.image }}:latest
   deploy:
     name: Deploy to Kubernetes
     if: github.ref == 'refs/heads/master'
