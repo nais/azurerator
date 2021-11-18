@@ -1,0 +1,22 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: azurerator
+  namespace: azurerator-system
+  labels:
+    app: azurerator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azurerator
+  template:
+    metadata:
+      labels:
+        app: azurerator
+    spec:
+      serviceAccountName: azurerator
+      containers:
+        - name: azurerator
+          image: ghcr.io/nais/azurerator:latest

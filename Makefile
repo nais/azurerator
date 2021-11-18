@@ -24,3 +24,10 @@ kubebuilder:
 	curl -L "https://storage.googleapis.com/kubebuilder-tools/kubebuilder-tools-${K8S_VERSION}-$(os)-$(arch).tar.gz" | tar -xz -C /usr/local
 	curl -L -o /usr/local/kubebuilder/bin/kubebuilder https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_$(os)_$(arch)
 	chmod +x /usr/local/kubebuilder/bin/*
+
+install:
+	kubectl apply -f https://raw.githubusercontent.com/nais/liberator/main/config/crd/bases/nais.io_azureadapplications.yaml
+	kubectl apply -f ./hack/resources/
+
+sample:
+	kubectl apply -f ./config/samples/azureadapplication.yaml

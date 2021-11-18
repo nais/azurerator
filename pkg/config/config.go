@@ -19,7 +19,6 @@ type Config struct {
 	Azure          AzureConfig    `json:"azure"`
 	ClusterName    string         `json:"cluster-name"`
 	Controller     Controller     `json:"controller"`
-	Debug          bool           `json:"debug"`
 	Kafka          KafkaConfig    `json:"kafka"`
 	LeaderElection LeaderElection `json:"leader-election"`
 	MetricsAddr    string         `json:"metrics-address"`
@@ -171,7 +170,6 @@ const (
 	LeaderElectionNamespace = "leader-election.namespace"
 
 	ClusterName    = "cluster-name"
-	DebugEnabled   = "debug"
 	MetricsAddress = "metrics-address"
 
 	ValidationsTenantRequired = "validations.tenant.required"
@@ -232,7 +230,6 @@ func init() {
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
 	flag.String(ClusterName, "", "The cluster in which this application should run")
-	flag.Bool(DebugEnabled, false, "Debug mode toggle")
 	flag.Bool(ValidationsTenantRequired, false, "If true, will only process resources that have a tenant defined in the spec")
 
 	flag.Duration(ControllerContextTimeout, 5*time.Minute, "Context timeout for the reconciliation loop in the controller.")

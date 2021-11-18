@@ -30,20 +30,20 @@ The following is a short overview of operations performed.
 
 ## 1 New applications
 
-Applications that do not exist in Azure AD will be registered with the following configuration:
+Any application that does not already exist in Azure AD will be registered with the following configuration:
 
 ### 1.1 Display Name
 
 The application in Azure AD will be assigned a display name of the following format:
 
 ```
-<ClusterName>:<Namespace>:<Metadata.Name>
+<clustername>:<namespace>:<metadata.name>
 ```
 
 ### 1.2 Authentication Platform
 
-By default, a **Web API** is registered as the authentication platform for the application, allowing for usage in _
-OIDC/OAuth2_ authentication flows with Azure AD. This means the application can be used for both accessing and exposing
+By default, a **Web API** is registered as the authentication platform for the application, allowing for usage in _OIDC/OAuth2_ authentication flows with Azure AD. 
+This means the application can be used for both accessing and exposing
 Web APIs, handling both end-user logins with OIDC and on-behalf-of flows and/or act as daemons for service-to-service
 communication.
 
@@ -56,13 +56,13 @@ Azurerator registers the following Identifier URIs:
 
 ```
 api://<clientId>
-api://<Metadata.Name>.<Metadata.Namespace>.<ClusterName>
+api://<clustername>.<metadata.namespace>.<metadata.name>
 ```
 
 where `clientId` is the Azure Application / Client ID, e.g. `api://4f6fae71-89da-46ff-a6d5-04d27d76eb1a`.
 
 Other applications may use this identifier when requesting access tokens for the application from Azure, e.g. by
-providing the scope `api://<clientId>/.default` or `api://app.namespace.cluster/.default` in the request.
+providing the scope `api://<clientId>/.default` or `api://cluster.namespace.app/.default` in the request.
 
 #### OAuth2 Permission Scopes
 
@@ -71,20 +71,20 @@ are registered for the application. These are exposed to consumer/client (pre-au
 
 Optionally, one can also define custom scopes for each consumer application if one desires more fine-grained access control.
 Details here: <https://doc.nais.io/security/auth/azure-ad/access-policy/#custom-scopes> 
-(`Spec.PreAuthorizedApplications[].Permissions.Scopes[]`).
+(`spec.preAuthorizedApplications[].permissions.scopes[]`).
 
 #### Redirect URIs (optional)
 
 Redirect URIs are URIs that the Authorization Server will accept as destinations when returning authentication
 responses (tokens) after successfully authenticating users. Often referred to as reply URLs.
 
-These are registered according to the list of URIs defined in the `AzureAdApplication` resource, i.e. `[]Spec.ReplyUrl`.
+These are registered according to the list of URIs defined in the `AzureAdApplication` resource, i.e. `spec.replyUrls[]`.
 
 See <https://docs.microsoft.com/en-gb/azure/active-directory/develop/reply-url> for restrictions and limitations.
 
 #### Logout URLs (optional)
 
-`Spec.LogoutUrl` defines the `LogoutUrl` that Azure should send requests to after sign-out from another application
+`spec.logoutUrl` defines the `LogoutUrl` that Azure should send requests to after sign-out from another application
 in order to properly implement single-sign-out (front-channel logout).
 
 See <https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocols-oidc#single-sign-out> for
@@ -104,7 +104,7 @@ flow.
 As with _scopes_, the operator also supports custom definitions of roles that can be granted to client/consumer applications 
 that enables more fine-grained access control. 
 Details here: <https://doc.nais.io/security/auth/azure-ad/access-policy/#custom-roles> 
-(`Spec.PreAuthorizedApplications[].Permissions.Roles[]`).
+(`spec.preAuthorizedApplications[].permissions.roles[]`).
 
 ### 1.3 (Pre-)Authorized Client Applications
 
@@ -114,12 +114,12 @@ to obtain access tokens intended for the application. This authorization is enfo
 the `on_behalf_of` flow.
 
 It is _not_ enforced for the `client_credentials` flow unless assignment requirement is explicitly enabled for the
-application (see [1.9 Principal Assignment Required](#19-principal-assignment-required)).
+application (see [1.10 Principal Assignment Required](#110-principal-assignment-required)).
 
-These are registered according to the list of applications defined in `[]Spec.PreAuthorizedApplication` in
+These are registered according to the list of applications defined in `spec.preAuthorizedApplications[]` in
 the `AzureAdApplication` resource, with the following caveats:
 
-- `Spec.PreAuthorizedApplication.Name` must follow the format `<ClusterName>:<Namespace>:<Metadata.Name>` in order to
+- `spec.preAuthorizedApplications[].name` must follow the format `<clustername>:<namespace>:<metadata.name>` in order to
   correctly reference the intended application
 - The operator will attempt to register these in a "best effort" manner.
 - Any legitimate errors will be retried, however applications that do not exist will be skipped and not registered as a
@@ -137,11 +137,11 @@ Each pre-authorized application will also be assigned the **AppRole** described 
 A [service principal](https://docs.microsoft.com/en-us/azure/active-directory/develop/app-objects-and-service-principals#service-principal-object)
 is registered and connected to the aforementioned application.
 
-This enables us to register and automatically grant admin consent for delegated permissions for the application.
+This enables us to register and automatically grant admin consent for [delegated permissions](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent#permission-types) for the application.
 
 ### 1.5 Delegated Permissions
 
-The operator will by default configure the application with the following permissions:
+The operator will by default configure the application with the following delegated permissions:
 
 - `https://graph.microsoft.com/openid`
 - `https://graph.microsoft.com/User.Read`
@@ -163,8 +163,8 @@ of these credentials.
 The unique identifiers (which can be looked up within Azure AD) for these keys are stored in the Status subresource for
 the resource, i.e. in the fields:
 
-- `Spec.Status.PasswordKeyId`
-- `Spec.Status.CertificateKeyId`
+- `spec.status.passwordKeyId`
+- `spec.status.certificateKeyId`
 
 These fields thus denote the currently used set of credentials.
 
@@ -181,7 +181,7 @@ and the equivalent _Service Principal_ (i.e. Enterprise Application).
 
 ### 1.8 Group Assignment
 
-`Spec.Claims.Groups[]` is a list of Object IDs that reference Azure AD groups to be assigned to the _Service Principal_
+`spec.claims.groups[]` is a list of Object IDs that reference Azure AD groups to be assigned to the _Service Principal_
 belonging to the `AzureAdApplication`.
 
 All groups assigned are emitted through the `groups` claim for tokens issued to the Application. This can for example be
@@ -192,19 +192,31 @@ Principal. This denotes whether Azure AD should enforce/require that Azure AD pr
 the `AzureAdApplication` when using the application in a Web API flow such as the OAuth 2.0 Client Credentials flow.
 
 Additionally, any users that should be able to log in to the application using the OpenID Connect flows must be
-explicitly assigned to the application through one of the groups defined in `Spec.Claims.Groups[]`. The user _must_ be a
+explicitly assigned to the application through one of the groups defined in `spec.claims.groups[]`. The user _must_ be a
 direct member of the group; assignment does not cascade to nested groups. 
 
-If `Spec.Claims.Groups[]` is not defined, we fall back to assigning a single group (configured by the 
+If `spec.claims.groups[]` is not defined, we fall back to assigning a single group (configured by the 
 `azure.features.groups-assignment.all-users-group-id` flag) that should contain all users that should have 
-access to the application by default. This behaviour can also be explicitly controlled by specifying the `Spec.AllowAllUsers` 
+access to the application by default. This behaviour can also be explicitly controlled by specifying the `spec.allowAllUsers` 
 field.
 
 ### 1.9 Single-Page Applications
 
 Azure AD supports the [OAuth 2.0 Auth Code Flow with PKCE](https://docs.microsoft.com/en-us/azure/active-directory/develop/scenario-spa-overview) for logins from client-side/browser single-page-applications.
 However, the support for this must be explicitly enabled to avoid issues with CORS by setting
-`Spec.SinglePageApplication` to `true`.
+`spec.singlePageApplication` to `true`.
+
+### 1.10 Principal Assignment Required
+
+The `AppRoleAssignmentRequired` property denotes whether Azure AD should enforce/require that Azure AD principals are explicitly
+assigned to the `AzureAdApplication` when using the application in a Web API flow such as the OAuth 2.0 Client Credentials flow.
+
+`azure.features.app-role-assignment-required.enabled` sets the `AppRoleAssignmentRequired` property for the Service Principal.
+
+Defaults to `false`.
+
+Enabling this will also require the explicit assignment of any end-user that should be able to log in to the application - either directly or through a [group](#18-group-assignment).
+It will consequently also affect any use of the on-behalf-of flow - which involves end-users, and thus follows the same restriction as described for the login usecase.
 
 ## 2 Existing applications
 
@@ -214,9 +226,9 @@ above.
 
 Changes in configurable metadata such as:
 
-- `[]Spec.PreAuthorizedApplication`
-- `[]Spec.ReplyUrl`
-- `Spec.LogoutUrl`
+- `spec.preAuthorizedApplications[]`
+- `spec.replyUrls[]`
+- `spec.logoutUrl`
 
 will result in updates to the application in Azure AD so that the desired state represented in the resource is
 consistent with the actual state in Azure AD.
@@ -225,21 +237,21 @@ The associated cluster resources for the `AzureAdApplication` will also be updat
 
 ### 2.1 Credential Rotation
 
-Whenever the `Spec.SecretName` in the `AzureAdApplication` resource changes or when the annotation `azure.nais.io/rotate=true`
+Whenever the `spec.secretName` in the `AzureAdApplication` resource changes or when the annotation `azure.nais.io/rotate=true`
 is applied, the operator will generate a new set of credentials and associate these with the application.
 
 In order to ensure zero downtime when rotating credentials, the following algorithm is used:
 
-1. If the application only has a single set of registered credentials in Azure, then these will not be revoked.
-2. The previous newest set of credentials will not be revoked.
-3. Additionally, any set of credentials that exist in `corev1.Secret` resources in use by existing pods will not be
-   revoked. A new set of credentials is registered to the application in Azure AD.
+1. A new set of credentials is added to the application in Azure AD.
+2. If the application only has a single set of registered credentials in Azure, then these will not be revoked.
+3. The previous newest set of credentials will not be revoked.
+4. Any set of credentials that exist in `corev1.Secret` resources in use by matching pods (i.e. pods with the label `app=<metadata.name>`) will not be
+   revoked.
 5. Any other key registered in Azure AD not matching the above will be revoked, i.e. any key deemed to be unused.
-6. The Status subresource is updated with the identifiers for the new set of credentials.
 
 Additionally, during reconciliation of the resource, the operator will attempt to add a new set of credentials to the application 
-if it detects that the period between last rotation and now is greater than the configured `secret-rotation.max-age` property (defaults to 6 months).
-It will update the existing Kubernetes Secret.
+if it detects that the period between last rotation and now is greater than the configured `secret-rotation.max-age` property (defaults to 4 months).
+If added, it will update the existing Kubernetes Secret.
 
 ## 3 Cluster Resources
 
@@ -248,124 +260,10 @@ other metadata that the application should use in order to authenticate itself t
 
 ### 3.1 Secret
 
-A `coreV1.Secret` with the name as defined in `Spec.SecretName` is created, containing the following keys and values:
+A `coreV1.Secret` with the name as defined in `spec.secretName` is created.
 
-#### `AZURE_APP_CLIENT_ID`
-
-Azure AD client ID. Unique ID for the application in Azure AD.
-
-Example value:
-
-```e89006c5-7193-4ca3-8e26-d0990d9d981f```
-
-#### `AZURE_APP_CLIENT_SECRET`
-
-Azure AD client secret, i.e. password for [authenticating the application to Azure AD].
-
-Example value:
-
-```b5S0Bgg1OF17Ptpy4_uvUg-m.I~KU_.5RR```
-
-#### `AZURE_APP_JWKS`
-
-Private JWKS, i.e. containing a JWK with the private RSA key for creating signed JWTs
-when [authenticating to Azure AD with a certificate].
-
-This will always contain a single key, i.e. the newest key registered.
-
-Example value:
-
-```json
-{
-  "keys": [
-    {
-      "use": "sig",
-      "kty": "RSA",
-      "kid": "jXDxKRE6a4jogcc4HgkDq3uVgQ0",
-      "n": "xQ3chFsz...",
-      "e": "AQAB",
-      "d": "C0BVXQFQ...",
-      "p": "9TGEF_Vk...",
-      "q": "zb0yTkgqO...",
-      "dp": "7YcKcCtJ...",
-      "dq": "sXxLHp9A...",
-      "qi": "QCW5VQjO...",
-      "x5c": [
-        "MIID8jCC..."
-      ],
-      "x5t": "jXDxKRE6a4jogcc4HgkDq3uVgQ0",
-      "x5t#S256": "AH2gbUvjZYmSQXZ6-YIRxM2YYrLiZYW8NywowyGcxp0"
-    }
-  ]
-}
-```
-
-#### `AZURE_APP_JWK`
-
-Same as the above `AZURE_APP_JWKS`, just with the JWK unwrapped from the key set.
-
-Example value:
-
-```json
-{
-  "use": "sig",
-  "kty": "RSA",
-  "kid": "jXDxKRE6a4jogcc4HgkDq3uVgQ0",
-  "n": "xQ3chFsz...",
-  "e": "AQAB",
-  "d": "C0BVXQFQ...",
-  "p": "9TGEF_Vk...",
-  "q": "zb0yTkgqO...",
-  "dp": "7YcKcCtJ...",
-  "dq": "sXxLHp9A...",
-  "qi": "QCW5VQjO...",
-  "x5c": [
-    "MIID8jCC..."
-  ],
-  "x5t": "jXDxKRE6a4jogcc4HgkDq3uVgQ0",
-  "x5t#S256": "AH2gbUvjZYmSQXZ6-YIRxM2YYrLiZYW8NywowyGcxp0"
-}
-```
-
-#### `AZURE_APP_PRE_AUTHORIZED_APPS`
-
-A JSON string. List of names and client IDs for the valid (i.e. those that exist in Azure AD) applications defined
-in `[]Spec.PreAuthorizedApplication`
-
-Example value:
-
-```
-[
-  {
-    "name": "dev-gcp:othernamespace:app-a",
-    "clientId": "381ce452-1d49-49df-9e7e-990ef0328d6c"
-  },
-  {
-    "name": "dev-gcp:aura:app-b",
-    "clientId": "048eb0e8-e18a-473a-a87d-dfede7c65d84"
-  }
-]
-```
-
-#### `AZURE_APP_TENANT_ID`
-
-The tenant ID for which the application resides in.
-
-Example value:
-
-```
-77678b69-1daf-47b6-9072-771d270ac800
-```
-
-#### `AZURE_APP_WELL_KNOWN_URL`
-
-The well-known URL with the tenant for which the application resides in.
-
-Example value:
-
-```
-https://login.microsoftonline.com/77678b69-1daf-47b6-9072-771d270ac800/v2.0/.well-known/openid-configuration
-```
+The keys and values contained in the secret are described here: <https://doc.nais.io/security/auth/azure-ad/usage/#runtime-variables-credentials>,
+with the only notable difference being `AZURE_APP_PRE_AUTHORIZED_APPS` which in this case refers to applications defined in `spec.preAuthorizedApplications[]`.
 
 ## 4 Deletion
 
@@ -375,8 +273,4 @@ The associated application is deleted from Azure Active Directory whenever the r
 
 OwnerReferences for the aforementioned child resources are also registered and should accordingly be automatically garbage collected.
 
-One can prevent deletion of the resource in Azure AD by applying the annotation `azure.nais.io/preserve=true`. 
-
-[authenticating to Azure AD with a certificate]: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#second-case-access-token-request-with-a-certificate
-
-[authenticating the application to Azure AD]: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow#first-case-access-token-request-with-a-shared-secret
+One can prevent deletion of the resource in Azure AD by applying the annotation `azure.nais.io/preserve=true`.

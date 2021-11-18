@@ -29,12 +29,12 @@ See [lifecycle](./docs/lifecycle.md) for details.
 
 [overview]: ./docs/sequence.svg "Sequence diagram"
 
-## Development
+## Usage
 
 ### Installation
 
 ```shell script
-kubectl apply -f <path to CRD from liberator>
+make install
 ```
 
 ### Azure AD Setup
@@ -60,7 +60,65 @@ Look for an Enterprise Application that has an _Application ID_ equal to `000000
 
 ### Configuration
 
-Set up the required environment variables as per the [config](./pkg/config/config.go).
+Azurerator can be configured using either command-line flags or equivalent environment variables (i.e. `-`, `.` -> `_`
+and uppercase), with `AZURERATOR_` as prefix. E.g.:
+
+```text
+azure.auth.client-id -> AZURERATOR_AZURE_AUTH_CLIENT_ID
+```
+
+The following flags are available:
+
+```shell
+--azure.auth.client-id string                                       Client ID for Azure AD authentication
+--azure.auth.client-secret string                                   Client secret for Azure AD authentication
+--azure.delay.between-modifications duration                        Delay between modification operations to the Graph API. (default 3s)
+--azure.features.app-role-assignment-required.enabled               Feature toggle to enable 'appRoleAssignmentRequired' for service principals.
+--azure.features.claims-mapping-policies.all-custom-claims string   Claims-mapping policy ID for all custom claims, i.e. NavIdent and azp_name
+--azure.features.claims-mapping-policies.azp_name string            Claims-mapping policy ID for azp_name (authorized party name, i.e. displayName for the requesting application)
+--azure.features.claims-mapping-policies.enabled                    Feature toggle for assigning custom claims-mapping policies to a service principal
+--azure.features.claims-mapping-policies.navident string            Claims-mapping policy ID for NavIdent
+--azure.features.cleanup-orphans.enabled                            Feature toggle to enable cleanup of orphaned resources.
+--azure.features.group-membership-claim.default string              Default group membership claim for Azure AD apps. (default "ApplicationGroup")
+--azure.features.groups-assignment.all-users-group-id string        Group ID that contains all users in the tenant. Assigned to all application by default unless overridden by user in the custom resource.
+--azure.features.groups-assignment.enabled                          Feature toggle for assigning explicitly specified groups to applications
+--azure.features.teams-management.enabled                           Feature toggle for assigning owners of matching teams to owners of applications
+--azure.features.teams-management.service-principal-id string       Service Principal ID for teams management application containing team groups
+--azure.pagination.max-pages int                                    Max number of pages to fetch when fetching paginated resources from the Graph API. (default 1000)
+--azure.permissiongrant-resource-id string                          Object ID for Graph API permissions grant ('GraphAggregatorService' or 'Microsoft Graph' in Enterprise Applications under 'Microsoft Applications')
+--azure.tenant.id string                                            Tenant ID for Azure AD
+--azure.tenant.name string                                          Alias/name of tenant for Azure AD
+--cluster-name string                                               The cluster in which this application should run
+--controller.context-timeout duration                               Context timeout for the reconciliation loop in the controller. (default 5m0s)
+--kafka.brokers strings                                             Comma-separated list of Kafka brokers, HOST:PORT. (default [localhost:9092])
+--kafka.enabled                                                     Toggle for enabling Kafka to allow synchronization of events between Azurerator instances.
+--kafka.max-processing-time duration                                Maximum processing time of Kafka messages. (default 10s)
+--kafka.retry-interval duration                                     Retry interval for Kafka operations. (default 5s)
+--kafka.tls.ca-path string                                          Path to Kafka TLS CA certificate.
+--kafka.tls.certificate-path string                                 Path to Kafka TLS certificate.
+--kafka.tls.enabled                                                 Use TLS for connecting to Kafka.
+--kafka.tls.private-key-path string                                 Path to Kafka TLS private key.
+--kafka.topic string                                                Name of the Kafka topic that Azurerator should use. (default "azurerator-events")
+--leader-election.enabled                                           Leader election toggle.
+--leader-election.namespace string                                  Leader election namespace.
+--metrics-address string                                            The address the metric endpoint binds to. (default ":8080")
+--secret-rotation.max-age duration                                  Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed. (default 2880h0m0s)
+--validations.tenant.required                                       If true, will only process resources that have a tenant defined in the spec
+```
+
+At minimum, the following configuration should be provided:
+
+- `azure.auth.client-id`
+- `azure.auth.client-secret`
+- `azure.permissiongrant-resource-id`
+- `azure.tenant.id`
+- `azure.tenant.name`
+- `cluster-name`
+
+Equivalently, one can specify these properties using JSON, TOML, YAML, HCL, envfile and Java properties config files.
+Azurerator looks for a file named `azurerator.<ext>` in the directories [`.`, `/etc/azurerator/`].
+
+Example configuration in YAML:
 
 ```yaml
 # ./azurerator.yaml
@@ -70,33 +128,23 @@ azure:
     client-id: ""
     client-secret: ""
   tenant:
-    id: "726d6769-7efc-4578-990a-f483ec2ec2d3"
-    name: "local.test"
+    id: ""
+    name: "local.test" # e.g. your domain
   permissiongrant-resource-id: ""
-  features:
-    claims-mapping-policies:
-      enabled: false
-      navident: ""
-    teams-management:
-      enabled: false
-      service-principal-id: ""
-    groups-assignment:
-      enabled: false
-      all-users-group-id: ""
-validations:
-  tenant:
-    required: false
-cluster-name: local
-debug: true
-secret-rotation:
-  max-age: 168h
+cluster-name: minikube
 ```
 
-Then, assuming you have a Kubernetes cluster running locally (e.g.
+## Development
+
+After configuration, assuming you have a Kubernetes cluster running locally (e.g.
 using [minikube](https://github.com/kubernetes/minikube)):
 
 ```shell script
 ulimit -n 4096  # for controller-gen
-make run
-kubectl apply -f ./config/samples/AzureAdApplication.yaml
+make run # starts the controller
+
+# in another terminal, apply an AzureAdApplication resource
+make sample
 ```
+
+Kubebuilder is required for running the tests. Install with `make kubebuilder`.
