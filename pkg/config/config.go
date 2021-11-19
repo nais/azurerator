@@ -121,7 +121,8 @@ type LeaderElection struct {
 }
 
 type SecretRotation struct {
-	MaxAge time.Duration `json:"max-age"`
+	MaxAge  time.Duration `json:"max-age"`
+	Cleanup bool          `json:"cleanup"`
 }
 
 type Validations struct {
@@ -174,6 +175,7 @@ const (
 
 	ValidationsTenantRequired = "validations.tenant.required"
 	SecretRotationMaxAge      = "secret-rotation.max-age"
+	SecretRotationCleanup     = "secret-rotation.cleanup"
 )
 
 func bindNAIS() {
@@ -248,6 +250,7 @@ func init() {
 	flag.String(LeaderElectionNamespace, "", "Leader election namespace.")
 
 	flag.Duration(SecretRotationMaxAge, 120*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
+	flag.Bool(SecretRotationCleanup, true, "Clean up unused credentials in Azure AD after rotation.")
 }
 
 // PrintAllExcept prints out all configuration options except secret stuff.

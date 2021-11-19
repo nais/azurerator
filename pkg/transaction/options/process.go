@@ -24,6 +24,7 @@ func (b optionsBuilder) Process() (ProcessOptions, error) {
 	needsAzureSynchronization := hashChanged || hasResynchronizeAnnotation
 	hasValidSecrets := !hasExpiredSecrets && tenantUnchanged && b.secrets.Credentials.Valid && b.secrets.Credentials.Set != nil
 	needsSecretRotation := secretNameChanged || hasRotateAnnotation
+	needsCleanup := !needsSecretRotation && !instance.Spec.SecretProtected && b.config.SecretRotation.Cleanup
 
 	return ProcessOptions{
 		Synchronize: needsSynchronization,
@@ -32,8 +33,9 @@ func (b optionsBuilder) Process() (ProcessOptions, error) {
 			CleanupOrphans: b.config.Azure.Features.CleanupOrphans.Enabled,
 		},
 		Secret: SecretOptions{
-			Rotate: needsSecretRotation,
-			Valid:  hasValidSecrets,
+			Rotate:  needsSecretRotation,
+			Valid:   hasValidSecrets,
+			Cleanup: needsCleanup,
 		},
 	}, nil
 }
@@ -50,6 +52,7 @@ type AzureOptions struct {
 }
 
 type SecretOptions struct {
-	Rotate bool
-	Valid  bool
+	Rotate  bool
+	Valid   bool
+	Cleanup bool
 }

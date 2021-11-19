@@ -250,8 +250,10 @@ In order to ensure zero downtime when rotating credentials, the following algori
 4. Any other key registered in Azure AD not matching the above will be revoked, i.e. any key deemed to be unused.
 
 Additionally, during reconciliation of the resource, the operator will attempt to add a new set of credentials to the application 
-if it detects that the period between last rotation and now is greater than the configured `secret-rotation.max-age` property (defaults to 4 months).
-If added, it will update the existing Kubernetes Secret.
+if it detects that the period between last rotation and now is greater than the configured `secret-rotation.max-age` property (defaults to 120 days).
+If added, the existing Kubernetes Secret will be updated in-place - which means that you're responsible for restarting any Pods using this Secret.
+
+The previous set of credentials are also revoked in Azure AD about 5 minutes later. This can be disabled by setting the `secret-rotation.cleanup` flag to `false`.
 
 If your use case involves usage of these credentials outside the context of Kubernetes (e.g. for legacy infrastructure) - i.e. you have no matching pods that mounts or refers to the secret -
 you should specify `.spec.secretProtected=true` to ensure that Azurerator does not revoke credentials that it would otherwise deem to be unused.
