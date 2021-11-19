@@ -2,6 +2,7 @@ package group
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +16,10 @@ import (
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/transaction"
+)
+
+var (
+	BadRequestError = errors.New("BadRequest")
 )
 
 type Groups interface {
@@ -104,6 +109,10 @@ func (g group) getGroupsFromClaims(tx transaction.Transaction) (resource.Resourc
 	for _, group := range tx.Instance.Spec.Claims.Groups {
 		exists, groupResult, err := g.getById(tx, group.ID)
 		if err != nil {
+			if errors.Is(err, BadRequestError) {
+				tx.Log.Warnf("skipping assignment for group %s: %+v", group, err)
+				continue
+			}
 			return nil, fmt.Errorf("getting group '%s': %w", group, err)
 		}
 
@@ -152,6 +161,10 @@ func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *ms
 	res, err := g.HttpClient().Do(req)
 	if err != nil {
 		return false, nil, fmt.Errorf("performing http request: %w", err)
+	}
+
+	if res.StatusCode == 400 {
+		return false, nil, fmt.Errorf("%w: %s", BadRequestError, err.Error())
 	}
 
 	defer res.Body.Close()
