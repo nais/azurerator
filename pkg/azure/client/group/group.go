@@ -165,12 +165,12 @@ func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *ms
 
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return false, nil, fmt.Errorf("reading server response: %w", err)
-	}
-
 	if res.StatusCode == 400 {
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return false, nil, fmt.Errorf("reading server response: %w", err)
+		}
+
 		return false, nil, fmt.Errorf("%w: %s", BadRequestError, body)
 	}
 
