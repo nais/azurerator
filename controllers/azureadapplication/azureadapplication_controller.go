@@ -121,7 +121,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return r.HandleError(*tx, err)
 	}
 
-	if !tx.Options.Process.Secret.Rotate {
+	if !tx.Options.Process.Secret.Rotate && !tx.Instance.Spec.SecretProtected {
 		err = r.Azure().DeleteUnusedCredentials(*tx)
 		if err != nil {
 			return r.HandleError(*tx, err)

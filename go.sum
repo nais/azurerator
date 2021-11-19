@@ -444,6 +444,10 @@ github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRW
 github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f/go.mod h1:ZdcZmHo+o7JKHSa8/e818NopupXU1YMK5fe1lsApnBw=
 github.com/nais/liberator v0.0.0-20211103122448-66b116f3d55a h1:VXQytvjVQrsdt0OLnrX9DSG7HGRLwuud9i04lg2/zqQ=
 github.com/nais/liberator v0.0.0-20211103122448-66b116f3d55a/go.mod h1:AjfPx+WVWt8qKe1IFOSAAH5Im4qD5pMnxzw+SDn3rP8=
+github.com/nais/liberator v0.0.0-20211119074305-9368103224d9 h1:hrXe+2tmXdqmQGFdqmm9ZxRLwnqC1E8Ej1Wxthj7glI=
+github.com/nais/liberator v0.0.0-20211119074305-9368103224d9/go.mod h1:AjfPx+WVWt8qKe1IFOSAAH5Im4qD5pMnxzw+SDn3rP8=
+github.com/nais/liberator v0.0.0-20211119120335-ea4a15f86a2c h1:gNdEZXv01OP+Bpth84JILQFx6jLSeLRknNx4ObMt6sU=
+github.com/nais/liberator v0.0.0-20211119120335-ea4a15f86a2c/go.mod h1:AjfPx+WVWt8qKe1IFOSAAH5Im4qD5pMnxzw+SDn3rP8=
 github.com/nais/msgraph.go v0.1.5 h1:Sf9/DUZ8mMipgG2bDE249mHTo8E9qV8tBJpAbuuQsJw=
 github.com/nais/msgraph.go v0.1.5/go.mod h1:WhEs+KY7Nrt3rpUZwCpSKtwy2CiL+YG+OJ+vhh2/ZMU=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=

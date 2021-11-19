@@ -22,6 +22,7 @@ The following is a short overview of operations performed.
     - [1.7 Owner Assignment](#17-owner-assignment)
     - [1.8 Group Assignment](#18-group-assignment)
     - [1.9 Single-Page Applications](#19-single-page-applications)
+    - [1.10 Principal Assignment Required](#110-principal-assignment-required)
 - [2 Existing applications](#2-existing-applications)
     - [2.1 Credential Rotation](#21-credential-rotation)
 - [3 Cluster Resources](#3-cluster-resources)
@@ -157,8 +158,8 @@ See <https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissi
 During application registration, a set of application secrets (or 'passwords') as well as self-signed certificates are
 generated and assigned as valid authentication credentials for the application.
 
-The validity for these are by default set to one (1) year, however the operator also has built-in support for rotation
-of these credentials.
+The validity for these are by default set to one (1) year, however the operator also has [built-in support for rotation
+of these credentials](#21-credential-rotation).
 
 The unique identifiers (which can be looked up within Azure AD) for these keys are stored in the Status subresource for
 the resource, i.e. in the fields:
@@ -244,14 +245,16 @@ In order to ensure zero downtime when rotating credentials, the following algori
 
 1. A new set of credentials is added to the application in Azure AD.
 2. If the application only has a single set of registered credentials in Azure, then these will not be revoked.
-3. The previous newest set of credentials will not be revoked.
-4. Any set of credentials that exist in `corev1.Secret` resources in use by matching pods (i.e. pods with the label `app=<metadata.name>`) will not be
+3. Any set of credentials that exist in `corev1.Secret` resources in use by matching pods (i.e. pods with the label `app=<metadata.name>`) will not be
    revoked.
-5. Any other key registered in Azure AD not matching the above will be revoked, i.e. any key deemed to be unused.
+4. Any other key registered in Azure AD not matching the above will be revoked, i.e. any key deemed to be unused.
 
 Additionally, during reconciliation of the resource, the operator will attempt to add a new set of credentials to the application 
 if it detects that the period between last rotation and now is greater than the configured `secret-rotation.max-age` property (defaults to 4 months).
 If added, it will update the existing Kubernetes Secret.
+
+If your use case involves usage of these credentials outside the context of Kubernetes (e.g. for legacy infrastructure) - i.e. you have no matching pods that mounts or refers to the secret -
+you should specify `.spec.secretProtected=true` to ensure that Azurerator does not revoke credentials that it would otherwise deem to be unused.
 
 ## 3 Cluster Resources
 
