@@ -163,11 +163,16 @@ func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *ms
 		return false, nil, fmt.Errorf("performing http request: %w", err)
 	}
 
-	if res.StatusCode == 400 {
-		return false, nil, fmt.Errorf("%w: %s", BadRequestError, err.Error())
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return false, nil, fmt.Errorf("reading server response: %w", err)
 	}
 
-	defer res.Body.Close()
+	if res.StatusCode == 400 {
+		return false, nil, fmt.Errorf("%w: %s", BadRequestError, body)
+	}
 
 	var group *msgraph.Group
 	exists, err := g.decodeJsonResponseForGetRequest(res, &group)
