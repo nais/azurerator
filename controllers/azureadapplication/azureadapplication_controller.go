@@ -2,6 +2,7 @@ package azureadapplication
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -18,6 +19,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -187,7 +189,7 @@ func (r *Reconciler) Process(tx transaction.Transaction) error {
 
 	err = r.Secrets().Process(tx, applicationResult)
 	if err != nil {
-		return fmt.Errorf("while processing secrets: %w", err)
+		return fmt.Errorf("processing secrets: %w", err)
 	}
 
 	return nil
@@ -198,8 +200,29 @@ func (r *Reconciler) HandleError(tx transaction.Transaction, err error) (ctrl.Re
 	r.ReportEvent(tx, corev1.EventTypeWarning, v1.EventFailedSynchronization, "Failed to synchronize AzureAdApplication")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.Instance.Namespace)
 
-	r.ReportEvent(tx, corev1.EventTypeNormal, v1.EventRetrying, "Retrying synchronization")
-	return ctrl.Result{Requeue: true}, nil
+	requeue := true
+	if r.isUnrecoverableError(tx, err) {
+		requeue = false
+	} else {
+		r.ReportEvent(tx, corev1.EventTypeNormal, v1.EventRetrying, "Retrying synchronization")
+	}
+
+	return ctrl.Result{Requeue: requeue}, nil
+}
+
+func (r *Reconciler) isUnrecoverableError(tx transaction.Transaction, err error) bool {
+	var alreadyOwnedErr *controllerutil.AlreadyOwnedError
+	// this happens only if multiple instances of AzureAdApplication attempt to use the same secret name.
+	// we don't want to retry these.
+	if errors.As(err, &alreadyOwnedErr) {
+		template := "Secret '%s' is already owned by %s '%s', cannot overwrite. If overwriting is intended, delete the secret and resynchronize."
+		msg := fmt.Sprintf(template, alreadyOwnedErr.Object.GetName(), alreadyOwnedErr.Owner.Kind, alreadyOwnedErr.Owner.Name)
+
+		r.ReportEvent(tx, corev1.EventTypeWarning, v1.EventFailedSynchronization, msg)
+		return true
+	}
+
+	return false
 }
 
 func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {

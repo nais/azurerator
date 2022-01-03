@@ -139,7 +139,7 @@ func (s secretsReconciler) createOrUpdate(tx transaction.Transaction, result res
 
 	stringData, err := secrets.SecretData(result, set, s.azureOpenIdConfig, tx.Secrets.DataKeys)
 	if err != nil {
-		return fmt.Errorf("while creating secret data for secret '%s': %w", secretName, err)
+		return fmt.Errorf("creating secret data for secret '%s': %w", secretName, err)
 	}
 
 	secretMutateFn := func() error {
