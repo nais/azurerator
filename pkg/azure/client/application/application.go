@@ -107,7 +107,7 @@ func (a application) Register(tx transaction.Transaction) (*msgraph.Application,
 	scopes := a.OAuth2PermissionScopes().DescribeCreate(desiredPermissions)
 	scopes.Log(tx.Log)
 
-	redirectUris := util.GetReplyUrlsStringSlice(tx.Instance)
+	redirectUris := redirecturi.ReplyUrlsToStringSlice(tx.Instance)
 
 	optionalClaims := a.OptionalClaims().DescribeCreate()
 

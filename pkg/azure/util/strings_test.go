@@ -19,38 +19,6 @@ func TestDisplayName(t *testing.T) {
 	})
 }
 
-func TestGetReplyUrlsStringSlice(t *testing.T) {
-	t.Run("Empty Application should return empty slice of reply URLs", func(t *testing.T) {
-		p := v1.AzureAdApplication{}
-		actual := GetReplyUrlsStringSlice(p)
-		assert.Empty(t, actual)
-	})
-
-	t.Run("Application with reply URL should return equivalent string slice of reply URLs", func(t *testing.T) {
-		url := "http://test.host/callback"
-		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{ReplyUrls: []v1.AzureAdReplyUrl{{Url: url}}}}
-		actual := GetReplyUrlsStringSlice(p)
-		assert.NotEmpty(t, actual)
-		assert.Len(t, actual, 1)
-		assert.Contains(t, actual, url)
-	})
-
-	t.Run("Application with duplicate reply URLs should return set of reply URLs", func(t *testing.T) {
-		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{
-			ReplyUrls: []v1.AzureAdReplyUrl{
-				{Url: "https://test.host/callback"},
-				{Url: "https://test.host/callback"},
-				{Url: "https://test.host/other-callback"},
-				{Url: "https://test.host/other-callback"},
-			},
-		}}
-		actual := GetReplyUrlsStringSlice(p)
-		assert.NotEmpty(t, actual)
-		assert.Len(t, actual, 2)
-		assert.ElementsMatch(t, actual, []string{"https://test.host/callback", "https://test.host/other-callback"})
-	})
-}
-
 func TestFilters(t *testing.T) {
 	p := "test"
 	cases := []struct {

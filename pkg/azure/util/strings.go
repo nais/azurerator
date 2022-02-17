@@ -9,16 +9,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/transaction"
-	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
-
-func GetReplyUrlsStringSlice(resource v1.AzureAdApplication) []string {
-	replyUrls := make([]string, 0)
-	for _, v := range resource.Spec.ReplyUrls {
-		replyUrls = append(replyUrls, v.Url)
-	}
-	return stringutils.RemoveDuplicates(replyUrls)
-}
 
 func IdentifierUriClientId(id azure.ClientId) string {
 	return fmt.Sprintf("api://%s", id)

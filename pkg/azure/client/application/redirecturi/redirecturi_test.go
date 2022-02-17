@@ -88,6 +88,64 @@ func TestRedirectUriApp(t *testing.T) {
 	})
 }
 
+func TestGetReplyUrlsStringSlice(t *testing.T) {
+	t.Run("Empty Application should return empty slice of reply URLs", func(t *testing.T) {
+		p := v1.AzureAdApplication{}
+		actual := redirecturi.ReplyUrlsToStringSlice(p)
+		assert.Empty(t, actual)
+	})
+
+	t.Run("Application with reply URL should return equivalent string slice of reply URLs", func(t *testing.T) {
+		url := "https://test.host/callback"
+		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{ReplyUrls: []v1.AzureAdReplyUrl{{Url: url}}}}
+		actual := redirecturi.ReplyUrlsToStringSlice(p)
+		assert.NotEmpty(t, actual)
+		assert.Len(t, actual, 1)
+		assert.Contains(t, actual, url)
+	})
+
+	t.Run("Application with duplicate reply URLs should return set of reply URLs", func(t *testing.T) {
+		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{
+			ReplyUrls: []v1.AzureAdReplyUrl{
+				{Url: "https://test.host/callback"},
+				{Url: "https://test.host/callback"},
+				{Url: "https://test.host/other-callback"},
+				{Url: "https://test.host/other-callback"},
+			},
+		}}
+		actual := redirecturi.ReplyUrlsToStringSlice(p)
+		assert.NotEmpty(t, actual)
+		assert.Len(t, actual, 2)
+		assert.ElementsMatch(t, actual, []string{"https://test.host/callback", "https://test.host/other-callback"})
+	})
+
+	t.Run("Application with invalid URLs should return only valid URLs", func(t *testing.T) {
+		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{
+			ReplyUrls: []v1.AzureAdReplyUrl{
+				{Url: "https://test.host/callback"},
+				{Url: "https://test.host/oauth2/callback"},
+				{Url: "http://localhost/oauth2/callback"},
+				{Url: "http://localhost:8080/oauth2/callback"},
+				{Url: "http://127.0.0.1/oauth2/callback"},
+				{Url: "http://127.0.0.1:8080/oauth2/callback"},
+				{Url: "https://https://test.host/callback"},
+				{Url: `https://test."host/other-callback"`},
+			},
+		}}
+		actual := redirecturi.ReplyUrlsToStringSlice(p)
+		assert.NotEmpty(t, actual)
+		assert.Len(t, actual, 6)
+		assert.ElementsMatch(t, actual, []string{
+			"https://test.host/callback",
+			"https://test.host/oauth2/callback",
+			"http://localhost/oauth2/callback",
+			"http://localhost:8080/oauth2/callback",
+			"http://127.0.0.1/oauth2/callback",
+			"http://127.0.0.1:8080/oauth2/callback",
+		})
+	})
+}
+
 func assertJson(t *testing.T, input interface{}, expected string) {
 	j, _ := json.Marshal(input)
 	assert.JSONEq(t, expected, string(j))

@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/Shopify/sarama v1.30.0
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/go-logr/zapr v0.4.0
 	github.com/google/uuid v1.3.0
 	github.com/mitchellh/mapstructure v1.4.2

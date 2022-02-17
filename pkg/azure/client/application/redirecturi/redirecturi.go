@@ -3,12 +3,13 @@ package redirecturi
 import (
 	"context"
 
+	"github.com/asaskevich/govalidator"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/transaction"
-	"github.com/nais/azureator/pkg/azure/util"
+	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
 // Workaround to include empty array of RedirectUris in JSON serialization.
@@ -42,12 +43,23 @@ func (r redirectUri) Update(tx transaction.Transaction) error {
 }
 
 func App(instance v1.AzureAdApplication) interface{} {
-	redirectUris := util.GetReplyUrlsStringSlice(instance)
+	redirectUris := ReplyUrlsToStringSlice(instance)
 
 	if instance.Spec.SinglePageApplication != nil && *instance.Spec.SinglePageApplication {
 		return singlePageApp(redirectUris)
 	}
 	return webApp(redirectUris)
+}
+
+func ReplyUrlsToStringSlice(resource v1.AzureAdApplication) []string {
+	replyUrls := make([]string, 0)
+	for _, v := range resource.Spec.ReplyUrls {
+		ok := govalidator.IsURL(v.Url)
+		if ok {
+			replyUrls = append(replyUrls, v.Url)
+		}
+	}
+	return stringutils.RemoveDuplicates(replyUrls)
 }
 
 func webApp(redirectUris []string) interface{} {
