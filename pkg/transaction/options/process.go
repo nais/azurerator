@@ -25,7 +25,6 @@ func (b optionsBuilder) Process() (ProcessOptions, error) {
 	hasValidSecrets := !hasExpiredSecrets && tenantUnchanged && b.secrets.Credentials.Valid && b.secrets.Credentials.Set != nil
 	needsSecretRotation := secretNameChanged || hasRotateAnnotation
 	needsCleanup := !needsSecretRotation && !instance.Spec.SecretProtected && b.config.SecretRotation.Cleanup
-	// TODO - when moving clusters, resync all apps first to ensure new secretname, then ensure SecretRotation.Cleanup is disabled
 
 	return ProcessOptions{
 		Synchronize: needsSynchronization,
