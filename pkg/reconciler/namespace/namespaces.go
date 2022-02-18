@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +28,7 @@ func NewNamespaceReconciler(reconciler reconciler.AzureAdApplication, client cli
 }
 
 var (
-	namespaceCache = make(map[string]corev1.Namespace)
+	namespaceCache = sync.Map{}
 )
 
 const (
@@ -76,19 +77,19 @@ func (n namespaceReconciler) Process(tx *transaction.Transaction) (bool, error) 
 func (n namespaceReconciler) inSharedNamespace(tx *transaction.Transaction) (bool, error) {
 	namespaceName := tx.Instance.GetNamespace()
 
-	namespace, found := namespaceCache[namespaceName]
+	namespace, found := namespaceCache.Load(namespaceName)
 
 	var err error
 
 	if !found {
 		namespace, err = n.getNamespace(tx.Ctx, namespaceName)
-		namespaceCache[namespaceName] = namespace
+		namespaceCache.Store(namespaceName, namespace)
 	}
 	if err != nil {
 		return false, fmt.Errorf("fetching namespace: %w", err)
 	}
 
-	return n.isSharedNamespace(namespace)
+	return n.isSharedNamespace(namespace.(corev1.Namespace))
 }
 
 func (n namespaceReconciler) getNamespace(ctx context.Context, namespaceName string) (corev1.Namespace, error) {

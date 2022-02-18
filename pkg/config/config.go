@@ -96,7 +96,8 @@ type GroupMembershipClaim struct {
 }
 
 type Controller struct {
-	ContextTimeout time.Duration `json:"context-timeout"`
+	ContextTimeout          time.Duration `json:"context-timeout"`
+	MaxConcurrentReconciles int           `json:"max-concurrent-reconciles"`
 }
 
 type KafkaConfig struct {
@@ -154,7 +155,8 @@ const (
 	AzureDelayBetweenModifications                    = "azure.delay.between-modifications"
 	AzurePaginationMaxPages                           = "azure.pagination.max-pages"
 
-	ControllerContextTimeout = "controller.context-timeout"
+	ControllerContextTimeout          = "controller.context-timeout"
+	ControllerMaxConcurrentReconciles = "controller.max-concurrent-reconciles"
 
 	KafkaEnabled           = "kafka.enabled"
 	KafkaBrokers           = "kafka.brokers"
@@ -235,6 +237,7 @@ func init() {
 	flag.Bool(ValidationsTenantRequired, false, "If true, will only process resources that have a tenant defined in the spec")
 
 	flag.Duration(ControllerContextTimeout, 5*time.Minute, "Context timeout for the reconciliation loop in the controller.")
+	flag.Int(ControllerMaxConcurrentReconciles, 10, "Max concurrent reconciles.")
 
 	flag.Bool(KafkaEnabled, false, "Toggle for enabling Kafka to allow synchronization of events between Azurerator instances.")
 	flag.String(KafkaTopic, "azurerator-events", "Name of the Kafka topic that Azurerator should use.")
