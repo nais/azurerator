@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
@@ -12,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/nais/azureator/pkg/labels"
+	"github.com/nais/azureator/pkg/retry"
 )
 
 const (
@@ -129,15 +131,32 @@ func New(reader client.Reader) Metrics {
 }
 
 func (m metrics) InitWithNamespaceLabels() {
-	ns, err := kubernetes.ListNamespaces(context.Background(), m.reader)
-	if err != nil {
-		log.Errorf("failed to list namespaces: %v", err)
+	var ns corev1.NamespaceList
+	var err error
+
+	retryable := func(ctx context.Context) error {
+		ns, err = kubernetes.ListNamespaces(context.Background(), m.reader)
+		if err != nil {
+			return retry.RetryableError(fmt.Errorf("listing namespaces: %w", err))
+		}
+		return nil
 	}
+
+	err = retry.Fibonacci(1*time.Second).
+		WithMaxDuration(1*time.Minute).
+		Do(context.Background(), retryable)
+
+	if err != nil {
+		log.Error(err)
+	}
+
 	for _, n := range ns.Items {
 		for _, c := range AllCounters {
 			c.WithLabelValues(n.Name).Add(0)
 		}
 	}
+
+	log.Infof("metrics with namespace labels initialized")
 }
 
 func (m metrics) Refresh(ctx context.Context) {
