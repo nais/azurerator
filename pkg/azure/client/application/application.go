@@ -131,7 +131,6 @@ func (a application) Register(tx transaction.Transaction) (*msgraph.Application,
 func (a application) Update(tx transaction.Transaction) (*msgraph.Application, error) {
 	objectId := tx.Instance.GetObjectId()
 	clientId := tx.Instance.GetClientId()
-	identifierUris := util.IdentifierUris(tx)
 
 	actualApp, err := a.GetByClientId(tx.Ctx, clientId)
 	if err != nil {
@@ -148,8 +147,8 @@ func (a application) Update(tx transaction.Transaction) (*msgraph.Application, e
 	scopes := a.OAuth2PermissionScopes().DescribeUpdate(desiredPermissions, existingScopes)
 	scopes.Log(tx.Log)
 
+	identifierUris := identifieruri.DescribeUpdate(tx.Instance, actualApp.IdentifierUris)
 	optionalClaims := a.OptionalClaims().DescribeUpdate(actualApp)
-
 	builder := util.Application(a.defaultTemplate(tx.Instance)).
 		AppRoles(roles.GetResult()).
 		IdentifierUriList(identifierUris).

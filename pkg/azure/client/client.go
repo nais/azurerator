@@ -13,6 +13,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application"
+	"github.com/nais/azureator/pkg/azure/client/application/identifieruri"
 	"github.com/nais/azureator/pkg/azure/client/group"
 	"github.com/nais/azureator/pkg/azure/client/oauth2permissiongrant"
 	"github.com/nais/azureator/pkg/azure/client/preauthorizedapp"
@@ -126,8 +127,9 @@ func (c Client) Create(tx transaction.Transaction) (*result.Application, error) 
 
 	tx = tx.UpdateWithServicePrincipalID(servicePrincipal)
 
+	identifierUris := identifieruri.DescribeCreate(tx.Instance)
 	err = doRetry(tx.Ctx, func(ctx context.Context) error {
-		err := c.Application().IdentifierUri().Set(tx)
+		err := c.Application().IdentifierUri().Set(tx, identifierUris)
 		return retry.RetryableError(err)
 	})
 	if err != nil {
