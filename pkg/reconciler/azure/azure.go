@@ -177,14 +177,11 @@ func (a azureReconciler) AddCredentials(tx transaction.Transaction, keyIdsInUse 
 }
 
 func (a azureReconciler) DeleteUnusedCredentials(tx transaction.Transaction) error {
-	tx.Logger.Debug("deleting unused credentials for Azure application...")
-
 	err := a.azureClient.Credentials().DeleteUnused(tx.ToAzureTx(), *tx.Secrets.Credentials.Set, tx.Secrets.KeyIdsInUse)
 	if err != nil {
 		return fmt.Errorf("deleting unused credentials for Azure application: %w", err)
 	}
 
-	tx.Logger.Debug("successfully deleted unused credentials for Azure application")
 	return nil
 }
 
@@ -230,7 +227,6 @@ func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, 
 		return false, nil
 	}
 
-	tx.Logger.Debug("validating existing credentials for Azure application...")
 	valid, err := a.azureClient.Credentials().Validate(tx.ToAzureTx(), *tx.Secrets.Credentials.Set)
 	if err != nil {
 		return false, err

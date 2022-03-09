@@ -189,7 +189,10 @@ func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction, keyIdsInU
 	for _, keyCredential := range application.KeyCredentials {
 		if keyCredentialInUse(keyCredential, keyIdsInUse) {
 			keyCredentialsInUse = append(keyCredentialsInUse, keyCredential)
+		} else if keyCredential.DisplayName != nil && keyCredential.KeyID != nil {
+			tx.Log.Debugf("revoking ununsed key credential '%s' (ID: %s)", *keyCredential.DisplayName, *keyCredential.KeyID)
 		}
+
 		if newestCredential.StartDateTime == nil || keyCredential.StartDateTime.After(*newestCredential.StartDateTime) {
 			newestCredential = keyCredential
 		}

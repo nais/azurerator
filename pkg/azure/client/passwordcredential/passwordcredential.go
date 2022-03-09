@@ -67,6 +67,10 @@ func (p passwordCredential) DeleteUnused(tx transaction.Transaction, existing cr
 
 	revocationCandidates := p.revocationCandidates(app, passwordKeyIdsInUse)
 	for _, cred := range revocationCandidates {
+		if cred.DisplayName != nil && cred.KeyID != nil {
+			tx.Log.Debugf("revoking ununsed password credential '%s' (ID: %s)", *cred.DisplayName, *cred.KeyID)
+		}
+
 		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
 			return err
 		}
