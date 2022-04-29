@@ -48,14 +48,14 @@ func TestNewGenerateId(t *testing.T) {
 }
 
 func TestDefaultRole(t *testing.T) {
-	id := msgraph.UUID(approle.DefaultAppRoleId)
+	id := msgraph.UUID(permissions.DefaultAppRoleId)
 	expected := msgraph.AppRole{
 		AllowedMemberTypes: []string{"Application"},
-		Description:        ptr.String(approle.DefaultAppRoleValue),
-		DisplayName:        ptr.String(approle.DefaultAppRoleValue),
+		Description:        ptr.String(permissions.DefaultAppRoleValue),
+		DisplayName:        ptr.String(permissions.DefaultAppRoleValue),
 		ID:                 &id,
 		IsEnabled:          ptr.Bool(true),
-		Value:              ptr.String(approle.DefaultAppRoleValue),
+		Value:              ptr.String(permissions.DefaultAppRoleValue),
 	}
 	actual := approle.DefaultRole()
 
@@ -63,14 +63,14 @@ func TestDefaultRole(t *testing.T) {
 }
 
 func TestDefaultGroupRole(t *testing.T) {
-	id := msgraph.UUID(approle.DefaultGroupRoleId)
+	id := msgraph.UUID(permissions.DefaultGroupRoleId)
 	expected := msgraph.AppRole{
 		AllowedMemberTypes: []string{"Application"},
-		Description:        ptr.String(approle.DefaultGroupRoleValue),
-		DisplayName:        ptr.String(approle.DefaultGroupRoleValue),
+		Description:        ptr.String(permissions.DefaultGroupRoleValue),
+		DisplayName:        ptr.String(permissions.DefaultGroupRoleValue),
 		ID:                 &id,
 		IsEnabled:          ptr.Bool(true),
-		Value:              ptr.String(approle.DefaultGroupRoleValue),
+		Value:              ptr.String(permissions.DefaultGroupRoleValue),
 	}
 	actual := approle.DefaultGroupRole()
 

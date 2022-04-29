@@ -7,7 +7,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
+	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
 )
 
@@ -16,7 +16,7 @@ func TestList_HasResource(t *testing.T) {
 		{
 			AppID: ptr.String("app-1"),
 			DelegatedPermissionIDs: []string{
-				permissionscope.DefaultAccessScopeId,
+				permissions.DefaultPermissionScopeId,
 			},
 		},
 	})

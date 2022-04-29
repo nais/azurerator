@@ -35,7 +35,7 @@ func TestResource_ToPreAuthorizedApp(t *testing.T) {
 	expected := msgraph.PreAuthorizedApplication{
 		AppID: ptr.String("app-1"),
 		DelegatedPermissionIDs: []string{
-			permissionscope.DefaultAccessScopeId,
+			permissions.DefaultPermissionScopeId,
 			string(existingPermissions["scope-1"].ID),
 		},
 	}

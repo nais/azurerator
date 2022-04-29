@@ -42,12 +42,12 @@ func (m Map) ToCreate(desired permissions.Permissions) Map {
 	toCreate := make(Map)
 
 	// ensure default AppRole is created if it doesn't exist
-	if _, found := m[DefaultAppRoleValue]; !found {
-		toCreate[DefaultAppRoleValue] = DefaultRole()
+	if _, found := m[permissions.DefaultAppRoleValue]; !found {
+		toCreate[permissions.DefaultAppRoleValue] = DefaultRole()
 	}
 
 	for _, role := range desired {
-		if role.Name == DefaultAppRoleValue {
+		if role.Name == permissions.DefaultAppRoleValue {
 			continue
 		}
 
@@ -73,8 +73,8 @@ func (m Map) ToDisable(desired permissions.Permissions) Map {
 	}
 
 	// ensure default AppRole is not disabled
-	if _, found := toDisable[DefaultAppRoleValue]; found {
-		delete(toDisable, DefaultAppRoleValue)
+	if _, found := toDisable[permissions.DefaultAppRoleValue]; found {
+		delete(toDisable, permissions.DefaultAppRoleValue)
 	}
 
 	return toDisable

@@ -89,7 +89,7 @@ func TestMap_ToCreate(t *testing.T) {
 		assert.Equal(t, permissionscope.FromPermission(desired["scope-2"]), toCreate["scope-2"])
 		assert.Equal(t, permissionscope.FromPermission(desired["scope-3"]), toCreate["scope-3"])
 		// should not contain default scope
-		assert.Empty(t, toCreate[permissionscope.DefaultAccessScopeValue])
+		assert.Empty(t, toCreate[permissions.DefaultPermissionScopeValue])
 	})
 
 	t.Run("without existing scopes should add default scope", func(t *testing.T) {
@@ -103,7 +103,7 @@ func TestMap_ToCreate(t *testing.T) {
 		// should contain the new scopes to be created
 		assert.Equal(t, permissionscope.FromPermission(desired["scope-1"]), toCreate["scope-1"])
 		// should contain default scope if not in existing
-		assert.Equal(t, permissionscope.DefaultScope(), toCreate[permissionscope.DefaultAccessScopeValue])
+		assert.Equal(t, permissionscope.DefaultScope(), toCreate[permissions.DefaultPermissionScopeValue])
 	})
 }
 

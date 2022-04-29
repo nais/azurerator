@@ -81,7 +81,7 @@ func TestAppRoles_DescribeUpdate(t *testing.T) {
 				DisplayName:        ptr.String("DisplayName"),
 				ID:                 &id,
 				IsEnabled:          ptr.Bool(false),
-				Value:              ptr.String(approle.DefaultAppRoleValue),
+				Value:              ptr.String(permissions.DefaultAppRoleValue),
 			},
 		}
 		roles = approle.NewAppRoles().DescribeUpdate(desired, existing).GetResult()
@@ -90,17 +90,17 @@ func TestAppRoles_DescribeUpdate(t *testing.T) {
 		assertContainsDefaultRoleWithLambda(t, roles, func(t assert.TestingT, expected, actual msgraph.AppRole) {
 			assert.Len(t, actual.AllowedMemberTypes, 1)
 			assert.Contains(t, actual.AllowedMemberTypes, "Application")
-			assert.Equal(t, *actual.Description, approle.DefaultAppRoleValue)
-			assert.Equal(t, *actual.DisplayName, approle.DefaultAppRoleValue)
+			assert.Equal(t, *actual.Description, permissions.DefaultAppRoleValue)
+			assert.Equal(t, *actual.DisplayName, permissions.DefaultAppRoleValue)
 			assert.Equal(t, *actual.ID, id)
 			assert.True(t, *actual.IsEnabled)
-			assert.Equal(t, *actual.Value, approle.DefaultAppRoleValue)
+			assert.Equal(t, *actual.Value, permissions.DefaultAppRoleValue)
 		})
 	})
 
 	t.Run("disabled default role in desired should not actually disable", func(t *testing.T) {
 		desired := make(permissions.Permissions)
-		desired.Add(permissions.NewGenerateIdDisabled(approle.DefaultAppRoleValue))
+		desired.Add(permissions.NewGenerateIdDisabled(permissions.DefaultAppRoleValue))
 
 		existing := make([]msgraph.AppRole, 0)
 		roles := approle.NewAppRoles().DescribeUpdate(desired, existing).GetResult()
@@ -115,7 +115,7 @@ func TestAppRoles_DescribeUpdate(t *testing.T) {
 		role3 := approle.NewGenerateId("role-3")
 
 		desired := make(permissions.Permissions)
-		desired.Add(permissions.NewGenerateIdDisabled(approle.DefaultAppRoleValue))
+		desired.Add(permissions.NewGenerateIdDisabled(permissions.DefaultAppRoleValue))
 		desired.Add(permissions.FromAppRole(role1))
 		desired.Add(permissions.FromAppRole(role2))
 

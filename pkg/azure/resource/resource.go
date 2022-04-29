@@ -5,8 +5,6 @@ import (
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
-	"github.com/nais/azureator/pkg/azure/client/application/approle"
-	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/permissions"
 )
 
@@ -19,11 +17,11 @@ type Resource struct {
 	naisiov1.AccessPolicyInboundRule `json:"-"`
 }
 
-func (r Resource) ToPreAuthorizedApp(permissions permissions.Permissions) msgraph.PreAuthorizedApplication {
+func (r Resource) ToPreAuthorizedApp(actualPermissions permissions.Permissions) msgraph.PreAuthorizedApplication {
 	clientId := r.ClientId
 
 	desiredPermissions := []string{
-		permissionscope.DefaultAccessScopeValue,
+		permissions.DefaultPermissionScopeValue,
 	}
 
 	if r.Permissions != nil {
@@ -32,7 +30,7 @@ func (r Resource) ToPreAuthorizedApp(permissions permissions.Permissions) msgrap
 		}
 	}
 
-	permissionIDs := permissions.
+	permissionIDs := actualPermissions.
 		Filter(desiredPermissions...).
 		PermissionIDs()
 
@@ -91,12 +89,12 @@ func (r Resources) ExtractDesiredAssignees(principalType PrincipalType, role per
 	switch principalType {
 	case PrincipalTypeGroup:
 		// ensure that default group role is assigned to all Groups
-		if role.ID == msgraph.UUID(approle.DefaultGroupRoleId) {
+		if role.ID == msgraph.UUID(permissions.DefaultGroupRoleId) {
 			return r
 		}
 	case PrincipalTypeServicePrincipal:
 		// ensure that default app role is assigned to all ServicePrincipals
-		if role.Name == approle.DefaultAppRoleValue {
+		if role.Name == permissions.DefaultAppRoleValue {
 			return r
 		}
 	}

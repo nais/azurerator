@@ -10,8 +10,8 @@ import (
 
 func EnsureScopesRequireAdminConsent(scopes []msgraph.PermissionScope) []msgraph.PermissionScope {
 	for i := range scopes {
-		if *scopes[i].Type != DefaultScopeType {
-			scopes[i].Type = ptr.String(DefaultScopeType)
+		if *scopes[i].Type != permissions.DefaultScopeType {
+			scopes[i].Type = ptr.String(permissions.DefaultScopeType)
 		}
 	}
 	return scopes
@@ -19,7 +19,7 @@ func EnsureScopesRequireAdminConsent(scopes []msgraph.PermissionScope) []msgraph
 
 func EnsureDefaultScopeIsEnabled(scopes []msgraph.PermissionScope) []msgraph.PermissionScope {
 	for i := range scopes {
-		if *scopes[i].Value == DefaultAccessScopeValue && !*scopes[i].IsEnabled {
+		if *scopes[i].Value == permissions.DefaultPermissionScopeValue && !*scopes[i].IsEnabled {
 			scopes[i].IsEnabled = ptr.Bool(true)
 		}
 	}
@@ -37,14 +37,14 @@ func New(id msgraph.UUID, name string) msgraph.PermissionScope {
 		AdminConsentDisplayName: ptr.String(name),
 		ID:                      &id,
 		IsEnabled:               ptr.Bool(true),
-		Type:                    ptr.String(DefaultScopeType),
+		Type:                    ptr.String(permissions.DefaultScopeType),
 		Value:                   ptr.String(name),
 	}
 }
 
 func DefaultScope() msgraph.PermissionScope {
-	id := msgraph.UUID(DefaultAccessScopeId)
-	return New(id, DefaultAccessScopeValue)
+	id := msgraph.UUID(permissions.DefaultPermissionScopeId)
+	return New(id, permissions.DefaultPermissionScopeValue)
 }
 
 func FromPermission(permission permissions.Permission) msgraph.PermissionScope {

@@ -42,12 +42,12 @@ func (m Map) ToCreate(desired permissions.Permissions) Map {
 	toCreate := make(Map)
 
 	// ensure default PermissionScope is created if it doesn't exist
-	if _, found := m[DefaultAccessScopeValue]; !found {
-		toCreate[DefaultAccessScopeValue] = DefaultScope()
+	if _, found := m[permissions.DefaultPermissionScopeValue]; !found {
+		toCreate[permissions.DefaultPermissionScopeValue] = DefaultScope()
 	}
 
 	for _, scope := range desired {
-		if scope.Name == DefaultAccessScopeValue {
+		if scope.Name == permissions.DefaultPermissionScopeValue {
 			continue
 		}
 
@@ -73,8 +73,8 @@ func (m Map) ToDisable(desired permissions.Permissions) Map {
 	}
 
 	// ensure default PermissionScope is not disabled
-	if _, found := toDisable[DefaultAccessScopeValue]; found {
-		delete(toDisable, DefaultAccessScopeValue)
+	if _, found := toDisable[permissions.DefaultPermissionScopeValue]; found {
+		delete(toDisable, permissions.DefaultPermissionScopeValue)
 	}
 
 	return toDisable

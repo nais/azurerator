@@ -81,25 +81,25 @@ func TestPermissionScopes_DescribeUpdate(t *testing.T) {
 				AdminConsentDisplayName: ptr.String("DisplayName"),
 				ID:                      &id,
 				IsEnabled:               ptr.Bool(false),
-				Value:                   ptr.String(permissionscope.DefaultAccessScopeValue),
+				Value:                   ptr.String(permissions.DefaultPermissionScopeValue),
 			},
 		}
 		scopes = permissionscope.NewOAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
 
 		assert.Len(t, scopes, 1)
 		assertContainsDefaultScopeWithLambda(t, scopes, func(t assert.TestingT, expected, actual msgraph.PermissionScope) {
-			assert.Equal(t, *actual.AdminConsentDescription, permissionscope.DefaultAccessScopeValue)
-			assert.Equal(t, *actual.AdminConsentDisplayName, permissionscope.DefaultAccessScopeValue)
+			assert.Equal(t, *actual.AdminConsentDescription, permissions.DefaultPermissionScopeValue)
+			assert.Equal(t, *actual.AdminConsentDisplayName, permissions.DefaultPermissionScopeValue)
 			assert.Equal(t, *actual.ID, id)
 			assert.True(t, *actual.IsEnabled)
-			assert.Equal(t, *actual.Type, permissionscope.DefaultScopeType)
-			assert.Equal(t, *actual.Value, permissionscope.DefaultAccessScopeValue)
+			assert.Equal(t, *actual.Type, permissions.DefaultScopeType)
+			assert.Equal(t, *actual.Value, permissions.DefaultPermissionScopeValue)
 		})
 	})
 
 	t.Run("disabled default scope in desired should not actually disable", func(t *testing.T) {
 		desired := make(permissions.Permissions)
-		desired.Add(permissions.NewGenerateIdDisabled(permissionscope.DefaultAccessScopeValue))
+		desired.Add(permissions.NewGenerateIdDisabled(permissions.DefaultPermissionScopeValue))
 
 		existing := make([]msgraph.PermissionScope, 0)
 		scopes := permissionscope.NewOAuth2PermissionScopes().DescribeUpdate(desired, existing).GetResult()
@@ -116,7 +116,7 @@ func TestPermissionScopes_DescribeUpdate(t *testing.T) {
 		desired := make(permissions.Permissions)
 		desired.Add(permissions.FromPermissionScope(scope1))
 		desired.Add(permissions.FromPermissionScope(scope2))
-		desired.Add(permissions.NewGenerateIdDisabled(permissionscope.DefaultAccessScopeValue))
+		desired.Add(permissions.NewGenerateIdDisabled(permissions.DefaultPermissionScopeValue))
 
 		existing := []msgraph.PermissionScope{
 			permissionscope.DefaultScope(),
@@ -140,7 +140,7 @@ func TestPermissionScopes_DescribeUpdate(t *testing.T) {
 			assert.Equal(t, *expected.Value, *actual.AdminConsentDisplayName)
 			assert.Equal(t, *expected.Value, *actual.AdminConsentDescription)
 			assert.False(t, *actual.IsEnabled)
-			assert.Equal(t, *actual.Type, permissionscope.DefaultScopeType)
+			assert.Equal(t, *actual.Type, permissions.DefaultScopeType)
 		})
 
 		// assert that length of PermissionScopes equals length of the resulting union set of (existing + desired)
@@ -155,7 +155,7 @@ func defaultScopeAsserter() func(t assert.TestingT, expected, actual msgraph.Per
 		assert.Equal(t, *expected.Value, *actual.AdminConsentDisplayName)
 		assert.Equal(t, *expected.Value, *actual.AdminConsentDescription)
 		assert.True(t, *actual.IsEnabled)
-		assert.Equal(t, *actual.Type, permissionscope.DefaultScopeType)
+		assert.Equal(t, *actual.Type, permissions.DefaultScopeType)
 	}
 }
 

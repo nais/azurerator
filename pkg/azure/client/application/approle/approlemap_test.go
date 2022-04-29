@@ -90,7 +90,7 @@ func TestMap_ToCreate(t *testing.T) {
 		assert.Equal(t, approle.FromPermission(desired["role-2"]), toCreate["role-2"])
 		assert.Equal(t, approle.FromPermission(desired["role-3"]), toCreate["role-3"])
 		// should not contain default role
-		assert.Empty(t, toCreate[approle.DefaultAppRoleValue])
+		assert.Empty(t, toCreate[permissions.DefaultAppRoleValue])
 	})
 
 	t.Run("without existing roles should add default role", func(t *testing.T) {
@@ -104,7 +104,7 @@ func TestMap_ToCreate(t *testing.T) {
 		// should contain the new roles to be created
 		assert.Equal(t, approle.FromPermission(desired["role-1"]), toCreate["role-1"])
 		// should contain default role if not in existing
-		assert.Equal(t, approle.DefaultRole(), toCreate[approle.DefaultAppRoleValue])
+		assert.Equal(t, approle.DefaultRole(), toCreate[permissions.DefaultAppRoleValue])
 	})
 }
 

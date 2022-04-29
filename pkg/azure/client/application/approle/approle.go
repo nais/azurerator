@@ -25,16 +25,16 @@ func NewGenerateId(name string) msgraph.AppRole {
 }
 
 func DefaultRole() msgraph.AppRole {
-	return New(msgraph.UUID(DefaultAppRoleId), DefaultAppRoleValue)
+	return New(msgraph.UUID(permissions.DefaultAppRoleId), permissions.DefaultAppRoleValue)
 }
 
 func DefaultGroupRole() msgraph.AppRole {
-	return New(msgraph.UUID(DefaultGroupRoleId), DefaultGroupRoleValue)
+	return New(msgraph.UUID(permissions.DefaultGroupRoleId), permissions.DefaultGroupRoleValue)
 }
 
 func EnsureDefaultAppRoleIsEnabled(scopes []msgraph.AppRole) []msgraph.AppRole {
 	for i := range scopes {
-		if *scopes[i].Value == DefaultAppRoleValue && !*scopes[i].IsEnabled {
+		if *scopes[i].Value == permissions.DefaultAppRoleValue && !*scopes[i].IsEnabled {
 			scopes[i].IsEnabled = ptr.Bool(true)
 		}
 	}

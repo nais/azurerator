@@ -22,7 +22,7 @@ func TestNew(t *testing.T) {
 		AdminConsentDisplayName: ptr.String(name),
 		ID:                      &id,
 		IsEnabled:               ptr.Bool(true),
-		Type:                    ptr.String(permissionscope.DefaultScopeType),
+		Type:                    ptr.String(permissions.DefaultScopeType),
 		Value:                   ptr.String(name),
 	}
 	actual := permissionscope.New(id, name)
@@ -41,7 +41,7 @@ func TestNewGenerateId(t *testing.T) {
 		AdminConsentDisplayName: ptr.String(name),
 		ID:                      id,
 		IsEnabled:               ptr.Bool(true),
-		Type:                    ptr.String(permissionscope.DefaultScopeType),
+		Type:                    ptr.String(permissions.DefaultScopeType),
 		Value:                   ptr.String(name),
 	}
 
@@ -49,14 +49,14 @@ func TestNewGenerateId(t *testing.T) {
 }
 
 func TestDefaultScope(t *testing.T) {
-	id := msgraph.UUID(permissionscope.DefaultAccessScopeId)
+	id := msgraph.UUID(permissions.DefaultPermissionScopeId)
 	expected := msgraph.PermissionScope{
-		AdminConsentDescription: ptr.String(permissionscope.DefaultAccessScopeValue),
-		AdminConsentDisplayName: ptr.String(permissionscope.DefaultAccessScopeValue),
+		AdminConsentDescription: ptr.String(permissions.DefaultPermissionScopeValue),
+		AdminConsentDisplayName: ptr.String(permissions.DefaultPermissionScopeValue),
 		ID:                      &id,
 		IsEnabled:               ptr.Bool(true),
-		Type:                    ptr.String(permissionscope.DefaultScopeType),
-		Value:                   ptr.String(permissionscope.DefaultAccessScopeValue),
+		Type:                    ptr.String(permissions.DefaultScopeType),
+		Value:                   ptr.String(permissions.DefaultPermissionScopeValue),
 	}
 	actual := permissionscope.DefaultScope()
 
@@ -76,7 +76,7 @@ func TestEnsureScopesRequireAdminConsent(t *testing.T) {
 
 	actual := permissionscope.EnsureScopesRequireAdminConsent(scopes)
 	for _, scope := range actual {
-		assert.Equal(t, permissionscope.DefaultScopeType, *scope.Type)
+		assert.Equal(t, permissions.DefaultScopeType, *scope.Type)
 	}
 }
 
