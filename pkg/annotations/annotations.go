@@ -5,11 +5,10 @@ import (
 )
 
 const (
-	PreserveKey           = "azure.nais.io/preserve"
-	NotInTeamNamespaceKey = "azure.nais.io/not-in-team-namespace"
-	ResynchronizeKey      = "azure.nais.io/resync"
-	RotateKey             = "azure.nais.io/rotate"
-	StakaterReloaderKey   = "reloader.stakater.com/match"
+	PreserveKey         = "azure.nais.io/preserve"
+	ResynchronizeKey    = "azure.nais.io/resync"
+	RotateKey           = "azure.nais.io/rotate"
+	StakaterReloaderKey = "reloader.stakater.com/match"
 )
 
 func SetAnnotation(resource client.Object, key, value string) {

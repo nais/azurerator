@@ -110,30 +110,6 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 	}
 }
 
-func TestReconciler_CreateAzureAdApplication_ShouldNotProcessInSharedNamespace(t *testing.T) {
-	appName := "should-not-process-shared-namespace"
-	sharedNamespace := "shared"
-	secretName := fmt.Sprintf("%s-%s", appName, alreadyInUseSecret)
-	clusterFixtures := fixtures.New(cli, fixtures.Config{
-		AzureAppName:     appName,
-		SecretName:       secretName,
-		UnusedSecretName: unusedSecret,
-		NamespaceName:    sharedNamespace,
-	}).WithMinimalConfig().WithSharedNamespace()
-
-	if err := clusterFixtures.Setup(); err != nil {
-		t.Fatalf("failed to set up cluster fixtures: %v", err)
-	}
-	key := client.ObjectKey{
-		Name:      appName,
-		Namespace: sharedNamespace,
-	}
-	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication in shared namespace should not be processed", key)
-	assert.True(t, finalizer.HasFinalizer(instance, options.FinalizerName), "AzureAdApplication should contain a finalizer")
-	assert.Equal(t, v1.EventNotInTeamNamespace, instance.Status.SynchronizationState, "AzureAdApplication should be skipped")
-	assertAnnotationExists(t, instance, annotations.NotInTeamNamespaceKey, strconv.FormatBool(true))
-}
-
 func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAnnotation(t *testing.T) {
 	appName := "should-not-process-non-matching-tenant-annotation"
 	secretName := fmt.Sprintf("%s-%s", appName, alreadyInUseSecret)
@@ -576,8 +552,6 @@ func assertApplicationExists(t *testing.T, name string, state ...string) *v1.Azu
 	}, timeout, interval, "AzureAdApplication should be synchronized")
 
 	assert.True(t, finalizer.HasFinalizer(instance, options.FinalizerName), "AzureAdApplication should contain a finalizer")
-
-	assert.Empty(t, instance.Annotations[annotations.NotInTeamNamespaceKey], "AzureAdApplication should not contain skip annotation")
 
 	test.AssertAllNotEmpty(t, []interface{}{
 		instance.Status.CertificateKeyIds,

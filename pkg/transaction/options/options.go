@@ -9,7 +9,6 @@ import (
 
 type TransactionOptions struct {
 	Finalizer FinalizerOptions
-	Namespace NamespaceOptions
 	Tenant    TenantOptions
 	Process   ProcessOptions
 }
@@ -34,7 +33,6 @@ func NewOptions(instance v1.AzureAdApplication, cfg config.Config, secrets secre
 
 	return TransactionOptions{
 		Finalizer: builder.Finalizer(),
-		Namespace: builder.Namespace(),
 		Process:   process,
 		Tenant:    builder.Tenant(),
 	}, nil

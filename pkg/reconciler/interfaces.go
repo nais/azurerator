@@ -14,7 +14,6 @@ import (
 type AzureAdApplication interface {
 	Azure() Azure
 	Finalizer() Finalizer
-	Namespace() Namespace
 	Secrets() Secrets
 
 	ReportEvent(tx transaction.Transaction, eventType, event, message string)
@@ -36,10 +35,6 @@ type Azure interface {
 
 type Finalizer interface {
 	Process(tx transaction.Transaction) (processed bool, err error)
-}
-
-type Namespace interface {
-	Process(tx *transaction.Transaction) (bool, error)
 }
 
 type Secrets interface {

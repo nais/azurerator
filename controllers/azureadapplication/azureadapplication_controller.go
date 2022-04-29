@@ -32,7 +32,6 @@ import (
 	"github.com/nais/azureator/pkg/reconciler"
 	azureReconciler "github.com/nais/azureator/pkg/reconciler/azure"
 	"github.com/nais/azureator/pkg/reconciler/finalizer"
-	"github.com/nais/azureator/pkg/reconciler/namespace"
 	"github.com/nais/azureator/pkg/reconciler/secrets"
 	"github.com/nais/azureator/pkg/transaction"
 	"github.com/nais/azureator/pkg/transaction/options"
@@ -101,15 +100,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return r.HandleError(*tx, err)
 	}
 	if finalizerProcessed {
-		return ctrl.Result{}, nil
-	}
-
-	inSharedNamespace, err := r.Namespace().Process(tx)
-	if err != nil {
-		return r.HandleError(*tx, err)
-	}
-	if inSharedNamespace {
-		metrics.IncWithNamespaceLabel(metrics.AzureAppsSkippedCount, tx.Instance.GetNamespace())
 		return ctrl.Result{}, nil
 	}
 
@@ -294,10 +284,6 @@ func (r Reconciler) Azure() reconciler.Azure {
 
 func (r Reconciler) Finalizer() reconciler.Finalizer {
 	return finalizer.NewFinalizer(&r, r.Client)
-}
-
-func (r Reconciler) Namespace() reconciler.Namespace {
-	return namespace.NewNamespaceReconciler(&r, r.Client)
 }
 
 func (r Reconciler) Secrets() reconciler.Secrets {

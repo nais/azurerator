@@ -23,7 +23,6 @@ type ClusterFixtures struct {
 	pod                *corev1.Pod
 	podEnvFrom         *corev1.Pod
 	unusedSecret       *corev1.Secret
-	sharedNamespace    *corev1.Namespace
 }
 
 type Config struct {
@@ -40,14 +39,6 @@ type resource struct {
 
 func New(cli client.Client, config Config) ClusterFixtures {
 	return ClusterFixtures{Client: cli, Config: config}
-}
-
-func (c ClusterFixtures) WithSharedNamespace() ClusterFixtures {
-	c.sharedNamespace = namespace(c.NamespaceName)
-	c.sharedNamespace.SetLabels(map[string]string{
-		"shared": "true",
-	})
-	return c
 }
 
 func (c ClusterFixtures) WithAzureApp() ClusterFixtures {
@@ -183,22 +174,9 @@ func (c ClusterFixtures) Setup() error {
 
 	ctx := context.Background()
 
-	if c.sharedNamespace != nil {
-		err := c.Create(ctx, c.sharedNamespace)
-		if err != nil && !errors.IsAlreadyExists(err) {
-			return err
-		}
-		resources = append(resources, resource{
-			ObjectKey: client.ObjectKey{
-				Name: c.NamespaceName,
-			},
-			Object: &corev1.Namespace{},
-		})
-	} else {
-		err := c.Create(ctx, namespace(c.NamespaceName))
-		if err != nil && !errors.IsAlreadyExists(err) {
-			return err
-		}
+	err := c.Create(ctx, namespace(c.NamespaceName))
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return err
 	}
 
 	if c.pod != nil {
