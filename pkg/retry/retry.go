@@ -20,7 +20,7 @@ func Fibonacci(base time.Duration) Backoff {
 	if base <= 0 {
 		base = 1 * time.Second
 	}
-	b, _ := retry.NewFibonacci(base)
+	b := retry.NewFibonacci(base)
 
 	return Backoff{
 		b: b,
