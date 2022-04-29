@@ -139,6 +139,9 @@ func GenerateDesiredPermissionSet(in naisiov1.AzureAdApplication) Permissions {
 		permissions.Add(NewGenerateIdEnabled(string(permission)))
 	}
 
+	permissions.Add(defaultAppRole())
+	permissions.Add(defaultPermissionScope())
+
 	return permissions
 }
 
@@ -206,4 +209,12 @@ func flatten(in []naisiov1.AccessPolicyInboundRule, rule func(rule naisiov1.Acce
 	}
 
 	return result
+}
+
+func defaultAppRole() Permission {
+	return New(msgraph.UUID(DefaultAppRoleId), DefaultAppRoleValue, true)
+}
+
+func defaultPermissionScope() Permission {
+	return New(msgraph.UUID(DefaultPermissionScopeId), DefaultPermissionScopeValue, true)
 }

@@ -17,7 +17,9 @@ import (
 func TestGenerateDesiredPermissionSet(t *testing.T) {
 	app := minimalApplication()
 	desired := permissions.GenerateDesiredPermissionSet(*app)
-	assert.Empty(t, desired)
+
+	assert.Len(t, desired, 2)
+	assertContainsDefaultPermissions(t, desired)
 
 	app.Spec.PreAuthorizedApplications = []naisiov1.AccessPolicyInboundRule{
 		{
@@ -48,7 +50,7 @@ func TestGenerateDesiredPermissionSet(t *testing.T) {
 	}
 
 	desired = permissions.GenerateDesiredPermissionSet(*app)
-	assert.Len(t, desired, 3)
+	assert.Len(t, desired, 5)
 	assertPermissionsInPermissions(t, desired, []naisiov1.AccessPolicyPermission{"read", "write", "admin"})
 }
 
@@ -92,16 +94,35 @@ func TestGenerateDesiredPermissionSetPreserveExisting(t *testing.T) {
 	desired := permissions.GenerateDesiredPermissionSetPreserveExisting(*app, *existing)
 	expected := []naisiov1.AccessPolicyPermission{"role-1", "role-3", "scope-1", "scope-2", "scope-3", "common"}
 
-	// length of desired set is set of roles + set of scopes in .Spec.PreAuthorizedApplications
-	assert.Len(t, desired, len(expected))
+	// length of desired set is set of roles + set of scopes in .Spec.PreAuthorizedApplications + the default permissions
+	assert.Len(t, desired, len(expected)+2)
 
 	assertPermissionsInPermissions(t, desired, expected)
 	assertPermissionIDsMatch(t, existing, desired)
+	assertContainsDefaultPermissions(t, desired)
 
 	// assert that non-desired role "role-2" is removed
 	assert.NotContains(t, desired, "role-2")
 	// assert that non-desired scope and role "common-2" is removed
 	assert.NotContains(t, desired, "common-2")
+}
+
+func TestGenerateDesiredPermissionSetPreserveExisting_LegacyApplication(t *testing.T) {
+	existing := legacyMsGraphApplication()
+	app := minimalApplication()
+
+	desired := permissions.GenerateDesiredPermissionSetPreserveExisting(*app, *existing)
+	expected := []naisiov1.AccessPolicyPermission{
+		naisiov1.AccessPolicyPermission(permissions.DefaultPermissionScopeValue),
+		naisiov1.AccessPolicyPermission(permissions.DefaultAppRoleValue),
+	}
+
+	assert.Len(t, desired, len(expected))
+
+	assertPermissionsInPermissions(t, desired, expected)
+
+	// existing permission IDs should be preserved in desired permission IDs
+	assertPermissionIDsMatch(t, existing, desired)
 }
 
 func TestPermissions_Add(t *testing.T) {
@@ -263,5 +284,31 @@ func minimalMsGraphApplication() *msgraph.Application {
 			approle.New(commonPermission.ID, commonPermission.Name),
 			approle.New(commonPermission2.ID, commonPermission2.Name),
 		},
+	}
+}
+
+func legacyMsGraphApplication() *msgraph.Application {
+	return &msgraph.Application{
+		API: &msgraph.APIApplication{
+			OAuth2PermissionScopes: []msgraph.PermissionScope{
+				permissionscope.NewGenerateId(permissions.DefaultPermissionScopeValue),
+			},
+		},
+		AppRoles: []msgraph.AppRole{
+			approle.NewGenerateId(permissions.DefaultAppRoleValue),
+		},
+	}
+}
+
+func assertContainsDefaultPermissions(t assert.TestingT, desired permissions.Permissions) {
+	all := permissions.PermissionList{
+		permissions.FromAppRole(approle.DefaultRole()),
+	}
+
+	for _, permission := range all {
+		assert.Contains(t, desired, permission.Name)
+		assert.Equal(t, permission.Name, desired[permission.Name].Name)
+		assert.Equal(t, permission.Enabled, desired[permission.Name].Enabled)
+		assert.Equal(t, permission.ID, desired[permission.Name].ID)
 	}
 }
