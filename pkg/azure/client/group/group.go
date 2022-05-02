@@ -197,7 +197,7 @@ func (g group) toGetRequestWithContext(ctx context.Context, r *msgraph.GroupRequ
 	return req, nil
 }
 
-func (g group) decodeJsonResponseForGetRequest(res *http.Response, obj interface{}) (bool, error) {
+func (g group) decodeJsonResponseForGetRequest(res *http.Response, obj any) (bool, error) {
 	switch res.StatusCode {
 	case http.StatusOK, http.StatusCreated:
 		if obj == nil {

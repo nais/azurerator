@@ -146,7 +146,7 @@ func TestGetReplyUrlsStringSlice(t *testing.T) {
 	})
 }
 
-func assertJson(t *testing.T, input interface{}, expected string) {
+func assertJson(t *testing.T, input any, expected string) {
 	j, _ := json.Marshal(input)
 	assert.JSONEq(t, expected, string(j))
 }

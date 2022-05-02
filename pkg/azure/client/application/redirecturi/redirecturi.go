@@ -28,7 +28,7 @@ type redirectUri struct {
 }
 
 type Application interface {
-	Patch(ctx context.Context, id azure.ObjectId, application interface{}) error
+	Patch(ctx context.Context, id azure.ObjectId, application any) error
 }
 
 func NewRedirectUri(application Application) RedirectUri {
@@ -42,7 +42,7 @@ func (r redirectUri) Update(tx transaction.Transaction) error {
 	return r.Application.Patch(tx.Ctx, objectId, app)
 }
 
-func App(instance v1.AzureAdApplication) interface{} {
+func App(instance v1.AzureAdApplication) any {
 	redirectUris := ReplyUrlsToStringSlice(instance)
 
 	if instance.Spec.SinglePageApplication != nil && *instance.Spec.SinglePageApplication {
@@ -62,7 +62,7 @@ func ReplyUrlsToStringSlice(resource v1.AzureAdApplication) []string {
 	return stringutils.RemoveDuplicates(replyUrls)
 }
 
-func webApp(redirectUris []string) interface{} {
+func webApp(redirectUris []string) any {
 	return &struct {
 		msgraph.DirectoryObject
 		Web emptiableRedirectUris `json:"web"`
@@ -77,7 +77,7 @@ func webApp(redirectUris []string) interface{} {
 	}
 }
 
-func singlePageApp(redirectUris []string) interface{} {
+func singlePageApp(redirectUris []string) any {
 	return &struct {
 		msgraph.DirectoryObject
 		Web emptiableRedirectUris `json:"web"`

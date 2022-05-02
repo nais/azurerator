@@ -553,7 +553,7 @@ func assertApplicationExists(t *testing.T, name string, state ...string) *v1.Azu
 
 	assert.True(t, finalizer.HasFinalizer(instance, options.FinalizerName), "AzureAdApplication should contain a finalizer")
 
-	test.AssertAllNotEmpty(t, []interface{}{
+	test.AssertAllNotEmpty(t, []any{
 		instance.Status.CertificateKeyIds,
 		instance.GetClientId(),
 		instance.Status.CorrelationId,

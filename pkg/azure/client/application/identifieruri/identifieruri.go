@@ -20,7 +20,7 @@ type identifierUri struct {
 }
 
 type Application interface {
-	Patch(ctx context.Context, id azure.ObjectId, application interface{}) error
+	Patch(ctx context.Context, id azure.ObjectId, application any) error
 }
 
 func NewIdentifierUri(application Application) IdentifierUri {

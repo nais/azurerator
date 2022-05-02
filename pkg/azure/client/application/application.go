@@ -41,7 +41,7 @@ type Application interface {
 	Get(tx transaction.Transaction) (msgraph.Application, error)
 	GetByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error)
 	GetByClientId(ctx context.Context, id azure.ClientId) (msgraph.Application, error)
-	Patch(ctx context.Context, id azure.ObjectId, application interface{}) error
+	Patch(ctx context.Context, id azure.ObjectId, application any) error
 	Register(tx transaction.Transaction) (*msgraph.Application, error)
 	RemoveDisabledPermissions(tx transaction.Transaction, application msgraph.Application) error
 	Update(tx transaction.Transaction) (*msgraph.Application, error)
@@ -166,7 +166,7 @@ func (a application) Update(tx transaction.Transaction) (*msgraph.Application, e
 	return app, a.Patch(tx.Ctx, objectId, app)
 }
 
-func (a application) Patch(ctx context.Context, id azure.ObjectId, application interface{}) error {
+func (a application) Patch(ctx context.Context, id azure.ObjectId, application any) error {
 	req := a.GraphClient().Applications().ID(id).Request()
 	if err := req.JSONRequest(ctx, "PATCH", "", application, nil); err != nil {
 		return fmt.Errorf("failed to update web application: %w", err)

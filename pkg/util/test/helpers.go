@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func AssertContainsKeysWithNonEmptyValues(t *testing.T, a interface{}, keys []string) {
+func AssertContainsKeysWithNonEmptyValues(t *testing.T, a any, keys []string) {
 	for _, key := range keys {
 		assert.Containsf(t, a, key, "should contain key '%s'", key)
 	}
@@ -21,7 +21,7 @@ func AssertContainsKeysWithNonEmptyValues(t *testing.T, a interface{}, keys []st
 	assert.Lenf(t, a, len(keys), "should contain %v keys", len(keys))
 }
 
-func AssertAllNotEmpty(t *testing.T, values []interface{}) {
+func AssertAllNotEmpty(t *testing.T, values []any) {
 	for i, val := range values {
 		assert.NotEmpty(t, val, fmt.Sprintf("%s (index %v) should not be empty", val, i))
 	}
