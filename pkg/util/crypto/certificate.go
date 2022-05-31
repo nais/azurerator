@@ -26,6 +26,15 @@ func GenerateCertificate(template *x509.Certificate, keyPair KeyPair) (*x509.Cer
 }
 
 func CertificateTemplate(application v1.AzureAdApplication) *x509.Certificate {
+	notBefore := time.Now()
+
+	var notAfter time.Time
+	if application.Spec.SecretProtected {
+		notAfter = notBefore.AddDate(99, 0, 0)
+	} else {
+		notAfter = notBefore.AddDate(1, 0, 0)
+	}
+
 	return &x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
@@ -36,8 +45,8 @@ func CertificateTemplate(application v1.AzureAdApplication) *x509.Certificate {
 			OrganizationalUnit: []string{"NAV IT"},
 			CommonName:         fmt.Sprintf("%s.%s.%s.azurerator.nais.io", application.Name, application.Namespace, application.ClusterName),
 		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(1, 0, 0),
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
 		KeyUsage:              x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,

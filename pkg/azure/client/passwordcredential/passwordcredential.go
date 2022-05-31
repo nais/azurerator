@@ -41,7 +41,7 @@ func NewPasswordCredential(client Client) PasswordCredential {
 func (p passwordCredential) Add(tx transaction.Transaction) (msgraph.PasswordCredential, error) {
 	objectId := tx.Instance.GetObjectId()
 
-	requestParameter := p.toAddRequest()
+	requestParameter := p.toAddRequest(tx)
 
 	request := p.GraphClient().Applications().ID(objectId).AddPassword(requestParameter).Request()
 
@@ -151,10 +151,18 @@ func (p passwordCredential) remove(tx transaction.Transaction, id azure.ClientId
 	return nil
 }
 
-func (p passwordCredential) toAddRequest() *msgraph.ApplicationAddPasswordRequestParameter {
+func (p passwordCredential) toAddRequest(tx transaction.Transaction) *msgraph.ApplicationAddPasswordRequestParameter {
 	startDateTime := time.Now()
-	endDateTime := time.Now().AddDate(1, 0, 0)
+
+	var endDateTime time.Time
+	if tx.Instance.Spec.SecretProtected {
+		endDateTime = startDateTime.AddDate(99, 0, 0)
+	} else {
+		endDateTime = startDateTime.AddDate(1, 0, 0)
+	}
+
 	keyId := msgraph.UUID(uuid.New().String())
+
 	return &msgraph.ApplicationAddPasswordRequestParameter{
 		PasswordCredential: &msgraph.PasswordCredential{
 			StartDateTime: &startDateTime,
