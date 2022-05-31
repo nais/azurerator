@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
@@ -68,11 +69,12 @@ func run() error {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                  scheme,
-		MetricsBindAddress:      cfg.MetricsAddr,
-		LeaderElection:          cfg.LeaderElection.Enabled,
-		LeaderElectionID:        fmt.Sprintf("azurerator.nais.io-%s", cfg.Azure.Tenant.Id),
-		LeaderElectionNamespace: cfg.LeaderElection.Namespace,
+		Scheme:                     scheme,
+		MetricsBindAddress:         cfg.MetricsAddr,
+		LeaderElection:             cfg.LeaderElection.Enabled,
+		LeaderElectionID:           fmt.Sprintf("azurerator.nais.io-%s", cfg.Azure.Tenant.Id),
+		LeaderElectionNamespace:    cfg.LeaderElection.Namespace,
+		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
