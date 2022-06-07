@@ -185,6 +185,15 @@ func (a azureReconciler) DeleteUnusedCredentials(tx transaction.Transaction) err
 	return nil
 }
 
+func (a azureReconciler) DeleteExpiredCredentials(tx transaction.Transaction) error {
+	err := a.azureClient.Credentials().DeleteExpired(tx.ToAzureTx())
+	if err != nil {
+		return fmt.Errorf("deleting expired credentials for Azure application: %w", err)
+	}
+
+	return nil
+}
+
 func (a azureReconciler) RotateCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
 	tx.Logger.Info("rotating credentials for Azure application...")
 

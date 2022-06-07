@@ -103,6 +103,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
+	err = r.Azure().DeleteExpiredCredentials(*tx)
+	if err != nil {
+		return r.HandleError(*tx, err)
+	}
+
 	// ensure that existing credentials set are in sync with Azure
 	validCredentials, err := r.Azure().ValidateCredentials(*tx)
 	if err != nil {

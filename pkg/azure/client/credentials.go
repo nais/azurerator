@@ -71,6 +71,21 @@ func (c credentialsClient) Add(tx transaction.Transaction) (credentials.Set, err
 	}, nil
 }
 
+// DeleteExpired deletes all expired credentials for the application in Azure AD.
+func (c credentialsClient) DeleteExpired(tx transaction.Transaction) error {
+	err := c.KeyCredential().DeleteExpired(tx)
+	if err != nil {
+		return fmt.Errorf("deleting expired key credentials: %w", err)
+	}
+
+	err = c.PasswordCredential().DeleteExpired(tx)
+	if err != nil {
+		return fmt.Errorf("deleting expired password credentials: %w", err)
+	}
+
+	return nil
+}
+
 // DeleteUnused deletes unused credentials for an existing AAD application.
 func (c credentialsClient) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
 	err := c.KeyCredential().DeleteUnused(tx, existing, keyIdsInUse)

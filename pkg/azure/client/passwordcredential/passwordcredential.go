@@ -19,6 +19,7 @@ import (
 
 type PasswordCredential interface {
 	Add(tx transaction.Transaction) (msgraph.PasswordCredential, error)
+	DeleteExpired(tx transaction.Transaction) error
 	DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
 	Purge(tx transaction.Transaction) error
 	Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.PasswordCredential, error)
@@ -53,6 +54,29 @@ func (p passwordCredential) Add(tx transaction.Transaction) (msgraph.PasswordCre
 	return *response, nil
 }
 
+func (p passwordCredential) DeleteExpired(tx transaction.Transaction) error {
+	app, err := p.Application().Get(tx)
+	if err != nil {
+		return err
+	}
+
+	for _, cred := range app.PasswordCredentials {
+		expired := cred.EndDateTime.Before(time.Now())
+
+		if expired {
+			if cred.DisplayName != nil && cred.KeyID != nil {
+				tx.Log.Debugf("revoking expired password credential '%s' (ID: %s, expired: %s)", *cred.DisplayName, *cred.KeyID, cred.EndDateTime)
+			}
+
+			if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (p passwordCredential) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
 	app, err := p.Application().Get(tx)
 	if err != nil {
@@ -68,7 +92,7 @@ func (p passwordCredential) DeleteUnused(tx transaction.Transaction, existing cr
 	revocationCandidates := p.revocationCandidates(app, passwordKeyIdsInUse)
 	for _, cred := range revocationCandidates {
 		if cred.DisplayName != nil && cred.KeyID != nil {
-			tx.Log.Debugf("revoking ununsed password credential '%s' (ID: %s)", *cred.DisplayName, *cred.KeyID)
+			tx.Log.Debugf("revoking unused password credential '%s' (ID: %s)", *cred.DisplayName, *cred.KeyID)
 		}
 
 		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {

@@ -21,6 +21,7 @@ import (
 
 type KeyCredential interface {
 	Add(tx transaction.Transaction) (*credentials.AddedKeyCredentialSet, error)
+	DeleteExpired(tx transaction.Transaction) error
 	DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
 	Purge(tx transaction.Transaction) error
 	Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error)
@@ -48,7 +49,7 @@ func NewKeyCredential(client Client) KeyCredential {
 }
 
 func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCredentialSet, error) {
-	application, err := k.Client.Application().Get(tx)
+	actualApp, err := k.Client.Application().Get(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -63,9 +64,9 @@ func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCre
 		return nil, err
 	}
 
-	application.KeyCredentials = append(application.KeyCredentials, *currentKeyCredential, *nextKeyCredential)
+	actualApp.KeyCredentials = append(actualApp.KeyCredentials, *currentKeyCredential, *nextKeyCredential)
 
-	app := util.EmptyApplication().Keys(application.KeyCredentials).Build()
+	app := util.EmptyApplication().Keys(actualApp.KeyCredentials).Build()
 	if err := k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
 		return nil, fmt.Errorf("updating application with keycredential set: %w", err)
 	}
@@ -80,6 +81,29 @@ func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCre
 			Jwk:           *nextJwk,
 		},
 	}, nil
+}
+
+func (k keyCredential) DeleteExpired(tx transaction.Transaction) error {
+	actualApp, err := k.Application().Get(tx)
+	if err != nil {
+		return err
+	}
+
+	desiredCredentials := make([]msgraph.KeyCredential, 0)
+
+	for _, cred := range actualApp.KeyCredentials {
+		notExpired := cred.EndDateTime.After(time.Now())
+		if notExpired {
+			desiredCredentials = append(desiredCredentials, cred)
+		} else if cred.DisplayName != nil && cred.KeyID != nil {
+			tx.Log.Debugf("revoking expired key credential '%s' (ID: %s, expired: %s)", *cred.DisplayName, *cred.KeyID, cred.EndDateTime)
+		}
+	}
+
+	app := &app{
+		KeyCredentials: desiredCredentials,
+	}
+	return k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app)
 }
 
 func (k keyCredential) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
@@ -147,11 +171,11 @@ func (k keyCredential) Validate(tx transaction.Transaction, existing credentials
 
 	currentIsValid := false
 	nextIsValid := false
-	for _, credentials := range app.KeyCredentials {
-		if string(*credentials.KeyID) == existing.Current.Certificate.KeyId {
+	for _, keyCredential := range app.KeyCredentials {
+		if string(*keyCredential.KeyID) == existing.Current.Certificate.KeyId {
 			currentIsValid = true
 		}
-		if string(*credentials.KeyID) == existing.Next.Certificate.KeyId {
+		if string(*keyCredential.KeyID) == existing.Next.Certificate.KeyId {
 			nextIsValid = true
 		}
 	}
@@ -163,7 +187,7 @@ func (k keyCredential) Validate(tx transaction.Transaction, existing credentials
 func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction, keyIdsInUse []string) ([]msgraph.KeyCredential, error) {
 	keyIdsInUse = stringutils.RemoveDuplicates(keyIdsInUse)
 
-	application, err := k.Application().Get(tx)
+	actualApp, err := k.Application().Get(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +197,7 @@ func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction, keyIdsInU
 	// There should always be at least one keycredential registered for an application.
 	var newestCredential msgraph.KeyCredential
 	var keyCreatedByAzureratorFound = false
-	for _, keyCredential := range application.KeyCredentials {
+	for _, keyCredential := range actualApp.KeyCredentials {
 		keyDisplayName := *keyCredential.DisplayName
 		if strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix) {
 			keyCreatedByAzureratorFound = true
@@ -182,15 +206,15 @@ func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction, keyIdsInU
 
 	// Return early to prevent revoking keys for a pre-existing application that has been managed outside of azurerator
 	if !keyCreatedByAzureratorFound {
-		return application.KeyCredentials, nil
+		return actualApp.KeyCredentials, nil
 	}
 
 	keyCredentialsInUse := make([]msgraph.KeyCredential, 0)
-	for _, keyCredential := range application.KeyCredentials {
+	for _, keyCredential := range actualApp.KeyCredentials {
 		if keyCredentialInUse(keyCredential, keyIdsInUse) {
 			keyCredentialsInUse = append(keyCredentialsInUse, keyCredential)
 		} else if keyCredential.DisplayName != nil && keyCredential.KeyID != nil {
-			tx.Log.Debugf("revoking ununsed key credential '%s' (ID: %s)", *keyCredential.DisplayName, *keyCredential.KeyID)
+			tx.Log.Debugf("revoking unused key credential '%s' (ID: %s)", *keyCredential.DisplayName, *keyCredential.KeyID)
 		}
 
 		if newestCredential.StartDateTime == nil || keyCredential.StartDateTime.After(*newestCredential.StartDateTime) {

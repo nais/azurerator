@@ -56,6 +56,10 @@ func (a fakeAzureCredentialsClient) Add(tx transaction.Transaction) (credentials
 	return AzureCredentialsSet(tx.Instance), nil
 }
 
+func (a fakeAzureCredentialsClient) DeleteExpired(tx transaction.Transaction) error {
+	return nil
+}
+
 func (a fakeAzureCredentialsClient) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
 	return nil
 }
