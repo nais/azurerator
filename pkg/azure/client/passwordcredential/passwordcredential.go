@@ -154,11 +154,16 @@ func (p passwordCredential) Validate(tx transaction.Transaction, existing creden
 
 	currentIsValid := false
 	nextIsValid := false
-	for _, credentials := range app.PasswordCredentials {
-		if string(*credentials.KeyID) == existing.Current.Password.KeyId {
+	for _, cred := range app.PasswordCredentials {
+		notExpired := cred.EndDateTime.After(time.Now())
+
+		currentIdMatches := string(*cred.KeyID) == existing.Current.Password.KeyId
+		if currentIdMatches && notExpired {
 			currentIsValid = true
 		}
-		if string(*credentials.KeyID) == existing.Next.Password.KeyId {
+
+		nextIdMatches := string(*cred.KeyID) == existing.Next.Password.KeyId
+		if nextIdMatches && notExpired {
 			nextIsValid = true
 		}
 	}

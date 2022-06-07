@@ -171,11 +171,16 @@ func (k keyCredential) Validate(tx transaction.Transaction, existing credentials
 
 	currentIsValid := false
 	nextIsValid := false
-	for _, keyCredential := range app.KeyCredentials {
-		if string(*keyCredential.KeyID) == existing.Current.Certificate.KeyId {
+	for _, cred := range app.KeyCredentials {
+		notExpired := cred.EndDateTime.After(time.Now())
+
+		currentIdMatches := string(*cred.KeyID) == existing.Current.Certificate.KeyId
+		if currentIdMatches && notExpired {
 			currentIsValid = true
 		}
-		if string(*keyCredential.KeyID) == existing.Next.Certificate.KeyId {
+
+		nextIdMatches := string(*cred.KeyID) == existing.Next.Certificate.KeyId
+		if nextIdMatches && notExpired {
 			nextIsValid = true
 		}
 	}
