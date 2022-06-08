@@ -186,7 +186,16 @@ func (a azureReconciler) DeleteUnusedCredentials(tx transaction.Transaction) err
 }
 
 func (a azureReconciler) DeleteExpiredCredentials(tx transaction.Transaction) error {
-	err := a.azureClient.Credentials().DeleteExpired(tx.ToAzureTx())
+	exists, err := a.Exists(tx)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return nil
+	}
+
+	err = a.azureClient.Credentials().DeleteExpired(tx.ToAzureTx())
 	if err != nil {
 		return fmt.Errorf("deleting expired credentials for Azure application: %w", err)
 	}
