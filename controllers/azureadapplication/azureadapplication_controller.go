@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -155,8 +156,9 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 	correlationId := r.getOrGenerateCorrelationId(instance)
 
 	logger := *log.WithFields(log.Fields{
-		"AzureAdApplication": req.NamespacedName,
-		"CorrelationID":      correlationId,
+		"application_name":      req.Name,
+		"application_namespace": req.Namespace,
+		"CorrelationID":         correlationId,
 	})
 
 	instance.Status.CorrelationId = correlationId
@@ -249,8 +251,8 @@ func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {
 
 	tx.Logger.WithFields(
 		log.Fields{
-			"CertificateKeyIDs":  tx.Instance.Status.CertificateKeyIds,
-			"PasswordKeyIDs":     tx.Instance.Status.PasswordKeyIds,
+			"CertificateKeyIDs":  strings.Join(tx.Instance.Status.CertificateKeyIds, ", "),
+			"PasswordKeyIDs":     strings.Join(tx.Instance.Status.PasswordKeyIds, ", "),
 			"ClientID":           tx.Instance.GetClientId(),
 			"ObjectID":           tx.Instance.GetObjectId(),
 			"ServicePrincipalID": tx.Instance.GetServicePrincipalId(),

@@ -48,9 +48,11 @@ func (s synchronizer) Callback() kafka.Callback {
 		}
 
 		logger = logger.WithFields(log.Fields{
-			"CorrelationID": eventMsg.ID,
-			"application":   eventMsg.Application,
-			"event_name":    eventMsg.EventName,
+			"CorrelationID":         eventMsg.ID,
+			"application_name":      eventMsg.Application.Name,
+			"application_namespace": eventMsg.Application.Namespace,
+			"application_cluster":   eventMsg.Application.Cluster,
+			"event_name":            eventMsg.EventName,
 		})
 
 		if err := s.process(context.Background(), *eventMsg, logger); err != nil {
