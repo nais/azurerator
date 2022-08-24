@@ -149,20 +149,13 @@ func (a application) Update(tx transaction.Transaction) (*msgraph.Application, e
 
 	identifierUris := identifieruri.DescribeUpdate(tx.Instance, actualApp.IdentifierUris)
 	optionalClaims := a.OptionalClaims().DescribeUpdate(actualApp)
-	builder := util.Application(a.defaultTemplate(tx.Instance)).
+	app := util.Application(a.defaultTemplate(tx.Instance)).
 		AppRoles(roles.GetResult()).
 		IdentifierUriList(identifierUris).
 		OptionalClaims(optionalClaims).
-		PermissionScopes(scopes.GetResult())
+		PermissionScopes(scopes.GetResult()).
+		Build()
 
-	groupClaimsIsDefined := tx.Instance.Spec.Claims != nil && len(tx.Instance.Spec.Claims.Groups) > 0
-
-	// todo: remove 'groupClaimsIsDefined' predicate after grace period
-	if a.Config().Features.GroupsAssignment.Enabled && groupClaimsIsDefined {
-		builder.GroupMembershipClaims(a.Config().Features.GroupMembershipClaim.Default)
-	}
-
-	app := builder.Build()
 	return app, a.Patch(tx.Ctx, objectId, app)
 }
 
@@ -209,8 +202,8 @@ func (a application) GetByClientId(ctx context.Context, id azure.ClientId) (msgr
 	return *application, nil
 }
 
-//	- we _CANNOT_ delete a disabled PermissionScope that has been granted to any pre-authorized app
-// 	- we _CAN_ however delete a disabled AppRole _without_ removing the associated approleassignments first
+// - we _CANNOT_ delete a disabled PermissionScope that has been granted to any pre-authorized app
+// - we _CAN_ however delete a disabled AppRole _without_ removing the associated approleassignments first
 func (a application) RemoveDisabledPermissions(tx transaction.Transaction, application msgraph.Application) error {
 	objectId := tx.Instance.GetObjectId()
 
