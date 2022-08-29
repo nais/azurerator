@@ -301,8 +301,8 @@ func (r *Reconciler) updateAnnotations(tx transaction.Transaction) error {
 	err := r.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {
 		// remove annotations if we've already processed them.
 		if customresources.HasResynchronizeAnnotation(tx.Instance) {
-			annotations.RemoveAnnotation(tx.Instance, annotations.ResynchronizeKey)
-			annotations.RemoveAnnotation(existing, annotations.ResynchronizeKey)
+			annotations.RemoveFromAnnotation(tx.Instance, annotations.ResynchronizeKey)
+			annotations.RemoveFromAnnotation(existing, annotations.ResynchronizeKey)
 		}
 		if customresources.HasRotateAnnotation(tx.Instance) {
 			annotations.RemoveAnnotation(tx.Instance, annotations.RotateKey)

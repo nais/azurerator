@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/Shopify/sarama"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
@@ -87,7 +86,7 @@ func (s synchronizer) process(ctx context.Context, e event.Event, logger *log.En
 			candidateID := kubernetes.UniformResourceName(&app)
 			candidateCount += 1
 
-			if err := s.resync(ctx, app, e.ID); err != nil {
+			if err := s.resync(ctx, app, e); err != nil {
 				return fmt.Errorf("resyncing %s: %w", candidateID, err)
 			}
 
@@ -99,7 +98,7 @@ func (s synchronizer) process(ctx context.Context, e event.Event, logger *log.En
 	return nil
 }
 
-func (s synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, correlationID string) error {
+func (s synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, e event.Event) error {
 	existing := &v1.AzureAdApplication{}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
 
@@ -107,8 +106,8 @@ func (s synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, cor
 		return fmt.Errorf("getting newest version from cluster: %s", err)
 	}
 
-	annotations.SetAnnotation(existing, annotations.ResynchronizeKey, strconv.FormatBool(true))
-	annotations.SetAnnotation(existing, v1.DeploymentCorrelationIDAnnotation, correlationID)
+	annotations.AddToAnnotation(existing, annotations.ResynchronizeKey, e.Application.String())
+	annotations.AddToAnnotation(existing, v1.DeploymentCorrelationIDAnnotation, e.ID)
 
 	if err := s.kubeClient.Update(ctx, existing); err != nil {
 		return fmt.Errorf("setting resync annotation: %w", err)

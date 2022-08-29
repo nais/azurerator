@@ -7,15 +7,15 @@ import (
 	naisiov1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/permissions"
+	"github.com/nais/azureator/pkg/fixtures"
 )
 
 func TestGenerateDesiredPermissionSet(t *testing.T) {
-	app := minimalApplication()
+	app := fixtures.MinimalApplication()
 	desired := permissions.GenerateDesiredPermissionSet(*app)
 
 	assert.Len(t, desired, 2)
@@ -70,7 +70,7 @@ func TestExtractPermissions(t *testing.T) {
 
 func TestGenerateDesiredPermissionSetPreserveExisting(t *testing.T) {
 	existing := minimalMsGraphApplication()
-	app := minimalApplication()
+	app := fixtures.MinimalApplication()
 	app.Spec.PreAuthorizedApplications = []naisiov1.AccessPolicyInboundRule{
 		{
 			AccessPolicyRule: naisiov1.AccessPolicyRule{
@@ -109,7 +109,7 @@ func TestGenerateDesiredPermissionSetPreserveExisting(t *testing.T) {
 
 func TestGenerateDesiredPermissionSetPreserveExisting_LegacyApplication(t *testing.T) {
 	existing := legacyMsGraphApplication()
-	app := minimalApplication()
+	app := fixtures.MinimalApplication()
 
 	desired := permissions.GenerateDesiredPermissionSetPreserveExisting(*app, *existing)
 	expected := []naisiov1.AccessPolicyPermission{
@@ -248,19 +248,6 @@ func assertPermissionIDsMatch(t assert.TestingT, app *msgraph.Application, extra
 				assert.Equalf(t, *role.ID, value.ID, fmt.Sprintf("expected equal UUID for role %s", key))
 			}
 		}
-	}
-}
-
-func minimalApplication() *naisiov1.AzureAdApplication {
-	return &naisiov1.AzureAdApplication{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-app",
-			Namespace:   "test-namespace",
-			ClusterName: "test-cluster",
-		},
-		Spec: naisiov1.AzureAdApplicationSpec{
-			SecretName: "test",
-		},
 	}
 }
 
