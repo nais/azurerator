@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/nais/msgraph.go/msauth"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"golang.org/x/oauth2"
@@ -168,8 +167,7 @@ func (c Client) Delete(tx transaction.Transaction) error {
 		return c.Application().Delete(tx)
 	}
 
-	name := kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)
-	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", name, tx.Instance.GetClientId(), tx.Instance.GetObjectId())
+	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", tx.UniformResourceName, tx.Instance.GetClientId(), tx.Instance.GetObjectId())
 }
 
 // Exists returns an indication of whether the application exists in AAD or not

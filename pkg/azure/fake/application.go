@@ -26,7 +26,7 @@ func MsGraphApplication(tx transaction.Transaction) msgraph.Application {
 		DirectoryObject: msgraph.DirectoryObject{
 			Entity: msgraph.Entity{ID: ptr.String(objectId)},
 		},
-		DisplayName: ptr.String(kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)),
+		DisplayName: ptr.String(tx.UniformResourceName),
 		AppID:       ptr.String(clientId),
 	}
 }

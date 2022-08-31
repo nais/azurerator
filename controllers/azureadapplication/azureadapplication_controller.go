@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/events"
+	"github.com/nais/liberator/pkg/kubernetes"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -173,13 +174,14 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 	}
 
 	return &transaction.Transaction{
-		Ctx:         ctx,
-		ClusterName: r.Config.ClusterName,
-		Instance:    instance,
-		Logger:      logger,
-		Secrets:     *transactionSecrets,
-		Options:     opts,
-		ID:          correlationId,
+		Ctx:                 ctx,
+		ClusterName:         r.Config.ClusterName,
+		Instance:            instance,
+		Logger:              logger,
+		Secrets:             *transactionSecrets,
+		Options:             opts,
+		ID:                  correlationId,
+		UniformResourceName: kubernetes.UniformResourceName(instance, r.Config.ClusterName),
 	}, nil
 }
 

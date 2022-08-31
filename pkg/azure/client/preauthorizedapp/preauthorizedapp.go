@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	"github.com/nais/liberator/pkg/kubernetes"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -143,7 +142,7 @@ func (p preAuthApps) mapToResources(tx transaction.Transaction) (*result.PreAuth
 	}
 
 	// add self to preauthorizedapps
-	if !seen[kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)] {
+	if !seen[tx.UniformResourceName] {
 		validResources = append(validResources, toResource(tx))
 	}
 
@@ -194,7 +193,7 @@ func invalidResource(app v1.AccessPolicyInboundRule) *resource.Resource {
 
 func toResource(tx transaction.Transaction) resource.Resource {
 	return resource.Resource{
-		Name:          kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName),
+		Name:          tx.UniformResourceName,
 		ClientId:      tx.Instance.Status.ClientId,
 		ObjectId:      tx.Instance.Status.ServicePrincipalId,
 		PrincipalType: resource.PrincipalTypeServicePrincipal,

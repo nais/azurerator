@@ -6,7 +6,6 @@ import (
 	"time"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/nais/msgraph.go/ptr"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -312,7 +311,7 @@ func (a azureReconciler) ProcessOrphaned(tx transaction.Transaction) error {
 		return nil
 	}
 
-	tx.Logger.Warnf("orphaned resource '%s' found in tenant %s", kubernetes.UniformResourceName(tx.Instance, a.config.ClusterName), a.config.Azure.Tenant)
+	tx.Logger.Warnf("orphaned resource '%s' found in tenant %s", tx.UniformResourceName, a.config.Azure.Tenant)
 	metrics.IncWithNamespaceLabel(metrics.AzureAppOrphanedTotal, tx.Instance.GetNamespace())
 
 	if tx.Options.Process.Azure.CleanupOrphans {

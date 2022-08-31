@@ -9,10 +9,11 @@ import (
 )
 
 type Transaction struct {
-	Ctx         context.Context
-	ClusterName string
-	Instance    v1.AzureAdApplication
-	Log         log.Entry
+	Ctx                 context.Context
+	ClusterName         string
+	Instance            v1.AzureAdApplication
+	Log                 log.Entry
+	UniformResourceName string
 }
 
 func (t Transaction) UpdateWithApplicationIDs(application msgraph.Application) Transaction {

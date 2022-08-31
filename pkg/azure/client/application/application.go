@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
@@ -83,8 +82,7 @@ func (a application) RequiredResourceAccess() requiredresourceaccess.RequiredRes
 }
 
 func (a application) Exists(tx transaction.Transaction) (*msgraph.Application, bool, error) {
-	name := kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)
-	return a.ExistsByFilter(tx.Ctx, util.FilterByName(name))
+	return a.ExistsByFilter(tx.Ctx, util.FilterByName(tx.UniformResourceName))
 }
 
 func (a application) Delete(tx transaction.Transaction) error {
@@ -182,7 +180,7 @@ func (a application) ExistsByFilter(ctx context.Context, filter azure.Filter) (*
 }
 
 func (a application) Get(tx transaction.Transaction) (msgraph.Application, error) {
-	return a.GetByName(tx.Ctx, kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName))
+	return a.GetByName(tx.Ctx, tx.UniformResourceName)
 }
 
 func (a application) GetByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
@@ -232,7 +230,7 @@ func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msg
 
 func (a application) defaultTemplate(tx transaction.Transaction) *msgraph.Application {
 	return &msgraph.Application{
-		DisplayName:    ptr.String(kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)),
+		DisplayName:    ptr.String(tx.UniformResourceName),
 		SignInAudience: ptr.String("AzureADMyOrg"),
 		Tags: []string{
 			IaCAppTag,
