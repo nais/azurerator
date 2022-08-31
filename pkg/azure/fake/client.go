@@ -10,6 +10,7 @@ import (
 )
 
 type fakeAzureClient struct{}
+
 type fakeAzureCredentialsClient struct{}
 
 const (
@@ -30,18 +31,18 @@ func (a fakeAzureClient) Exists(tx transaction.Transaction) (*msgraph.Applicatio
 	appExists := tx.Instance.Name == ApplicationExists
 	validStatus := len(tx.Instance.GetObjectId()) > 0 && len(tx.Instance.GetClientId()) > 0
 	if appExists || validStatus {
-		app := MsGraphApplication(tx.Instance)
+		app := MsGraphApplication(tx)
 		return &app, true, nil
 	}
 	return nil, false, nil
 }
 
 func (a fakeAzureClient) Get(tx transaction.Transaction) (msgraph.Application, error) {
-	return MsGraphApplication(tx.Instance), nil
+	return MsGraphApplication(tx), nil
 }
 
 func (a fakeAzureClient) GetServicePrincipal(tx transaction.Transaction) (msgraph.ServicePrincipal, error) {
-	return ServicePrincipal(tx.Instance), nil
+	return ServicePrincipal(tx), nil
 }
 
 func (a fakeAzureClient) GetPreAuthorizedApps(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
@@ -53,7 +54,7 @@ func (a fakeAzureClient) Credentials() azure.Credentials {
 }
 
 func (a fakeAzureCredentialsClient) Add(tx transaction.Transaction) (credentials.Set, error) {
-	return AzureCredentialsSet(tx.Instance), nil
+	return AzureCredentialsSet(tx.Instance, tx.ClusterName), nil
 }
 
 func (a fakeAzureCredentialsClient) DeleteExpired(tx transaction.Transaction) error {
@@ -65,7 +66,7 @@ func (a fakeAzureCredentialsClient) DeleteUnused(tx transaction.Transaction, exi
 }
 
 func (a fakeAzureCredentialsClient) Rotate(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error) {
-	newSet := AzureCredentialsSet(tx.Instance)
+	newSet := AzureCredentialsSet(tx.Instance, tx.ClusterName)
 	newSet.Current = existing.Next
 	return newSet, nil
 }

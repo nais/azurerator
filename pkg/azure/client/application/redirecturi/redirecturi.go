@@ -54,9 +54,11 @@ func App(instance v1.AzureAdApplication) any {
 func ReplyUrlsToStringSlice(resource v1.AzureAdApplication) []string {
 	replyUrls := make([]string, 0)
 	for _, v := range resource.Spec.ReplyUrls {
-		ok := govalidator.IsURL(v.Url)
+		url := string(v.Url)
+
+		ok := govalidator.IsURL(url)
 		if ok {
-			replyUrls = append(replyUrls, v.Url)
+			replyUrls = append(replyUrls, url)
 		}
 	}
 	return stringutils.RemoveDuplicates(replyUrls)

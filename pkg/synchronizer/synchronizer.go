@@ -78,12 +78,11 @@ func (s synchronizer) process(ctx context.Context, e event.Event, logger *log.En
 	}
 
 	candidateCount := 0
+	clusterName := s.config.ClusterName
 
 	for _, app := range apps.Items {
-		app.SetClusterName(s.config.ClusterName)
-
-		if customresources.HasMatchingPreAuthorizedApp(app, e) {
-			candidateID := kubernetes.UniformResourceName(&app)
+		if customresources.HasMatchingPreAuthorizedApp(app, clusterName, e) {
+			candidateID := kubernetes.UniformResourceName(&app, clusterName)
 			candidateCount += 1
 
 			if err := s.resync(ctx, app, e); err != nil {

@@ -50,7 +50,7 @@ func TestRedirectUriApp(t *testing.T) {
 
 	t.Run("single-page application", func(t *testing.T) {
 		app := azureAdApp()
-		app.Spec.SinglePageApplication = (*v1.AzureAdSinglePageApplication)(ptr.Bool(true))
+		app.Spec.SinglePageApplication = ptr.Bool(true)
 
 		a := redirecturi.App(app)
 		expected := `
@@ -70,7 +70,7 @@ func TestRedirectUriApp(t *testing.T) {
 
 	t.Run("single-page application, empty urls", func(t *testing.T) {
 		app := azureAdApp()
-		app.Spec.SinglePageApplication = (*v1.AzureAdSinglePageApplication)(ptr.Bool(true))
+		app.Spec.SinglePageApplication = ptr.Bool(true)
 		app.Spec.ReplyUrls = make([]v1.AzureAdReplyUrl, 0)
 
 		a := redirecturi.App(app)
@@ -97,7 +97,7 @@ func TestGetReplyUrlsStringSlice(t *testing.T) {
 
 	t.Run("Application with reply URL should return equivalent string slice of reply URLs", func(t *testing.T) {
 		url := "https://test.host/callback"
-		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{ReplyUrls: []v1.AzureAdReplyUrl{{Url: url}}}}
+		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{ReplyUrls: []v1.AzureAdReplyUrl{{Url: v1.AzureAdReplyUrlString(url)}}}}
 		actual := redirecturi.ReplyUrlsToStringSlice(p)
 		assert.NotEmpty(t, actual)
 		assert.Len(t, actual, 1)
@@ -157,7 +157,7 @@ func azureAdApp() v1.AzureAdApplication {
 		Spec: v1.AzureAdApplicationSpec{
 			ReplyUrls: []v1.AzureAdReplyUrl{
 				{
-					Url: url,
+					Url: v1.AzureAdReplyUrlString(url),
 				},
 			},
 		},

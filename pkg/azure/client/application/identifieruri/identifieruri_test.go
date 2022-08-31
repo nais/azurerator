@@ -12,7 +12,8 @@ import (
 
 func TestDescribeCreate(t *testing.T) {
 	spec := spec()
-	actual := identifieruri.DescribeCreate(spec)
+	clusterName := "test-cluster"
+	actual := identifieruri.DescribeCreate(spec, clusterName)
 	expected := azure.IdentifierUris{
 		"api://test-cluster.test-namespace.test",
 		"api://some-uuid",
@@ -22,6 +23,8 @@ func TestDescribeCreate(t *testing.T) {
 }
 
 func TestDescribeUpdate(t *testing.T) {
+	clusterName := "test-cluster"
+
 	for _, test := range []struct {
 		name     string
 		existing azure.IdentifierUris
@@ -85,7 +88,7 @@ func TestDescribeUpdate(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			spec := spec()
-			actual := identifieruri.DescribeUpdate(spec, test.existing)
+			actual := identifieruri.DescribeUpdate(spec, test.existing, clusterName)
 			assert.ElementsMatch(t, test.expected, actual)
 		})
 	}
@@ -95,7 +98,6 @@ func spec() v1.AzureAdApplication {
 	spec := v1.AzureAdApplication{}
 	spec.SetName("test")
 	spec.SetNamespace("test-namespace")
-	spec.SetClusterName("test-cluster")
 	spec.Status.ClientId = "some-uuid"
 	return spec
 }

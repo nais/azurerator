@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/crd"
+	"github.com/nais/liberator/pkg/events"
 	"github.com/nais/liberator/pkg/finalizer"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -182,7 +183,7 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotR
 	err = cli.Update(context.Background(), newInstance)
 	assert.NoError(t, err, "updating existing application should not return error")
 
-	newInstance = assertApplicationExists(t, newInstance.GetName(), v1.EventSynchronized)
+	newInstance = assertApplicationExists(t, newInstance.GetName(), events.Synchronized)
 
 	assert.Eventually(t, func() bool {
 		return newInstance.Status.SynchronizationTime.After(previousSyncTime.Time)
@@ -569,7 +570,7 @@ func assertApplicationExists(t *testing.T, name string, state ...string) *v1.Azu
 	assertPreAuthorizedAppsStatusIsValid(t, instance.Spec.PreAuthorizedApplications, instance.Status.PreAuthorizedApps)
 
 	if len(state) == 0 {
-		assert.Equal(t, v1.EventSynchronized, instance.Status.SynchronizationState, "AzureAdApplication should be synchronized")
+		assert.Equal(t, events.Synchronized, instance.Status.SynchronizationState, "AzureAdApplication should be synchronized")
 	} else {
 		assert.Equal(t, state[0], instance.Status.SynchronizationState, fmt.Sprintf("AzureAdApplication should be %s", state[0]))
 	}
@@ -784,6 +785,7 @@ func setup() (*envtest.Environment, error) {
 	}
 	azureratorCfg.SecretRotation.MaxAge = maxSecretAge
 	azureratorCfg.Azure.Tenant.Id = "some-id"
+	azureratorCfg.ClusterName = "test-cluster"
 
 	azureOpenIDConfig := fake.AzureOpenIdConfig()
 

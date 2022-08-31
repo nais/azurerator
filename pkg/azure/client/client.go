@@ -127,7 +127,7 @@ func (c Client) Create(tx transaction.Transaction) (*result.Application, error) 
 
 	tx = tx.UpdateWithServicePrincipalID(servicePrincipal)
 
-	identifierUris := identifieruri.DescribeCreate(tx.Instance)
+	identifierUris := identifieruri.DescribeCreate(tx.Instance, tx.ClusterName)
 	err = doRetry(tx.Ctx, func(ctx context.Context) error {
 		err := c.Application().IdentifierUri().Set(tx, identifierUris)
 		return retry.RetryableError(err)
@@ -167,7 +167,9 @@ func (c Client) Delete(tx transaction.Transaction) error {
 	if exists {
 		return c.Application().Delete(tx)
 	}
-	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", kubernetes.UniformResourceName(&tx.Instance), tx.Instance.GetClientId(), tx.Instance.GetObjectId())
+
+	name := kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)
+	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", name, tx.Instance.GetClientId(), tx.Instance.GetObjectId())
 }
 
 // Exists returns an indication of whether the application exists in AAD or not

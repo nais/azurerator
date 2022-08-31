@@ -12,18 +12,20 @@ import (
 )
 
 type Transaction struct {
-	Ctx      context.Context
-	Instance *v1.AzureAdApplication
-	Logger   log.Entry
-	Options  options.TransactionOptions
-	Secrets  secrets.Secrets
-	ID       string
+	Ctx         context.Context
+	ClusterName string
+	Instance    *v1.AzureAdApplication
+	Logger      log.Entry
+	Options     options.TransactionOptions
+	Secrets     secrets.Secrets
+	ID          string
 }
 
 func (t *Transaction) ToAzureTx() transaction.Transaction {
 	return transaction.Transaction{
-		Ctx:      t.Ctx,
-		Instance: *t.Instance,
-		Log:      t.Logger,
+		Ctx:         t.Ctx,
+		ClusterName: t.ClusterName,
+		Instance:    *t.Instance,
+		Log:         t.Logger,
 	}
 }

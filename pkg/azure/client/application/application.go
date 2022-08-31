@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
@@ -84,7 +83,7 @@ func (a application) RequiredResourceAccess() requiredresourceaccess.RequiredRes
 }
 
 func (a application) Exists(tx transaction.Transaction) (*msgraph.Application, bool, error) {
-	name := kubernetes.UniformResourceName(&tx.Instance)
+	name := kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)
 	return a.ExistsByFilter(tx.Ctx, util.FilterByName(name))
 }
 
@@ -111,7 +110,7 @@ func (a application) Register(tx transaction.Transaction) (*msgraph.Application,
 
 	optionalClaims := a.OptionalClaims().DescribeCreate()
 
-	req := util.Application(a.defaultTemplate(tx.Instance)).
+	req := util.Application(a.defaultTemplate(tx)).
 		AppRoles(roles.GetResult()).
 		GroupMembershipClaims(a.Config().Features.GroupMembershipClaim.Default).
 		OptionalClaims(optionalClaims).
@@ -147,9 +146,9 @@ func (a application) Update(tx transaction.Transaction) (*msgraph.Application, e
 	scopes := a.OAuth2PermissionScopes().DescribeUpdate(desiredPermissions, existingScopes)
 	scopes.Log(tx.Log)
 
-	identifierUris := identifieruri.DescribeUpdate(tx.Instance, actualApp.IdentifierUris)
+	identifierUris := identifieruri.DescribeUpdate(tx.Instance, actualApp.IdentifierUris, tx.ClusterName)
 	optionalClaims := a.OptionalClaims().DescribeUpdate(actualApp)
-	app := util.Application(a.defaultTemplate(tx.Instance)).
+	app := util.Application(a.defaultTemplate(tx)).
 		AppRoles(roles.GetResult()).
 		IdentifierUriList(identifierUris).
 		OptionalClaims(optionalClaims).
@@ -183,7 +182,7 @@ func (a application) ExistsByFilter(ctx context.Context, filter azure.Filter) (*
 }
 
 func (a application) Get(tx transaction.Transaction) (msgraph.Application, error) {
-	return a.GetByName(tx.Ctx, kubernetes.UniformResourceName(&tx.Instance))
+	return a.GetByName(tx.Ctx, kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName))
 }
 
 func (a application) GetByName(ctx context.Context, name azure.DisplayName) (msgraph.Application, error) {
@@ -231,9 +230,9 @@ func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msg
 	return applications, nil
 }
 
-func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Application {
+func (a application) defaultTemplate(tx transaction.Transaction) *msgraph.Application {
 	return &msgraph.Application{
-		DisplayName:    ptr.String(kubernetes.UniformResourceName(&resource)),
+		DisplayName:    ptr.String(kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)),
 		SignInAudience: ptr.String("AzureADMyOrg"),
 		Tags: []string{
 			IaCAppTag,
@@ -244,7 +243,7 @@ func (a application) defaultTemplate(resource v1.AzureAdApplication) *msgraph.Ap
 			RequestedAccessTokenVersion: ptr.Int(2),
 		},
 		Web: &msgraph.WebApplication{
-			LogoutURL: ptr.String(resource.Spec.LogoutUrl),
+			LogoutURL: ptr.String(tx.Instance.Spec.LogoutUrl),
 			ImplicitGrantSettings: &msgraph.ImplicitGrantSettings{
 				EnableIDTokenIssuance:     ptr.Bool(false),
 				EnableAccessTokenIssuance: ptr.Bool(false),

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
@@ -54,12 +53,12 @@ func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCre
 		return nil, err
 	}
 
-	currentKeyCredential, currentJwk, err := k.new(tx.Instance)
+	currentKeyCredential, currentJwk, err := k.new(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	nextKeyCredential, nextJwk, err := k.new(tx.Instance)
+	nextKeyCredential, nextJwk, err := k.new(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +139,7 @@ func (k keyCredential) Rotate(tx transaction.Transaction, existing credentials.S
 		return nil, nil, err
 	}
 
-	keyCredential, jwk, err := k.new(tx.Instance)
+	keyCredential, jwk, err := k.new(tx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -229,8 +228,8 @@ func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction, keyIdsInU
 	return append(keyCredentialsInUse, newestCredential), nil
 }
 
-func (k keyCredential) new(resource v1.AzureAdApplication) (*msgraph.KeyCredential, *crypto.Jwk, error) {
-	jwkPair, err := crypto.GenerateJwk(resource)
+func (k keyCredential) new(tx transaction.Transaction) (*msgraph.KeyCredential, *crypto.Jwk, error) {
+	jwkPair, err := crypto.GenerateJwk(tx.Instance, tx.ClusterName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate JWK pair for application: %w", err)
 	}

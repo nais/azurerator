@@ -145,11 +145,11 @@ func TestHasRotateAnnotation(t *testing.T) {
 }
 
 func TestHasMatchingPreAuthorizedApp(t *testing.T) {
+	clusterName := "test-cluster"
 	e := event.NewEvent("1", event.Created, &metav1.ObjectMeta{
-		Name:        "some-app",
-		Namespace:   "test-namespace",
-		ClusterName: "test-cluster",
-	})
+		Name:      "some-app",
+		Namespace: "test-namespace",
+	}, clusterName)
 
 	for _, test := range []struct {
 		name     string
@@ -239,7 +239,7 @@ func TestHasMatchingPreAuthorizedApp(t *testing.T) {
 			app := fixtures.MinimalApplication()
 			app.Spec.PreAuthorizedApplications = []nais_io_v1.AccessPolicyInboundRule{{AccessPolicyRule: test.rule}}
 
-			actual := customresources.HasMatchingPreAuthorizedApp(*app, e)
+			actual := customresources.HasMatchingPreAuthorizedApp(*app, clusterName, e)
 
 			if test.expected {
 				assert.True(t, actual)

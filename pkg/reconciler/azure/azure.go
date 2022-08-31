@@ -137,7 +137,7 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 		return
 	}
 
-	e := event.NewEvent(tx.ID, eventName, tx.Instance)
+	e := event.NewEvent(tx.ID, eventName, tx.Instance, tx.ClusterName)
 	tx.Logger.Debugf("producing '%s' event to kafka...", eventName)
 
 	retryable := func(ctx context.Context) error {
@@ -312,7 +312,7 @@ func (a azureReconciler) ProcessOrphaned(tx transaction.Transaction) error {
 		return nil
 	}
 
-	tx.Logger.Warnf("orphaned resource '%s' found in tenant %s", kubernetes.UniformResourceName(tx.Instance), a.config.Azure.Tenant)
+	tx.Logger.Warnf("orphaned resource '%s' found in tenant %s", kubernetes.UniformResourceName(tx.Instance, a.config.ClusterName), a.config.Azure.Tenant)
 	metrics.IncWithNamespaceLabel(metrics.AzureAppOrphanedTotal, tx.Instance.GetNamespace())
 
 	if tx.Options.Process.Azure.CleanupOrphans {

@@ -143,8 +143,8 @@ func (p preAuthApps) mapToResources(tx transaction.Transaction) (*result.PreAuth
 	}
 
 	// add self to preauthorizedapps
-	if !seen[kubernetes.UniformResourceName(&tx.Instance)] {
-		validResources = append(validResources, toResource(tx.Instance))
+	if !seen[kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)] {
+		validResources = append(validResources, toResource(tx))
 	}
 
 	return &result.PreAuthorizedApps{
@@ -192,17 +192,17 @@ func invalidResource(app v1.AccessPolicyInboundRule) *resource.Resource {
 	}
 }
 
-func toResource(instance v1.AzureAdApplication) resource.Resource {
+func toResource(tx transaction.Transaction) resource.Resource {
 	return resource.Resource{
-		Name:          kubernetes.UniformResourceName(&instance),
-		ClientId:      instance.Status.ClientId,
-		ObjectId:      instance.Status.ServicePrincipalId,
+		Name:          kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName),
+		ClientId:      tx.Instance.Status.ClientId,
+		ObjectId:      tx.Instance.Status.ServicePrincipalId,
 		PrincipalType: resource.PrincipalTypeServicePrincipal,
 		AccessPolicyInboundRule: v1.AccessPolicyInboundRule{
 			AccessPolicyRule: v1.AccessPolicyRule{
-				Application: instance.GetName(),
-				Namespace:   instance.GetNamespace(),
-				Cluster:     instance.GetClusterName(),
+				Application: tx.Instance.GetName(),
+				Namespace:   tx.Instance.GetNamespace(),
+				Cluster:     tx.ClusterName,
 			},
 		},
 	}
@@ -210,7 +210,7 @@ func toResource(instance v1.AzureAdApplication) resource.Resource {
 
 func ensureFieldsAreSet(tx transaction.Transaction, rule v1.AccessPolicyInboundRule) v1.AccessPolicyInboundRule {
 	if len(rule.Cluster) == 0 {
-		rule.Cluster = tx.Instance.GetClusterName()
+		rule.Cluster = tx.ClusterName
 	}
 
 	if len(rule.Namespace) == 0 {

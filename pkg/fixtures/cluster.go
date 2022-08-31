@@ -66,9 +66,8 @@ func (c ClusterFixtures) WithAzureApp() ClusterFixtures {
 	}
 	c.azureAdApplication = &v1.AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        key.Name,
-			Namespace:   key.Namespace,
-			ClusterName: "test-cluster",
+			Name:      key.Name,
+			Namespace: key.Namespace,
 		},
 		Spec: spec,
 	}

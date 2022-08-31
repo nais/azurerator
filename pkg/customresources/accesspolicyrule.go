@@ -8,8 +8,7 @@ import (
 
 func GetUniqueName(in v1.AccessPolicyRule) string {
 	return kubernetes.UniformResourceName(&metav1.ObjectMeta{
-		Name:        in.Application,
-		Namespace:   in.Namespace,
-		ClusterName: in.Cluster,
-	})
+		Name:      in.Application,
+		Namespace: in.Namespace,
+	}, in.Cluster)
 }

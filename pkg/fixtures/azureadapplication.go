@@ -9,9 +9,8 @@ func MinimalApplication() *nais_io_v1.AzureAdApplication {
 	now := metav1.Now()
 	return &nais_io_v1.AzureAdApplication{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-app",
-			Namespace:   "test-namespace",
-			ClusterName: "test-cluster",
+			Name:      "test-app",
+			Namespace: "test-namespace",
 		},
 		Spec: nais_io_v1.AzureAdApplicationSpec{
 			ReplyUrls:                 nil,

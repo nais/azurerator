@@ -20,13 +20,13 @@ type Jwk struct {
 	PublicPem []byte          `json:"publicPem"`
 }
 
-func GenerateJwk(application v1.AzureAdApplication) (Jwk, error) {
+func GenerateJwk(application v1.AzureAdApplication, clusterName string) (Jwk, error) {
 	keyPair, err := NewRSAKeyPair()
 	if err != nil {
 		return Jwk{}, err
 	}
 
-	template := CertificateTemplate(application)
+	template := CertificateTemplate(application, clusterName)
 	cert, err := GenerateCertificate(template, keyPair)
 	if err != nil {
 		return Jwk{}, err

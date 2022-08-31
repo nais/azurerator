@@ -25,7 +25,7 @@ func GenerateCertificate(template *x509.Certificate, keyPair KeyPair) (*x509.Cer
 	return cert, nil
 }
 
-func CertificateTemplate(application v1.AzureAdApplication) *x509.Certificate {
+func CertificateTemplate(application v1.AzureAdApplication, clusterName string) *x509.Certificate {
 	notBefore := time.Now()
 
 	var notAfter time.Time
@@ -43,7 +43,7 @@ func CertificateTemplate(application v1.AzureAdApplication) *x509.Certificate {
 			Locality:           []string{"Oslo"},
 			Organization:       []string{"NAV (Arbeids- og velferdsdirektoratet"},
 			OrganizationalUnit: []string{"NAV IT"},
-			CommonName:         fmt.Sprintf("%s.%s.%s.azurerator.nais.io", application.Name, application.Namespace, application.ClusterName),
+			CommonName:         fmt.Sprintf("%s.%s.%s.azurerator.nais.io", application.Name, application.Namespace, clusterName),
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,

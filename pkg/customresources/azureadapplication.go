@@ -53,13 +53,13 @@ func HasRotateAnnotation(in *nais_io_v1.AzureAdApplication) bool {
 	return found
 }
 
-func HasMatchingPreAuthorizedApp(in nais_io_v1.AzureAdApplication, event event.Event) bool {
+func HasMatchingPreAuthorizedApp(in nais_io_v1.AzureAdApplication, clusterName string, event event.Event) bool {
 	for _, preAuthApp := range in.Spec.PreAuthorizedApplications {
 		if len(preAuthApp.Namespace) == 0 {
 			preAuthApp.Namespace = in.GetNamespace()
 		}
 		if len(preAuthApp.Cluster) == 0 {
-			preAuthApp.Cluster = in.GetClusterName()
+			preAuthApp.Cluster = clusterName
 		}
 
 		nameMatches := preAuthApp.Application == event.Application.Name

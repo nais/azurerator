@@ -39,15 +39,15 @@ func (i identifierUri) Set(tx transaction.Transaction, uris azure.IdentifierUris
 	return nil
 }
 
-func DescribeCreate(instance v1.AzureAdApplication) azure.IdentifierUris {
-	return defaultUris(instance)
+func DescribeCreate(instance v1.AzureAdApplication, clusterName string) azure.IdentifierUris {
+	return defaultUris(instance, clusterName)
 }
 
-func DescribeUpdate(instance v1.AzureAdApplication, existing azure.IdentifierUris) azure.IdentifierUris {
+func DescribeUpdate(instance v1.AzureAdApplication, existing azure.IdentifierUris, clusterName string) azure.IdentifierUris {
 	result := make(azure.IdentifierUris, len(existing))
 	copy(result, existing)
 
-	for _, uri := range defaultUris(instance) {
+	for _, uri := range defaultUris(instance, clusterName) {
 		seen := false
 
 		for _, existingUri := range existing {
@@ -69,13 +69,13 @@ func uriClientId(id azure.ClientId) string {
 	return fmt.Sprintf("api://%s", id)
 }
 
-func uriHumanReadable(spec v1.AzureAdApplication) string {
-	return fmt.Sprintf("api://%s.%s.%s", spec.GetClusterName(), spec.GetNamespace(), spec.GetName())
+func uriHumanReadable(spec v1.AzureAdApplication, clusterName string) string {
+	return fmt.Sprintf("api://%s.%s.%s", clusterName, spec.GetNamespace(), spec.GetName())
 }
 
-func defaultUris(instance v1.AzureAdApplication) azure.IdentifierUris {
+func defaultUris(instance v1.AzureAdApplication, clusterName string) azure.IdentifierUris {
 	return []string{
 		uriClientId(instance.GetClientId()),
-		uriHumanReadable(instance),
+		uriHumanReadable(instance, clusterName),
 	}
 }

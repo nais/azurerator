@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/nais/liberator/pkg/events"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -151,8 +152,6 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 		return nil, err
 	}
 
-	instance.SetClusterName(r.Config.ClusterName)
-
 	correlationId := r.getOrGenerateCorrelationId(instance)
 
 	logger := *log.WithFields(log.Fields{
@@ -174,12 +173,13 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 	}
 
 	return &transaction.Transaction{
-		Ctx:      ctx,
-		Instance: instance,
-		Logger:   logger,
-		Secrets:  *transactionSecrets,
-		Options:  opts,
-		ID:       correlationId,
+		Ctx:         ctx,
+		ClusterName: r.Config.ClusterName,
+		Instance:    instance,
+		Logger:      logger,
+		Secrets:     *transactionSecrets,
+		Options:     opts,
+		ID:          correlationId,
 	}, nil
 }
 
@@ -199,14 +199,14 @@ func (r *Reconciler) Process(tx transaction.Transaction) error {
 
 func (r *Reconciler) HandleError(tx transaction.Transaction, err error) (ctrl.Result, error) {
 	tx.Logger.Error(fmt.Errorf("failed to process AzureAdApplication: %w", err))
-	r.ReportEvent(tx, corev1.EventTypeWarning, v1.EventFailedSynchronization, "Failed to synchronize AzureAdApplication")
+	r.ReportEvent(tx, corev1.EventTypeWarning, events.FailedSynchronization, "Failed to synchronize AzureAdApplication")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.Instance.Namespace)
 
 	requeue := true
 	if r.isUnrecoverableError(tx, err) {
 		requeue = false
 	} else {
-		r.ReportEvent(tx, corev1.EventTypeNormal, v1.EventRetrying, "Retrying synchronization")
+		r.ReportEvent(tx, corev1.EventTypeNormal, events.Retrying, "Retrying synchronization")
 	}
 
 	return ctrl.Result{Requeue: requeue}, nil
@@ -220,7 +220,7 @@ func (r *Reconciler) isUnrecoverableError(tx transaction.Transaction, err error)
 		template := "Secret '%s' is already owned by %s '%s', cannot overwrite. If overwriting is intended, delete the secret and resynchronize."
 		msg := fmt.Sprintf(template, alreadyOwnedErr.Object.GetName(), alreadyOwnedErr.Owner.Kind, alreadyOwnedErr.Owner.Name)
 
-		r.ReportEvent(tx, corev1.EventTypeWarning, v1.EventFailedSynchronization, msg)
+		r.ReportEvent(tx, corev1.EventTypeWarning, events.FailedSynchronization, msg)
 		return true
 	}
 
@@ -229,7 +229,7 @@ func (r *Reconciler) isUnrecoverableError(tx transaction.Transaction, err error)
 
 func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsProcessedCount, tx.Instance.Namespace)
-	r.ReportEvent(tx, corev1.EventTypeNormal, v1.EventSynchronized, "Azure application is up-to-date")
+	r.ReportEvent(tx, corev1.EventTypeNormal, events.Synchronized, "Azure application is up-to-date")
 
 	tx.Instance.Status.SynchronizationSecretName = tx.Instance.Spec.SecretName
 	now := metav1.Now()
@@ -245,7 +245,7 @@ func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {
 
 	err = r.updateStatus(tx)
 	if err != nil {
-		r.ReportEvent(tx, corev1.EventTypeWarning, v1.EventFailedStatusUpdate, "Failed to update status")
+		r.ReportEvent(tx, corev1.EventTypeWarning, events.FailedStatusUpdate, "Failed to update status")
 		return ctrl.Result{}, err
 	}
 
@@ -260,7 +260,7 @@ func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {
 
 	err = r.updateAnnotations(tx)
 	if err != nil {
-		r.ReportEvent(tx, corev1.EventTypeWarning, v1.EventRetrying, "Failed to update annotations")
+		r.ReportEvent(tx, corev1.EventTypeWarning, events.Retrying, "Failed to update annotations")
 		return ctrl.Result{}, err
 	}
 

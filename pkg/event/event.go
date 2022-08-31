@@ -13,11 +13,11 @@ type Event struct {
 	Application Application `json:"application"`
 }
 
-func NewEvent(ID string, eventName Name, app metav1.Object) Event {
+func NewEvent(ID string, eventName Name, app metav1.Object, clusterName string) Event {
 	application := Application{
 		Name:      app.GetName(),
 		Namespace: app.GetNamespace(),
-		Cluster:   app.GetClusterName(),
+		Cluster:   clusterName,
 	}
 
 	return Event{ID: ID, EventName: eventName, Application: application}

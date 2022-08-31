@@ -41,7 +41,7 @@ func TestSecretData(t *testing.T) {
 	}
 	azureApp := fake.AzureApplicationResult(*app, result.OperationCreated)
 	azureOpenIdConfig := fake.AzureOpenIdConfig()
-	azureCredentialsSet := fake.AzureCredentialsSet(*app)
+	azureCredentialsSet := fake.AzureCredentialsSet(*app, "test-cluster")
 
 	keys := NewSecretDataKeys()
 	stringData, err := SecretData(azureApp, azureCredentialsSet, azureOpenIdConfig, keys)

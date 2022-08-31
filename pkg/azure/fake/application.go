@@ -13,19 +13,20 @@ import (
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/result"
+	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/util/crypto"
 )
 
-func MsGraphApplication(instance v1.AzureAdApplication) msgraph.Application {
-	objectId := getOrGenerate(instance.GetObjectId())
-	clientId := getOrGenerate(instance.GetClientId())
+func MsGraphApplication(tx transaction.Transaction) msgraph.Application {
+	objectId := getOrGenerate(tx.Instance.GetObjectId())
+	clientId := getOrGenerate(tx.Instance.GetClientId())
 
 	return msgraph.Application{
 		DirectoryObject: msgraph.DirectoryObject{
 			Entity: msgraph.Entity{ID: ptr.String(objectId)},
 		},
-		DisplayName: ptr.String(kubernetes.UniformResourceName(&instance)),
+		DisplayName: ptr.String(kubernetes.UniformResourceName(&tx.Instance, tx.ClusterName)),
 		AppID:       ptr.String(clientId),
 	}
 }
@@ -47,13 +48,13 @@ func AzureApplicationResult(instance v1.AzureAdApplication, operation result.Ope
 	}
 }
 
-func AzureCredentialsSet(instance v1.AzureAdApplication) credentials.Set {
-	currJwk, err := crypto.GenerateJwk(instance)
+func AzureCredentialsSet(instance v1.AzureAdApplication, clusterName string) credentials.Set {
+	currJwk, err := crypto.GenerateJwk(instance, clusterName)
 	if err != nil {
 		panic(err)
 	}
 
-	nextJwk, err := crypto.GenerateJwk(instance)
+	nextJwk, err := crypto.GenerateJwk(instance, clusterName)
 	if err != nil {
 		panic(err)
 	}
@@ -109,10 +110,9 @@ func mapToInternalPreAuthApp(app v1.AccessPolicyInboundRule) resource.Resource {
 	clientId := uuid.New().String()
 	objectId := uuid.New().String()
 	name := getOrGenerate(kubernetes.UniformResourceName(&metav1.ObjectMeta{
-		Name:        app.Application,
-		Namespace:   app.Namespace,
-		ClusterName: app.Cluster,
-	}))
+		Name:      app.Application,
+		Namespace: app.Namespace,
+	}, app.Cluster))
 	return resource.Resource{
 		Name:                    name,
 		ClientId:                clientId,
