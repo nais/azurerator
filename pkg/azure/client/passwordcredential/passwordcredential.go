@@ -114,6 +114,9 @@ func (p passwordCredential) Rotate(tx transaction.Transaction, existing credenti
 		return nil, err
 	}
 
+	// sleep to prevent concurrent modification error from Microsoft
+	time.Sleep(p.DelayIntervalBetweenModifications())
+
 	passwordKeyIdsInUse := append(
 		keyIdsInUse.Password,
 		existing.Current.Password.KeyId,
