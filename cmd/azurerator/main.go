@@ -68,6 +68,8 @@ func run() error {
 		return err
 	}
 
+	renewDeadline := 1 * time.Minute
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                     scheme,
 		MetricsBindAddress:         cfg.MetricsAddr,
@@ -75,6 +77,7 @@ func run() error {
 		LeaderElectionID:           fmt.Sprintf("azurerator.nais.io-%s", cfg.Azure.Tenant.Id),
 		LeaderElectionNamespace:    cfg.LeaderElection.Namespace,
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
+		RenewDeadline:              &renewDeadline,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
