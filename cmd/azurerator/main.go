@@ -68,7 +68,8 @@ func run() error {
 		return err
 	}
 
-	renewDeadline := 1 * time.Minute
+	leaseDuration := 25 * time.Second
+	renewDeadline := 20 * time.Second
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                     scheme,
@@ -77,6 +78,7 @@ func run() error {
 		LeaderElectionID:           fmt.Sprintf("azurerator.nais.io-%s", cfg.Azure.Tenant.Id),
 		LeaderElectionNamespace:    cfg.LeaderElection.Namespace,
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
+		LeaseDuration:              &leaseDuration,
 		RenewDeadline:              &renewDeadline,
 	})
 	if err != nil {
