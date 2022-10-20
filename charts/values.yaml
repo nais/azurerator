@@ -29,28 +29,28 @@ secret:
         all-custom-claims: "a886ea76-2696-4198-84f1-8e40c3b5ba80"
       cleanup-orphans:
         enabled: "true"
-        groups-assignment:
-          enabled: "true"
-          all-users-group-id: "2d7f1c0d-5784-4f81-8bb2-8f3a79f8f949"
-        teams-management:
-          enabled: "true"
-          service-principal-id: "4c5e3226-106e-404d-81be-d02f31104b5a"
-      permissiongrant-resource-id: "fa08dfc8-337d-4b52-bae8-16eeae834c76"
-      tenant:
-        id: "62366534-1ec3-4962-8869-9b5535279d0b"
-        name: "nav.no"
+      groups-assignment:
+        enabled: "true"
+        all-users-group-id: "2d7f1c0d-5784-4f81-8bb2-8f3a79f8f949"
+      teams-management:
+        enabled: "true"
+        service-principal-id: "4c5e3226-106e-404d-81be-d02f31104b5a"
+    permissiongrant-resource-id: "fa08dfc8-337d-4b52-bae8-16eeae834c76"
+    tenant:
+      id: "62366534-1ec3-4962-8869-9b5535279d0b"
+      name: "nav.no"
   cluster-name:
   controller:
     max-concurrent-reconciles: "10"
-    kafka:
+  kafka:
+    enabled: "true"
+    topic: "nais.azurerator-events-nav"
+    tls:
       enabled: "true"
-      topic: "nais.azurerator-events-nav"
-      tls:
-        enabled: "true"
-    leader-election:
-      enabled: "true"
-    secret-rotation:
-      cleanup: "true"
-    validations:
-      tenant:
-        required: "true"
+  leader-election:
+    enabled: "true"
+  secret-rotation:
+    cleanup: "true"
+  validations:
+    tenant:
+      required: "true"
