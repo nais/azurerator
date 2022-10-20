@@ -2,9 +2,9 @@ trygdeetaten:
   enabled: false
 
 image:
-  repository: europe-north1-docker.pkg.dev/nais-io/nais/images
+  repository: ghcr.io/nais
   name: azurerator
-  tag: master
+  tag: 2022-10-20-116f2fa
 
 kafka:
   enabled: false
