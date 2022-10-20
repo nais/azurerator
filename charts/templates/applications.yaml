@@ -1,3 +1,4 @@
+---
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
@@ -81,5 +82,4 @@ spec:
     pool: "nav-infrastructure"
   {{ end }}
   webproxy: {{ .Values.webproxy }}
----
 {{ end }}
