@@ -1,8 +1,9 @@
-
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
   name: azurerator
+  labels:
+    team: {{ .Values.team }}
 spec:
   image: "{{ .Values.image.repository }}/{{.Values.image.name}}:{{.Values.image.tag}}"
   port: 8080
@@ -37,12 +38,15 @@ spec:
     pool: "{{ .Values.kafka.pool }}"
   {{ end }}
   webproxy: {{ .Values.webproxy }}
----
 
+{{ if .Values.trygdeetaten.enabled }}
+---
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
   name: azurerator-trygdeetaten
+  labels:
+    team: {{ .Values.team }}
 spec:
   image: "{{ .Values.image.repository }}/{{.Values.image.name}}:{{.Values.image.tag}}"
   port: 8080
@@ -78,3 +82,4 @@ spec:
   {{ end }}
   webproxy: {{ .Values.webproxy }}
 ---
+{{ end }}
