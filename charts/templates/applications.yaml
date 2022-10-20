@@ -33,9 +33,9 @@ spec:
       external:
         - host: login.microsoftonline.com
         - host: graph.microsoft.com
-  {{- if .Values.kafka.enabled }}
+  {{- if .Values.secret.kafka.enabled }}
   kafka:
-    pool: "{{ .Values.kafka.pool }}"
+    pool: "nav-infrastructure"
   {{ end }}
   webproxy: {{ .Values.webproxy }}
 
@@ -76,9 +76,9 @@ spec:
       external:
         - host: login.microsoftonline.com
         - host: graph.microsoft.com
-  {{- if .Values.kafka.enabled }}
+  {{- if .Values.secret.kafka.enabled }}
   kafka:
-    pool: "{{ .Values.kafka.pool }}"
+    pool: "nav-infrastructure"
   {{ end }}
   webproxy: {{ .Values.webproxy }}
 ---

@@ -8,10 +8,6 @@ image:
   name: azurerator
   tag: 2022-10-20-116f2fa
 
-kafka:
-  enabled: false
-  pool: nav-infrastructure
-
 webproxy: false
 
 secret:
