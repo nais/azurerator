@@ -1,0 +1,143 @@
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    app: azurerator
+  name: azurerator
+rules:
+  - apiGroups:
+      - nais.io
+    resources:
+      - azureadapplications
+      - azureadapplications/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+      - update
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - namespaces
+    verbs:
+      - list
+      - get
+      - watch
+
+---
+# permissions to do leader election.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: azurerator-leader-election
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    app: azurerator
+  name: azurerator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: azurerator
+subjects:
+  - kind: ServiceAccount
+    name: azurerator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app: azurerator
+  name: azurerator-leader-election
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: azurerator-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: azurerator
+
+
+{{ if .Values.trygdeetaten.enabled }}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    app: azurerator-trygdeetaten
+  name: azurerator-trygdeetaten
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: azurerator
+subjects:
+  - kind: ServiceAccount
+    name: azurerator-trygdeetaten
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app: azurerator-trygdeetaten
+  name: azurerator-trygdeetaten-leader-election
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: azurerator-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: azurerator-trygdeetaten
+
+{{ end }} # end of .trygdeetaten.enabled
