@@ -12,7 +12,7 @@ webproxy: false
 
 secret:
   # config for azurerator instance using nav.no tenant in azure
-  azure-nav-tenant:
+  azure_nav_tenant:
     azure:
       auth:
         client-id: "fa614abe-ee11-4eec-b1e3-29218e0c53bc"
@@ -54,7 +54,7 @@ secret:
         required: "true"
 
   # config for azurerator instance using trygdeetaten tenant in azure
-  azure-trygdeetaten-tenant:
+  azure_trygdeetaten_tenant:
     azure:
       auth:
         client-id: "0da98dc8-eb7b-41a9-9a74-7b38d8814dba"
