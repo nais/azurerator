@@ -41,7 +41,7 @@ secret:
     controller:
       max-concurrent-reconciles: "10"
     kafka:
-      enabled: "false"
+      enabled: false
       topic: "nais.azurerator-events-nav"
       tls:
         enabled: "true"
@@ -83,7 +83,7 @@ secret:
     controller:
       max-concurrent-reconciles: "10"
     kafka:
-      enabled: "false"
+      enabled: false
       topic: "nais.azurerator-events-trygdeetaten"
       tls:
         enabled: "true"
