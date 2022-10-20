@@ -10,7 +10,7 @@ image:
 
 kafka:
   enabled: false
-  pool:
+  pool: nav-infrastructure
 
 webproxy: false
 
@@ -43,7 +43,7 @@ secret:
   controller:
     max-concurrent-reconciles: "10"
   kafka:
-    enabled: "true"
+    enabled: "false"
     topic: "nais.azurerator-events-nav"
     tls:
       enabled: "true"
