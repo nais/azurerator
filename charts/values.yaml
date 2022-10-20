@@ -11,42 +11,86 @@ image:
 webproxy: false
 
 secret:
-  azure:
-    auth:
-      client-id: "fa614abe-ee11-4eec-b1e3-29218e0c53bc"
-      client-secret:
-    features:
-      app-role-assignment-required:
+  # config for azurerator instance using nav.no tenant in azure
+  azure-nav-tenant:
+    azure:
+      auth:
+        client-id: "fa614abe-ee11-4eec-b1e3-29218e0c53bc"
+        client-secret:
+      features:
+        app-role-assignment-required:
+          enabled: "true"
+        claims-mapping-policies:
+          enabled: "true"
+          navident: "c7880a6d-ab30-4fba-be66-4c41d7e6f22f"
+          azp_name: "ab34aaeb-b3d5-48ab-ba13-b90fd985bbe4"
+          all-custom-claims: "a886ea76-2696-4198-84f1-8e40c3b5ba80"
+        cleanup-orphans:
+          enabled: "true"
+        groups-assignment:
+          enabled: "true"
+          all-users-group-id: "2d7f1c0d-5784-4f81-8bb2-8f3a79f8f949"
+        teams-management:
+          enabled: "true"
+          service-principal-id: "4c5e3226-106e-404d-81be-d02f31104b5a"
+      permissiongrant-resource-id: "fa08dfc8-337d-4b52-bae8-16eeae834c76"
+      tenant:
+        id: "62366534-1ec3-4962-8869-9b5535279d0b"
+        name: "nav.no"
+    cluster-name:
+    controller:
+      max-concurrent-reconciles: "10"
+    kafka:
+      enabled: "false"
+      topic: "nais.azurerator-events-nav"
+      tls:
         enabled: "true"
-      claims-mapping-policies:
-        enabled: "true"
-        navident: "c7880a6d-ab30-4fba-be66-4c41d7e6f22f"
-        azp_name: "ab34aaeb-b3d5-48ab-ba13-b90fd985bbe4"
-        all-custom-claims: "a886ea76-2696-4198-84f1-8e40c3b5ba80"
-      cleanup-orphans:
-        enabled: "true"
-      groups-assignment:
-        enabled: "true"
-        all-users-group-id: "2d7f1c0d-5784-4f81-8bb2-8f3a79f8f949"
-      teams-management:
-        enabled: "true"
-        service-principal-id: "4c5e3226-106e-404d-81be-d02f31104b5a"
-    permissiongrant-resource-id: "fa08dfc8-337d-4b52-bae8-16eeae834c76"
-    tenant:
-      id: "62366534-1ec3-4962-8869-9b5535279d0b"
-      name: "nav.no"
-  cluster-name:
-  controller:
-    max-concurrent-reconciles: "10"
-  kafka:
-    enabled: "false"
-    topic: "nais.azurerator-events-nav"
-    tls:
+    leader-election:
       enabled: "true"
-  leader-election:
-    enabled: "true"
-  secret-rotation:
-    cleanup: "true"
-  validations:
-    tenant:
-      required: "true"
+    secret-rotation:
+      cleanup: "true"
+    validations:
+      tenant:
+        required: "true"
+
+  # config for azurerator instance using trygdeetaten tenant in azure
+  azure-trygdeetaten-tenant:
+    azure:
+      auth:
+        client-id: "0da98dc8-eb7b-41a9-9a74-7b38d8814dba"
+        client-secret:
+      features:
+        app-role-assignment-required:
+          enabled: "true"
+        claims-mapping-policies:
+          enabled: "true"
+          navident: "53eccc94-e7d4-4c1b-9d25-62baefaab0df"
+          azp_name: "68607c5b-e4b7-4793-bd30-133bec3f33f2"
+          all-custom-claims: "1e14d5e7-c68f-4e37-a8e1-f55ff41a9dc0"
+        cleanup-orphans:
+          enabled: "true"
+        groups-assignment:
+          enabled: "true"
+          all-users-group-id: "dec3ee50-b683-4644-9507-520e8f054ac2"
+        teams-management:
+          enabled: "false"
+          service-principal-id: ""
+      permissiongrant-resource-id: "1a709eb6-68b9-4db9-aa49-4a25c523c509"
+      tenant:
+        id: "966ac572-f5b7-4bbe-aa88-c76419c0f851"
+        name: "trygdeetaten.no"
+    cluster-name:
+    controller:
+      max-concurrent-reconciles: "10"
+    kafka:
+      enabled: "true"
+      topic: "nais.azurerator-events-trygdeetaten"
+      tls:
+        enabled: "true"
+    leader-election:
+      enabled: "true"
+    secret-rotation:
+      cleanup: "true"
+    validations:
+      tenant:
+        required: "false"
