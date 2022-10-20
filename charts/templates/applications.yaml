@@ -34,7 +34,7 @@ spec:
       external:
         - host: login.microsoftonline.com
         - host: graph.microsoft.com
-  {{- if .Values.secret.kafka.enabled }}
+  {{- if .Values.secret.azure_nav_tenant.kafka.enabled }}
   kafka:
     pool: "nav-infrastructure"
   {{ end }}
@@ -77,7 +77,7 @@ spec:
       external:
         - host: login.microsoftonline.com
         - host: graph.microsoft.com
-  {{- if .Values.secret.kafka.enabled }}
+  {{- if .Values.secret.azure_trygdeetaten_tenant.kafka.enabled }}
   kafka:
     pool: "nav-infrastructure"
   {{ end }}
