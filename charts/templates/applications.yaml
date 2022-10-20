@@ -33,10 +33,10 @@ spec:
         - host: login.microsoftonline.com
         - host: graph.microsoft.com
   {{- if .Values.kafka.enabled }}
-kafka:
-  pool: "{{ .Values.kafka.pool }}"
+  kafka:
+    pool: "{{ .Values.kafka.pool }}"
   {{ end }}
-webproxy: {{ .Values.webproxy }}
+  webproxy: {{ .Values.webproxy }}
 ---
 
 apiVersion: nais.io/v1alpha1
@@ -73,8 +73,8 @@ spec:
         - host: login.microsoftonline.com
         - host: graph.microsoft.com
   {{- if .Values.kafka.enabled }}
-kafka:
-  pool: "{{ .Values.kafka.pool }}"
+  kafka:
+    pool: "{{ .Values.kafka.pool }}"
   {{ end }}
-webproxy: {{ .Values.webproxy }}
+  webproxy: {{ .Values.webproxy }}
 ---
