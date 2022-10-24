@@ -10,7 +10,7 @@ spec:
   # required
   secretName: azuread-myapp
   # everything below is optional
-  allowAllUsers: true
+  allowAllUsers: false
   claims:
     extra:
       - "NAVident"
