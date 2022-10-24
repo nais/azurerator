@@ -6,6 +6,8 @@ import (
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/nais/azureator/pkg/transaction/secrets"
 )
 
 type Transaction struct {
@@ -13,6 +15,7 @@ type Transaction struct {
 	ClusterName         string
 	Instance            v1.AzureAdApplication
 	Log                 log.Entry
+	Secrets             secrets.Secrets
 	UniformResourceName string
 }
 

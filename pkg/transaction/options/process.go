@@ -22,7 +22,7 @@ func (b optionsBuilder) Process() (ProcessOptions, error) {
 
 	needsSynchronization := hashChanged || secretNameChanged || hasExpiredSecrets || hasResynchronizeAnnotation || hasRotateAnnotation
 	needsAzureSynchronization := hashChanged || hasResynchronizeAnnotation
-	hasValidSecrets := !hasExpiredSecrets && tenantUnchanged && b.secrets.Credentials.Valid && b.secrets.Credentials.Set != nil
+	hasValidSecrets := !hasExpiredSecrets && tenantUnchanged && b.secrets.LatestCredentials.Valid && b.secrets.LatestCredentials.Set != nil
 	needsSecretRotation := secretNameChanged || hasRotateAnnotation
 	needsCleanup := !needsSecretRotation && !instance.Spec.SecretProtected && b.config.SecretRotation.Cleanup
 

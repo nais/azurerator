@@ -160,23 +160,24 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 	}
 }
 
-func (a azureReconciler) AddCredentials(tx transaction.Transaction, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
+func (a azureReconciler) AddCredentials(tx transaction.Transaction) (*credentials.Set, credentials.KeyID, error) {
 	tx.Logger.Info("adding credentials for Azure application...")
 
 	credentialsSet, err := a.azureClient.Credentials().Add(tx.ToAzureTx())
 	if err != nil {
-		return nil, credentials.KeyIdsInUse{}, err
+		return nil, credentials.KeyID{}, err
 	}
 
 	tx.Logger.Info("successfully added credentials for Azure application")
 
-	keyIdsInUse.Certificate = append(keyIdsInUse.Certificate, credentialsSet.Current.Certificate.KeyId)
-	keyIdsInUse.Password = append(keyIdsInUse.Password, credentialsSet.Current.Password.KeyId)
-	return &credentialsSet, keyIdsInUse, nil
+	keyIDsInUse := tx.Secrets.KeyIDs.Used
+	keyIDsInUse.Certificate = append(keyIDsInUse.Certificate, credentialsSet.Current.Certificate.KeyId)
+	keyIDsInUse.Password = append(keyIDsInUse.Password, credentialsSet.Current.Password.KeyId)
+	return &credentialsSet, keyIDsInUse, nil
 }
 
 func (a azureReconciler) DeleteUnusedCredentials(tx transaction.Transaction) error {
-	err := a.azureClient.Credentials().DeleteUnused(tx.ToAzureTx(), *tx.Secrets.Credentials.Set, tx.Secrets.KeyIdsInUse)
+	err := a.azureClient.Credentials().DeleteUnused(tx.ToAzureTx())
 	if err != nil {
 		return fmt.Errorf("deleting unused credentials for Azure application: %w", err)
 	}
@@ -202,22 +203,23 @@ func (a azureReconciler) DeleteExpiredCredentials(tx transaction.Transaction) er
 	return nil
 }
 
-func (a azureReconciler) RotateCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error) {
+func (a azureReconciler) RotateCredentials(tx transaction.Transaction) (*credentials.Set, credentials.KeyID, error) {
 	tx.Logger.Info("rotating credentials for Azure application...")
 
-	credentialsSet, err := a.azureClient.Credentials().Rotate(tx.ToAzureTx(), existing, keyIdsInUse)
+	credentialsSet, err := a.azureClient.Credentials().Rotate(tx.ToAzureTx())
 	if err != nil {
-		return nil, credentials.KeyIdsInUse{}, err
+		return nil, credentials.KeyID{}, err
 	}
 
 	tx.Logger.Info("successfully rotated credentials for Azure application")
 
-	keyIdsInUse.Certificate = append(keyIdsInUse.Certificate, credentialsSet.Current.Certificate.KeyId)
-	keyIdsInUse.Password = append(keyIdsInUse.Password, credentialsSet.Current.Password.KeyId)
+	keyIDsInUse := tx.Secrets.KeyIDs.Used
+	keyIDsInUse.Certificate = append(keyIDsInUse.Certificate, credentialsSet.Current.Certificate.KeyId)
+	keyIDsInUse.Password = append(keyIDsInUse.Password, credentialsSet.Current.Password.KeyId)
 
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsRotatedCount, tx.Instance.Namespace)
 	a.ReportEvent(tx, corev1.EventTypeNormal, v1.EventRotatedInAzure, "Azure credentials is rotated")
-	return &credentialsSet, keyIdsInUse, nil
+	return &credentialsSet, keyIDsInUse, nil
 }
 
 func (a azureReconciler) PurgeCredentials(tx transaction.Transaction) error {
@@ -244,7 +246,7 @@ func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, 
 		return false, nil
 	}
 
-	valid, err := a.azureClient.Credentials().Validate(tx.ToAzureTx(), *tx.Secrets.Credentials.Set)
+	valid, err := a.azureClient.Credentials().Validate(tx.ToAzureTx(), *tx.Secrets.LatestCredentials.Set)
 	if err != nil {
 		return false, err
 	}

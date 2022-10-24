@@ -20,9 +20,9 @@ import (
 type PasswordCredential interface {
 	Add(tx transaction.Transaction) (msgraph.PasswordCredential, error)
 	DeleteExpired(tx transaction.Transaction) error
-	DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
+	DeleteUnused(tx transaction.Transaction) error
 	Purge(tx transaction.Transaction) error
-	Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.PasswordCredential, error)
+	Rotate(tx transaction.Transaction) (*msgraph.PasswordCredential, error)
 	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }
 
@@ -77,19 +77,13 @@ func (p passwordCredential) DeleteExpired(tx transaction.Transaction) error {
 	return nil
 }
 
-func (p passwordCredential) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
+func (p passwordCredential) DeleteUnused(tx transaction.Transaction) error {
 	app, err := p.Application().Get(tx)
 	if err != nil {
 		return err
 	}
 
-	passwordKeyIdsInUse := append(
-		keyIdsInUse.Password,
-		existing.Current.Password.KeyId,
-		existing.Next.Password.KeyId,
-	)
-
-	revocationCandidates := p.revocationCandidates(app, passwordKeyIdsInUse)
+	revocationCandidates := p.revocationCandidates(tx, app)
 	for _, cred := range revocationCandidates {
 		if cred.DisplayName != nil && cred.KeyID != nil {
 			tx.Log.Debugf("revoking unused password credential '%s' (ID: %s)", *cred.DisplayName, *cred.KeyID)
@@ -103,32 +97,25 @@ func (p passwordCredential) DeleteUnused(tx transaction.Transaction, existing cr
 	return nil
 }
 
-func (p passwordCredential) Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.PasswordCredential, error) {
+func (p passwordCredential) Rotate(tx transaction.Transaction) (*msgraph.PasswordCredential, error) {
 	app, err := p.Application().Get(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	newCred, err := p.Add(tx)
-	if err != nil {
-		return nil, err
+	revocationCandidates := p.revocationCandidates(tx, app)
+	for _, cred := range revocationCandidates {
+		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
+			return nil, err
+		}
 	}
 
 	// sleep to prevent concurrent modification error from Microsoft
 	time.Sleep(p.DelayIntervalBetweenModifications())
 
-	passwordKeyIdsInUse := append(
-		keyIdsInUse.Password,
-		existing.Current.Password.KeyId,
-		existing.Next.Password.KeyId,
-		string(*newCred.KeyID),
-	)
-
-	revocationCandidates := p.revocationCandidates(app, passwordKeyIdsInUse)
-	for _, cred := range revocationCandidates {
-		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
-			return nil, err
-		}
+	newCred, err := p.Add(tx)
+	if err != nil {
+		return nil, err
 	}
 
 	return &newCred, nil
@@ -211,7 +198,12 @@ func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.Applic
 	}
 }
 
-func (p passwordCredential) revocationCandidates(app msgraph.Application, keyIdsInUse []string) []msgraph.PasswordCredential {
+func (p passwordCredential) revocationCandidates(tx transaction.Transaction, app msgraph.Application) []msgraph.PasswordCredential {
+	keyIdsInUse := append(
+		tx.Secrets.KeyIDs.Used.Password,
+		tx.Secrets.LatestCredentials.Set.Current.Password.KeyId,
+		tx.Secrets.LatestCredentials.Set.Next.Password.KeyId,
+	)
 	keyIdsInUse = stringutils.RemoveDuplicates(keyIdsInUse)
 
 	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.

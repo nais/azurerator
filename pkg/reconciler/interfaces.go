@@ -26,10 +26,10 @@ type Azure interface {
 	Process(tx transaction.Transaction) (*result.Application, error)
 	ProcessOrphaned(tx transaction.Transaction) error
 
-	AddCredentials(tx transaction.Transaction, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error)
+	AddCredentials(tx transaction.Transaction) (*credentials.Set, credentials.KeyID, error)
 	DeleteExpiredCredentials(tx transaction.Transaction) error
 	DeleteUnusedCredentials(tx transaction.Transaction) error
-	RotateCredentials(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*credentials.Set, credentials.KeyIdsInUse, error)
+	RotateCredentials(tx transaction.Transaction) (*credentials.Set, credentials.KeyID, error)
 	PurgeCredentials(tx transaction.Transaction) error
 	ValidateCredentials(tx transaction.Transaction) (bool, error)
 }

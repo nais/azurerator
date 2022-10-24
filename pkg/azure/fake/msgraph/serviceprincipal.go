@@ -1,4 +1,4 @@
-package fake
+package msgraph
 
 import (
 	"github.com/google/uuid"

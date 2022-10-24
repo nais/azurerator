@@ -11,7 +11,12 @@ type Set struct {
 	Next    Credentials `json:"next"`
 }
 
-type KeyIdsInUse struct {
+type KeyIDs struct {
+	Used   KeyID `json:"used"`
+	Unused KeyID `json:"unused"`
+}
+
+type KeyID struct {
 	Certificate []string `json:"certificate"`
 	Password    []string `json:"password"`
 }

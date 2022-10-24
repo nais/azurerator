@@ -21,9 +21,9 @@ import (
 type KeyCredential interface {
 	Add(tx transaction.Transaction) (*credentials.AddedKeyCredentialSet, error)
 	DeleteExpired(tx transaction.Transaction) error
-	DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
+	DeleteUnused(tx transaction.Transaction) error
 	Purge(tx transaction.Transaction) error
-	Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error)
+	Rotate(tx transaction.Transaction) (*msgraph.KeyCredential, *crypto.Jwk, error)
 	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }
 
@@ -105,14 +105,8 @@ func (k keyCredential) DeleteExpired(tx transaction.Transaction) error {
 	return k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app)
 }
 
-func (k keyCredential) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
-	keyCredentialIdsInUse := append(
-		keyIdsInUse.Certificate,
-		existing.Current.Certificate.KeyId,
-		existing.Next.Certificate.KeyId,
-	)
-
-	keysInUse, err := k.mapToKeyCredentials(tx, keyCredentialIdsInUse)
+func (k keyCredential) DeleteUnused(tx transaction.Transaction) error {
+	keysInUse, err := k.mapToKeyCredentials(tx)
 	if err != nil {
 		return err
 	}
@@ -126,15 +120,9 @@ func (k keyCredential) DeleteUnused(tx transaction.Transaction, existing credent
 }
 
 // Rotate generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
-// With the exception of new applications, there should always be two active keys available at any given time so that running applications are not interfered with.
-func (k keyCredential) Rotate(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) (*msgraph.KeyCredential, *crypto.Jwk, error) {
-	keyCredentialIdsInUse := append(
-		keyIdsInUse.Certificate,
-		existing.Current.Certificate.KeyId,
-		existing.Next.Certificate.KeyId,
-	)
-
-	keysInUse, err := k.mapToKeyCredentials(tx, keyCredentialIdsInUse)
+// Except new applications, there should always be at least two active keys available at any given time so that running applications are not interfered with.
+func (k keyCredential) Rotate(tx transaction.Transaction) (*msgraph.KeyCredential, *crypto.Jwk, error) {
+	keysInUse, err := k.mapToKeyCredentials(tx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -188,7 +176,12 @@ func (k keyCredential) Validate(tx transaction.Transaction, existing credentials
 }
 
 // Maps a list of key IDs to a list of KeyCredentials
-func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction, keyIdsInUse []string) ([]msgraph.KeyCredential, error) {
+func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction) ([]msgraph.KeyCredential, error) {
+	keyIdsInUse := append(
+		tx.Secrets.KeyIDs.Used.Certificate,
+		tx.Secrets.LatestCredentials.Set.Current.Certificate.KeyId,
+		tx.Secrets.LatestCredentials.Set.Next.Certificate.KeyId,
+	)
 	keyIdsInUse = stringutils.RemoveDuplicates(keyIdsInUse)
 
 	actualApp, err := k.Application().Get(tx)

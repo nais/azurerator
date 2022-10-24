@@ -24,8 +24,8 @@ type Client interface {
 type Credentials interface {
 	Add(tx transaction.Transaction) (credentials.Set, error)
 	DeleteExpired(tx transaction.Transaction) error
-	DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error
+	DeleteUnused(tx transaction.Transaction) error
 	Purge(tx transaction.Transaction) error
-	Rotate(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error)
+	Rotate(tx transaction.Transaction) (credentials.Set, error)
 	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }

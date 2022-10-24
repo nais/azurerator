@@ -28,6 +28,7 @@ func (t *Transaction) ToAzureTx() transaction.Transaction {
 		ClusterName:         t.ClusterName,
 		Instance:            *t.Instance,
 		Log:                 t.Logger,
+		Secrets:             t.Secrets,
 		UniformResourceName: t.UniformResourceName,
 	}
 }

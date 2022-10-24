@@ -6,35 +6,19 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
-	"github.com/nais/msgraph.go/ptr"
-	msgraph "github.com/nais/msgraph.go/v1.0"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/result"
-	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/util/crypto"
 )
 
-func MsGraphApplication(tx transaction.Transaction) msgraph.Application {
-	objectId := getOrGenerate(tx.Instance.GetObjectId())
-	clientId := getOrGenerate(tx.Instance.GetClientId())
-
-	return msgraph.Application{
-		DirectoryObject: msgraph.DirectoryObject{
-			Entity: msgraph.Entity{ID: ptr.String(objectId)},
-		},
-		DisplayName: ptr.String(tx.UniformResourceName),
-		AppID:       ptr.String(clientId),
-	}
-}
-
 func AzureApplicationResult(instance v1.AzureAdApplication, operation result.Operation) result.Application {
-	objectId := getOrGenerate(instance.GetObjectId())
-	clientId := getOrGenerate(instance.GetClientId())
-	servicePrincipalId := getOrGenerate(instance.GetServicePrincipalId())
+	objectId := GetOrGenerate(instance.GetObjectId())
+	clientId := GetOrGenerate(instance.GetClientId())
+	servicePrincipalId := GetOrGenerate(instance.GetServicePrincipalId())
 
 	tenantId := uuid.New().String()
 
@@ -109,7 +93,7 @@ func mapToInternalPreAuthApps(apps []v1.AccessPolicyInboundRule) result.PreAutho
 func mapToInternalPreAuthApp(app v1.AccessPolicyInboundRule) resource.Resource {
 	clientId := uuid.New().String()
 	objectId := uuid.New().String()
-	name := getOrGenerate(kubernetes.UniformResourceName(&metav1.ObjectMeta{
+	name := GetOrGenerate(kubernetes.UniformResourceName(&metav1.ObjectMeta{
 		Name:      app.Application,
 		Namespace: app.Namespace,
 	}, app.Cluster))
@@ -122,7 +106,7 @@ func mapToInternalPreAuthApp(app v1.AccessPolicyInboundRule) resource.Resource {
 	}
 }
 
-func getOrGenerate(field string) string {
+func GetOrGenerate(field string) string {
 	if len(field) > 0 {
 		return field
 	} else {

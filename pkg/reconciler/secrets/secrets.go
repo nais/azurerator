@@ -60,11 +60,11 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 
 	secretsExtractor := secrets.NewExtractor(*managedSecrets, dataKeys)
 
-	keyIdsInUse := func() credentials.KeyIdsInUse {
-		keyIdsInUse := secretsExtractor.GetKeyIdsInUse()
-		instance.Status.CertificateKeyIds = keyIdsInUse.Certificate
-		instance.Status.PasswordKeyIds = keyIdsInUse.Password
-		return keyIdsInUse
+	keyIDs := func() credentials.KeyIDs {
+		keyIDs := secretsExtractor.GetKeyIDs()
+		instance.Status.CertificateKeyIds = keyIDs.Used.Certificate
+		instance.Status.PasswordKeyIds = keyIDs.Used.Password
+		return keyIDs
 	}()
 
 	credentialsSet, validCredentials, err := secretsExtractor.GetPreviousCredentialsSet(instance.Status.SynchronizationSecretName)
@@ -73,12 +73,12 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 	}
 
 	return &transactionSecrets.Secrets{
-		Credentials: transactionSecrets.Credentials{
+		LatestCredentials: transactionSecrets.Credentials{
 			Set:   credentialsSet,
 			Valid: validCredentials,
 		},
 		DataKeys:       dataKeys,
-		KeyIdsInUse:    keyIdsInUse,
+		KeyIDs:         keyIDs,
 		ManagedSecrets: *managedSecrets,
 	}, nil
 }
@@ -91,17 +91,17 @@ func (s secretsReconciler) Process(tx transaction.Transaction, applicationResult
 
 	var err error
 
-	credentialsSet := tx.Secrets.Credentials.Set
-	keyIdsInUse := tx.Secrets.KeyIdsInUse
+	credentialsSet := tx.Secrets.LatestCredentials.Set
+	keyIdsInUse := tx.Secrets.KeyIDs.Used
 
 	switch {
 	case !tx.Options.Process.Secret.Valid:
-		credentialsSet, keyIdsInUse, err = s.Azure().AddCredentials(tx, keyIdsInUse)
+		credentialsSet, keyIdsInUse, err = s.Azure().AddCredentials(tx)
 		if err != nil {
 			return fmt.Errorf("adding azure credentials: %w", err)
 		}
 	case tx.Options.Process.Secret.Rotate:
-		credentialsSet, keyIdsInUse, err = s.Azure().RotateCredentials(tx, *credentialsSet, keyIdsInUse)
+		credentialsSet, keyIdsInUse, err = s.Azure().RotateCredentials(tx)
 		if err != nil {
 			return fmt.Errorf("rotating azure credentials: %w", err)
 		}

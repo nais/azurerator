@@ -87,13 +87,13 @@ func (c credentialsClient) DeleteExpired(tx transaction.Transaction) error {
 }
 
 // DeleteUnused deletes unused credentials for an existing AAD application.
-func (c credentialsClient) DeleteUnused(tx transaction.Transaction, existing credentials.Set, keyIdsInUse credentials.KeyIdsInUse) error {
-	err := c.KeyCredential().DeleteUnused(tx, existing, keyIdsInUse)
+func (c credentialsClient) DeleteUnused(tx transaction.Transaction) error {
+	err := c.KeyCredential().DeleteUnused(tx)
 	if err != nil {
 		return fmt.Errorf("deleting unused key credentials: %w", err)
 	}
 
-	err = c.PasswordCredential().DeleteUnused(tx, existing, keyIdsInUse)
+	err = c.PasswordCredential().DeleteUnused(tx)
 	if err != nil {
 		return fmt.Errorf("deleting unused password credentials: %w", err)
 	}
@@ -117,23 +117,23 @@ func (c credentialsClient) Purge(tx transaction.Transaction) error {
 }
 
 // Rotate rotates credentials for an existing AAD application
-func (c credentialsClient) Rotate(tx transaction.Transaction, existing credentials.Set, inUse credentials.KeyIdsInUse) (credentials.Set, error) {
+func (c credentialsClient) Rotate(tx transaction.Transaction) (credentials.Set, error) {
 	time.Sleep(c.DelayIntervalBetweenModifications()) // sleep to prevent concurrent modification error from Microsoft
 
-	nextPasswordCredential, err := c.PasswordCredential().Rotate(tx, existing, inUse)
+	nextPasswordCredential, err := c.PasswordCredential().Rotate(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("rotating password credential: %w", err)
 	}
 
 	time.Sleep(c.DelayIntervalBetweenModifications())
 
-	nextKeyCredential, nextJwk, err := c.KeyCredential().Rotate(tx, existing, inUse)
+	nextKeyCredential, nextJwk, err := c.KeyCredential().Rotate(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("rotating key credential: %w", err)
 	}
 
 	return credentials.Set{
-		Current: existing.Next,
+		Current: tx.Secrets.LatestCredentials.Set.Next,
 		Next: credentials.Credentials{
 			Certificate: credentials.Certificate{
 				KeyId: string(*nextKeyCredential.KeyID),

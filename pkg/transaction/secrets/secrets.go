@@ -8,10 +8,10 @@ import (
 )
 
 type Secrets struct {
-	Credentials    Credentials
-	DataKeys       secrets.SecretDataKeys
-	KeyIdsInUse    credentials.KeyIdsInUse
-	ManagedSecrets kubernetes.SecretLists
+	DataKeys          secrets.SecretDataKeys
+	KeyIDs            credentials.KeyIDs
+	LatestCredentials Credentials
+	ManagedSecrets    kubernetes.SecretLists
 }
 
 type Credentials struct {

@@ -20,26 +20,45 @@ func NewExtractor(secretLists kubernetes.SecretLists, keys SecretDataKeys) *Extr
 	return &Extractor{secretLists: secretLists, keys: keys}
 }
 
-func (e Extractor) GetKeyIdsInUse() credentials.KeyIdsInUse {
-	passwordIds := make([]string, 0)
-	certificateIds := make([]string, 0)
+func (e Extractor) GetKeyIDs() credentials.KeyIDs {
+	usedPasswordIDs := make([]string, 0)
+	usedCertificateIDs := make([]string, 0)
+
+	unusedPasswordIDs := make([]string, 0)
+	unusedCertificateIDs := make([]string, 0)
+
+	appendIfNonEmpty := func(s []string, i string) []string {
+		if len(i) > 0 {
+			s = append(s, i)
+		}
+		return s
+	}
 
 	for _, sec := range e.secretLists.Used.Items {
 		certificateId := string(sec.Data[e.keys.CurrentCredentials.CertificateKeyId])
-
-		if len(certificateId) > 0 {
-			certificateIds = append(certificateIds, certificateId)
-		}
+		usedCertificateIDs = appendIfNonEmpty(usedCertificateIDs, certificateId)
 
 		passwordId := string(sec.Data[e.keys.CurrentCredentials.PasswordKeyId])
-
-		if len(passwordId) > 0 {
-			passwordIds = append(passwordIds, passwordId)
-		}
+		usedPasswordIDs = appendIfNonEmpty(usedPasswordIDs, passwordId)
 	}
-	return credentials.KeyIdsInUse{
-		Certificate: certificateIds,
-		Password:    passwordIds,
+
+	for _, sec := range e.secretLists.Unused.Items {
+		certificateId := string(sec.Data[e.keys.CurrentCredentials.CertificateKeyId])
+		unusedCertificateIDs = appendIfNonEmpty(unusedCertificateIDs, certificateId)
+
+		passwordId := string(sec.Data[e.keys.CurrentCredentials.PasswordKeyId])
+		unusedPasswordIDs = appendIfNonEmpty(unusedPasswordIDs, passwordId)
+	}
+
+	return credentials.KeyIDs{
+		Used: credentials.KeyID{
+			Certificate: usedCertificateIDs,
+			Password:    usedPasswordIDs,
+		},
+		Unused: credentials.KeyID{
+			Certificate: unusedCertificateIDs,
+			Password:    unusedPasswordIDs,
+		},
 	}
 }
 
