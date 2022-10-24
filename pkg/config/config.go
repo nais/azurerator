@@ -86,8 +86,8 @@ type CleanupOrphans struct {
 }
 
 type GroupsAssignment struct {
-	Enabled         bool   `json:"enabled"`
-	AllUsersGroupId string `json:"all-users-group-id"`
+	Enabled         bool     `json:"enabled"`
+	AllUsersGroupId []string `json:"all-users-group-id"`
 }
 
 type GroupMembershipClaim struct {
@@ -209,7 +209,7 @@ func init() {
 	flag.String(AzureFeaturesTeamsManagementServicePrincipalId, "", "Service Principal ID for teams management application containing team groups")
 
 	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Feature toggle for assigning explicitly specified groups to applications")
-	flag.String(AzureFeaturesGroupsAllUsersGroupId, "", "Group ID that contains all users in the tenant. Assigned to all application by default unless overridden by user in the custom resource.")
+	flag.StringSlice(AzureFeaturesGroupsAllUsersGroupId, []string{}, "List of Group IDs that contains all users in the tenant. Assigned to all applications by default unless 'allowAllUsers' is set to false in the custom resource.")
 
 	flag.String(AzureFeaturesGroupMembershipClaimDefault, string(groupmembershipclaim.GroupMembershipClaimApplicationGroup), "Default group membership claim for Azure AD apps.")
 

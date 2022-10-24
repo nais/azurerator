@@ -84,17 +84,17 @@ func (g group) getGroups(tx transaction.Transaction) (resource.Resources, error)
 		return groups, nil
 	}
 
-	allUsersGroup, err := g.getAllUsersGroup(tx)
-	if err != nil {
-		return nil, fmt.Errorf("mapping all-users group to resources: %w", err)
-	}
-
 	noGroupsDefined := tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Groups) == 0
 	noGroupsLegacyBehaviour := noGroupsDefined && tx.Instance.Spec.AllowAllUsers == nil
 	allowAllUsersEnabled := tx.Instance.Spec.AllowAllUsers != nil && *tx.Instance.Spec.AllowAllUsers == true
 
 	if noGroupsLegacyBehaviour || allowAllUsersEnabled {
-		groups.Add(*allUsersGroup)
+		allUsersGroups, err := g.getAllUsersGroups(tx)
+		if err != nil {
+			return nil, fmt.Errorf("mapping all-users groups to resources: %w", err)
+		}
+
+		groups.AddAll(allUsersGroups...)
 	}
 
 	return groups, nil
@@ -132,20 +132,23 @@ func (g group) getGroupsFromClaims(tx transaction.Transaction) (resource.Resourc
 	return resources, nil
 }
 
-func (g group) getAllUsersGroup(tx transaction.Transaction) (*resource.Resource, error) {
-	allUsersGroupID := g.Config().Features.GroupsAssignment.AllUsersGroupId
+func (g group) getAllUsersGroups(tx transaction.Transaction) ([]resource.Resource, error) {
+	allUsersGroupIDs := g.Config().Features.GroupsAssignment.AllUsersGroupId
+	res := make([]resource.Resource, len(allUsersGroupIDs))
 
-	exists, groupResult, err := g.getById(tx, allUsersGroupID)
-	if err != nil {
-		return nil, fmt.Errorf("getting all-users group '%s': %w", allUsersGroupID, err)
+	for _, id := range allUsersGroupIDs {
+		exists, groupResult, err := g.getById(tx, id)
+		if err != nil {
+			return nil, fmt.Errorf("getting group '%s': %w", allUsersGroupIDs, err)
+		}
+
+		if !exists {
+			return nil, fmt.Errorf("group '%s' does not exist: %w", allUsersGroupIDs, err)
+		}
+
+		res = append(res, g.mapToResource(*groupResult))
 	}
-
-	if !exists {
-		return nil, fmt.Errorf("all-users group '%s' does not exist: %w", allUsersGroupID, err)
-	}
-
-	res := g.mapToResource(*groupResult)
-	return &res, nil
+	return res, nil
 }
 
 func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *msgraph.Group, error) {

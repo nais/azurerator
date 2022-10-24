@@ -121,6 +121,12 @@ func (r *Resources) Add(resource Resource) {
 	}
 }
 
+func (r *Resources) AddAll(resources ...Resource) {
+	for _, resource := range resources {
+		r.Add(resource)
+	}
+}
+
 type PrincipalType string
 
 const (
