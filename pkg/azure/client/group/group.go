@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -167,7 +168,7 @@ func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *ms
 	defer res.Body.Close()
 
 	if res.StatusCode == 400 {
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return false, nil, fmt.Errorf("reading server response: %w", err)
 		}
