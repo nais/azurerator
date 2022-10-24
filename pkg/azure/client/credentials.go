@@ -8,7 +8,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/keycredential"
 	"github.com/nais/azureator/pkg/azure/client/passwordcredential"
 	"github.com/nais/azureator/pkg/azure/credentials"
-	"github.com/nais/azureator/pkg/azure/transaction"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 type credentialsClient struct {

@@ -94,8 +94,8 @@ func TestDescribeUpdate(t *testing.T) {
 	}
 }
 
-func spec() v1.AzureAdApplication {
-	spec := v1.AzureAdApplication{}
+func spec() *v1.AzureAdApplication {
+	spec := &v1.AzureAdApplication{}
 	spec.SetName("test")
 	spec.SetNamespace("test-namespace")
 	spec.Status.ClientId = "some-uuid"

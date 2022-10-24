@@ -12,8 +12,8 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/credentials"
-	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/transaction"
 	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
@@ -65,7 +65,7 @@ func (p passwordCredential) DeleteExpired(tx transaction.Transaction) error {
 
 		if expired {
 			if cred.DisplayName != nil && cred.KeyID != nil {
-				tx.Log.Debugf("revoking expired password credential '%s' (ID: %s, expired: %s)", *cred.DisplayName, *cred.KeyID, cred.EndDateTime)
+				tx.Logger.Debugf("revoking expired password credential '%s' (ID: %s, expired: %s)", *cred.DisplayName, *cred.KeyID, cred.EndDateTime)
 			}
 
 			if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
@@ -86,7 +86,7 @@ func (p passwordCredential) DeleteUnused(tx transaction.Transaction) error {
 	revocationCandidates := p.revocationCandidates(tx, app)
 	for _, cred := range revocationCandidates {
 		if cred.DisplayName != nil && cred.KeyID != nil {
-			tx.Log.Debugf("revoking unused password credential '%s' (ID: %s)", *cred.DisplayName, *cred.KeyID)
+			tx.Logger.Debugf("revoking unused password credential '%s' (ID: %s)", *cred.DisplayName, *cred.KeyID)
 		}
 
 		if err := p.remove(tx, *app.ID, cred.KeyID); err != nil {
@@ -165,7 +165,7 @@ func (p passwordCredential) remove(tx transaction.Transaction, id azure.ClientId
 	req := p.toRemoveRequest(keyId)
 	if err := p.GraphClient().Applications().ID(id).RemovePassword(req).Request().Post(tx.Ctx); err != nil {
 		// Microsoft returns HTTP 500 sometimes after adding new credentials due to concurrent modifications; we'll ignore this on our end for now
-		tx.Log.Errorf("removing password credential with id '%s': '%v'; ignoring", string(*keyId), err)
+		tx.Logger.Errorf("removing password credential with id '%s': '%v'; ignoring", string(*keyId), err)
 	}
 	return nil
 }

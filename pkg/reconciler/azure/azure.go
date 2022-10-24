@@ -78,7 +78,7 @@ func (a azureReconciler) Process(tx transaction.Transaction) (*result.Applicatio
 func (a azureReconciler) create(tx transaction.Transaction) (*result.Application, error) {
 	tx.Logger.Info("Azure application not found, registering...")
 
-	applicationResult, err := a.azureClient.Create(tx.ToAzureTx())
+	applicationResult, err := a.azureClient.Create(tx)
 	if err != nil {
 		return nil, fmt.Errorf("creating azure application: %w", err)
 	}
@@ -96,7 +96,7 @@ func (a azureReconciler) create(tx transaction.Transaction) (*result.Application
 func (a azureReconciler) update(tx transaction.Transaction) (*result.Application, error) {
 	tx.Logger.Info("Azure application already exists, updating...")
 
-	applicationResult, err := a.azureClient.Update(tx.ToAzureTx())
+	applicationResult, err := a.azureClient.Update(tx)
 	if err != nil {
 		return nil, fmt.Errorf("updating azure application: %w", err)
 	}
@@ -108,7 +108,7 @@ func (a azureReconciler) update(tx transaction.Transaction) (*result.Application
 }
 
 func (a azureReconciler) notModified(tx transaction.Transaction) (*result.Application, error) {
-	apps, err := a.azureClient.GetPreAuthorizedApps(tx.ToAzureTx())
+	apps, err := a.azureClient.GetPreAuthorizedApps(tx)
 	if err != nil {
 		return nil, fmt.Errorf("fetching pre-authorized apps: %w", err)
 	}
@@ -163,7 +163,7 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 func (a azureReconciler) AddCredentials(tx transaction.Transaction) (*credentials.Set, credentials.KeyID, error) {
 	tx.Logger.Info("adding credentials for Azure application...")
 
-	credentialsSet, err := a.azureClient.Credentials().Add(tx.ToAzureTx())
+	credentialsSet, err := a.azureClient.Credentials().Add(tx)
 	if err != nil {
 		return nil, credentials.KeyID{}, err
 	}
@@ -177,7 +177,7 @@ func (a azureReconciler) AddCredentials(tx transaction.Transaction) (*credential
 }
 
 func (a azureReconciler) DeleteUnusedCredentials(tx transaction.Transaction) error {
-	err := a.azureClient.Credentials().DeleteUnused(tx.ToAzureTx())
+	err := a.azureClient.Credentials().DeleteUnused(tx)
 	if err != nil {
 		return fmt.Errorf("deleting unused credentials for Azure application: %w", err)
 	}
@@ -195,7 +195,7 @@ func (a azureReconciler) DeleteExpiredCredentials(tx transaction.Transaction) er
 		return nil
 	}
 
-	err = a.azureClient.Credentials().DeleteExpired(tx.ToAzureTx())
+	err = a.azureClient.Credentials().DeleteExpired(tx)
 	if err != nil {
 		return fmt.Errorf("deleting expired credentials for Azure application: %w", err)
 	}
@@ -206,7 +206,7 @@ func (a azureReconciler) DeleteExpiredCredentials(tx transaction.Transaction) er
 func (a azureReconciler) RotateCredentials(tx transaction.Transaction) (*credentials.Set, credentials.KeyID, error) {
 	tx.Logger.Info("rotating credentials for Azure application...")
 
-	credentialsSet, err := a.azureClient.Credentials().Rotate(tx.ToAzureTx())
+	credentialsSet, err := a.azureClient.Credentials().Rotate(tx)
 	if err != nil {
 		return nil, credentials.KeyID{}, err
 	}
@@ -233,7 +233,7 @@ func (a azureReconciler) PurgeCredentials(tx transaction.Transaction) error {
 	}
 
 	tx.Logger.Debug("purging existing credentials for Azure application...")
-	return a.azureClient.Credentials().Purge(tx.ToAzureTx())
+	return a.azureClient.Credentials().Purge(tx)
 }
 
 func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, error) {
@@ -246,7 +246,7 @@ func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, 
 		return false, nil
 	}
 
-	valid, err := a.azureClient.Credentials().Validate(tx.ToAzureTx(), *tx.Secrets.LatestCredentials.Set)
+	valid, err := a.azureClient.Credentials().Validate(tx, *tx.Secrets.LatestCredentials.Set)
 	if err != nil {
 		return false, err
 	}
@@ -270,7 +270,7 @@ func (a azureReconciler) Delete(tx transaction.Transaction) error {
 		tx.Logger.Info("Azure application does not exist - skipping deletion")
 		return nil
 	}
-	if err := a.azureClient.Delete(tx.ToAzureTx()); err != nil {
+	if err := a.azureClient.Delete(tx); err != nil {
 		return fmt.Errorf("failed to delete Azure application: %w", err)
 	}
 	tx.Logger.Info("Azure application successfully deleted")
@@ -278,7 +278,7 @@ func (a azureReconciler) Delete(tx transaction.Transaction) error {
 }
 
 func (a azureReconciler) Exists(tx transaction.Transaction) (bool, error) {
-	application, exists, err := a.azureClient.Exists(tx.ToAzureTx())
+	application, exists, err := a.azureClient.Exists(tx)
 	if err != nil {
 		return false, fmt.Errorf("looking up existence of azure application: %w", err)
 	}
@@ -287,7 +287,7 @@ func (a azureReconciler) Exists(tx transaction.Transaction) (bool, error) {
 		tx.Instance.Status.ClientId = *application.AppID
 		tx.Instance.Status.ObjectId = *application.ID
 
-		sp, err := a.azureClient.GetServicePrincipal(tx.ToAzureTx())
+		sp, err := a.azureClient.GetServicePrincipal(tx)
 		if err != nil {
 			return false, fmt.Errorf("getting service principal for application: %w", err)
 		}

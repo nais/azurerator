@@ -20,9 +20,9 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/team"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/result"
-	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/retry"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 const (

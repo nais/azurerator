@@ -51,7 +51,7 @@ func (a ApplicationBuilder) AppRoles(appRoles []msgraph.AppRole) ApplicationBuil
 	return a
 }
 
-func (a ApplicationBuilder) RedirectUris(redirectUris []string, instance naisiov1.AzureAdApplication) ApplicationBuilder {
+func (a ApplicationBuilder) RedirectUris(redirectUris []string, instance *naisiov1.AzureAdApplication) ApplicationBuilder {
 	if instance.Spec.SinglePageApplication != nil && *instance.Spec.SinglePageApplication {
 		return a.singlePageAppRedirectUri(redirectUris)
 	}

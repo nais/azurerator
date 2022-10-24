@@ -5,7 +5,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/result"
-	"github.com/nais/azureator/pkg/azure/transaction"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 type Client interface {

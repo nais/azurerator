@@ -16,7 +16,7 @@ import (
 
 func TestGenerateDesiredPermissionSet(t *testing.T) {
 	app := fixtures.MinimalApplication()
-	desired := permissions.GenerateDesiredPermissionSet(*app)
+	desired := permissions.GenerateDesiredPermissionSet(app)
 
 	assert.Len(t, desired, 2)
 	assertContainsDefaultPermissions(t, desired)
@@ -49,7 +49,7 @@ func TestGenerateDesiredPermissionSet(t *testing.T) {
 		},
 	}
 
-	desired = permissions.GenerateDesiredPermissionSet(*app)
+	desired = permissions.GenerateDesiredPermissionSet(app)
 	assert.Len(t, desired, 5)
 	assertPermissionsInPermissions(t, desired, []naisiov1.AccessPolicyPermission{"read", "write", "admin"})
 }
@@ -91,7 +91,7 @@ func TestGenerateDesiredPermissionSetPreserveExisting(t *testing.T) {
 		},
 	}
 
-	desired := permissions.GenerateDesiredPermissionSetPreserveExisting(*app, *existing)
+	desired := permissions.GenerateDesiredPermissionSetPreserveExisting(app, *existing)
 	expected := []naisiov1.AccessPolicyPermission{"role-1", "role-3", "scope-1", "scope-2", "scope-3", "common"}
 
 	// length of desired set is set of roles + set of scopes in .Spec.PreAuthorizedApplications + the default permissions
@@ -111,7 +111,7 @@ func TestGenerateDesiredPermissionSetPreserveExisting_LegacyApplication(t *testi
 	existing := legacyMsGraphApplication()
 	app := fixtures.MinimalApplication()
 
-	desired := permissions.GenerateDesiredPermissionSetPreserveExisting(*app, *existing)
+	desired := permissions.GenerateDesiredPermissionSetPreserveExisting(app, *existing)
 	expected := []naisiov1.AccessPolicyPermission{
 		naisiov1.AccessPolicyPermission(permissions.DefaultPermissionScopeValue),
 		naisiov1.AccessPolicyPermission(permissions.DefaultAppRoleValue),

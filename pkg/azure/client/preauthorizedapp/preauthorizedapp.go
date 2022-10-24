@@ -13,9 +13,9 @@ import (
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/azure/result"
-	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/customresources"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 // Workaround to include empty array of PreAuthorizedApplications in JSON serialization.

@@ -9,8 +9,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 const (
@@ -104,9 +104,9 @@ func (s servicePrincipal) setAppRoleAssignment(tx transaction.Transaction, requi
 	}
 
 	if required {
-		tx.Log.Debug("enabling approle assignment requirement")
+		tx.Logger.Debug("enabling approle assignment requirement")
 	} else {
-		tx.Log.Debug("disabling approle assignment requirement")
+		tx.Logger.Debug("disabling approle assignment requirement")
 	}
 
 	request := &msgraph.ServicePrincipal{

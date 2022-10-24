@@ -12,8 +12,8 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/credentials"
-	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/transaction"
 	"github.com/nais/azureator/pkg/util/crypto"
 	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
@@ -95,7 +95,7 @@ func (k keyCredential) DeleteExpired(tx transaction.Transaction) error {
 		if notExpired {
 			desiredCredentials = append(desiredCredentials, cred)
 		} else if cred.DisplayName != nil && cred.KeyID != nil {
-			tx.Log.Debugf("revoking expired key credential '%s' (ID: %s, expired: %s)", *cred.DisplayName, *cred.KeyID, cred.EndDateTime)
+			tx.Logger.Debugf("revoking expired key credential '%s' (ID: %s, expired: %s)", *cred.DisplayName, *cred.KeyID, cred.EndDateTime)
 		}
 	}
 
@@ -211,7 +211,7 @@ func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction) ([]msgrap
 		if keyCredentialInUse(keyCredential, keyIdsInUse) {
 			keyCredentialsInUse = append(keyCredentialsInUse, keyCredential)
 		} else if keyCredential.DisplayName != nil && keyCredential.KeyID != nil {
-			tx.Log.Debugf("revoking unused key credential '%s' (ID: %s)", *keyCredential.DisplayName, *keyCredential.KeyID)
+			tx.Logger.Debugf("revoking unused key credential '%s' (ID: %s)", *keyCredential.DisplayName, *keyCredential.KeyID)
 		}
 
 		if newestCredential.StartDateTime == nil || keyCredential.StartDateTime.After(*newestCredential.StartDateTime) {

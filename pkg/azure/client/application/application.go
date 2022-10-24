@@ -16,8 +16,8 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/application/redirecturi"
 	"github.com/nais/azureator/pkg/azure/client/application/requiredresourceaccess"
 	"github.com/nais/azureator/pkg/azure/permissions"
-	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 // Application tags
@@ -99,10 +99,10 @@ func (a application) Register(tx transaction.Transaction) (*msgraph.Application,
 	desiredPermissions := permissions.GenerateDesiredPermissionSet(tx.Instance)
 
 	roles := a.AppRoles().DescribeCreate(desiredPermissions)
-	roles.Log(tx.Log)
+	roles.Log(tx.Logger)
 
 	scopes := a.OAuth2PermissionScopes().DescribeCreate(desiredPermissions)
-	scopes.Log(tx.Log)
+	scopes.Log(tx.Logger)
 
 	redirectUris := redirecturi.ReplyUrlsToStringSlice(tx.Instance)
 
@@ -138,11 +138,11 @@ func (a application) Update(tx transaction.Transaction) (*msgraph.Application, e
 
 	existingRoles := actualApp.AppRoles
 	roles := a.AppRoles().DescribeUpdate(desiredPermissions, existingRoles)
-	roles.Log(tx.Log)
+	roles.Log(tx.Logger)
 
 	existingScopes := actualApp.API.OAuth2PermissionScopes
 	scopes := a.OAuth2PermissionScopes().DescribeUpdate(desiredPermissions, existingScopes)
-	scopes.Log(tx.Log)
+	scopes.Log(tx.Logger)
 
 	identifierUris := identifieruri.DescribeUpdate(tx.Instance, actualApp.IdentifierUris, tx.ClusterName)
 	optionalClaims := a.OptionalClaims().DescribeUpdate(actualApp)

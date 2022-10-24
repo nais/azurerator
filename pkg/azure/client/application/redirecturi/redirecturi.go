@@ -8,7 +8,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/transaction"
+	"github.com/nais/azureator/pkg/transaction"
 	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
@@ -42,7 +42,7 @@ func (r redirectUri) Update(tx transaction.Transaction) error {
 	return r.Application.Patch(tx.Ctx, objectId, app)
 }
 
-func App(instance v1.AzureAdApplication) any {
+func App(instance *v1.AzureAdApplication) any {
 	redirectUris := ReplyUrlsToStringSlice(instance)
 
 	if instance.Spec.SinglePageApplication != nil && *instance.Spec.SinglePageApplication {
@@ -51,7 +51,7 @@ func App(instance v1.AzureAdApplication) any {
 	return webApp(redirectUris)
 }
 
-func ReplyUrlsToStringSlice(resource v1.AzureAdApplication) []string {
+func ReplyUrlsToStringSlice(resource *v1.AzureAdApplication) []string {
 	replyUrls := make([]string, 0)
 	for _, v := range resource.Spec.ReplyUrls {
 		url := string(v.Url)

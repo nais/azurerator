@@ -15,7 +15,7 @@ import (
 	"github.com/nais/azureator/pkg/util/crypto"
 )
 
-func AzureApplicationResult(instance v1.AzureAdApplication, operation result.Operation) result.Application {
+func AzureApplicationResult(instance *v1.AzureAdApplication, operation result.Operation) result.Application {
 	objectId := GetOrGenerate(instance.GetObjectId())
 	clientId := GetOrGenerate(instance.GetClientId())
 	servicePrincipalId := GetOrGenerate(instance.GetServicePrincipalId())
@@ -32,7 +32,7 @@ func AzureApplicationResult(instance v1.AzureAdApplication, operation result.Ope
 	}
 }
 
-func AzureCredentialsSet(instance v1.AzureAdApplication, clusterName string) credentials.Set {
+func AzureCredentialsSet(instance *v1.AzureAdApplication, clusterName string) credentials.Set {
 	currJwk, err := crypto.GenerateJwk(instance, clusterName)
 	if err != nil {
 		panic(err)
@@ -67,7 +67,7 @@ func AzureCredentialsSet(instance v1.AzureAdApplication, clusterName string) cre
 	}
 }
 
-func AzurePreAuthorizedApps(instance v1.AzureAdApplication) *result.PreAuthorizedApps {
+func AzurePreAuthorizedApps(instance *v1.AzureAdApplication) *result.PreAuthorizedApps {
 	preAuthApps := mapToInternalPreAuthApps(instance.Spec.PreAuthorizedApplications)
 	return &preAuthApps
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/directoryobject"
-	"github.com/nais/azureator/pkg/azure/transaction"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 type Owners interface {

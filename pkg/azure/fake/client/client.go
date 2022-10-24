@@ -8,7 +8,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/fake"
 	fakemsgraph "github.com/nais/azureator/pkg/azure/fake/msgraph"
 	"github.com/nais/azureator/pkg/azure/result"
-	"github.com/nais/azureator/pkg/azure/transaction"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 type fakeAzureClient struct{}

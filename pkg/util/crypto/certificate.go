@@ -25,7 +25,7 @@ func GenerateCertificate(template *x509.Certificate, keyPair KeyPair) (*x509.Cer
 	return cert, nil
 }
 
-func CertificateTemplate(application v1.AzureAdApplication, clusterName string) *x509.Certificate {
+func CertificateTemplate(application *v1.AzureAdApplication, clusterName string) *x509.Certificate {
 	notBefore := time.Now()
 
 	var notAfter time.Time

@@ -7,8 +7,8 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/azure/util"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 type OAuth2PermissionGrant interface {

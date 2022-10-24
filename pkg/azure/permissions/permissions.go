@@ -129,7 +129,7 @@ func newGenerateId(name string, enabled bool) Permission {
 // It generates UUIDs for each permission to be used when registering the permission to Azure AD.
 // This is to ensure that PermissionScopes and AppRoles created using these Permissions as basis have the same values for a number of fields.
 // See https://stackoverflow.com/a/59550249/11868133 for details on this limitation.
-func GenerateDesiredPermissionSet(in naisiov1.AzureAdApplication) Permissions {
+func GenerateDesiredPermissionSet(in *naisiov1.AzureAdApplication) Permissions {
 	permissions := make(Permissions)
 
 	desiredRoles := flattenRoles(in)
@@ -150,7 +150,7 @@ func GenerateDesiredPermissionSet(in naisiov1.AzureAdApplication) Permissions {
 // This is to ensure that PermissionScopes and AppRoles created using these Permissions as basis have the same values for a number of fields.
 // See https://stackoverflow.com/a/59550249/11868133 for details on this limitation.
 // Existing permissions (and their IDs) are preserved.
-func GenerateDesiredPermissionSetPreserveExisting(in naisiov1.AzureAdApplication, existing msgraph.Application) Permissions {
+func GenerateDesiredPermissionSetPreserveExisting(in *naisiov1.AzureAdApplication, existing msgraph.Application) Permissions {
 	desired := GenerateDesiredPermissionSet(in)
 	actual := ExtractPermissions(&existing)
 
@@ -179,7 +179,7 @@ func ExtractPermissions(app *msgraph.Application) Permissions {
 	return permissions
 }
 
-func flattenScopes(in naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermission {
+func flattenScopes(in *naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermission {
 	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyInboundRule) []naisiov1.AccessPolicyPermission {
 		if rule.Permissions != nil && len(rule.Permissions.Scopes) > 0 {
 			return rule.Permissions.Scopes
@@ -189,7 +189,7 @@ func flattenScopes(in naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermis
 	})
 }
 
-func flattenRoles(in naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermission {
+func flattenRoles(in *naisiov1.AzureAdApplication) []naisiov1.AccessPolicyPermission {
 	return flatten(in.Spec.PreAuthorizedApplications, func(rule naisiov1.AccessPolicyInboundRule) []naisiov1.AccessPolicyPermission {
 		if rule.Permissions != nil && len(rule.Permissions.Roles) > 0 {
 			return rule.Permissions.Roles

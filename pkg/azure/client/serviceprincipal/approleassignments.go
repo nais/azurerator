@@ -10,7 +10,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/approleassignment"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
-	"github.com/nais/azureator/pkg/azure/transaction"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 type operation string
@@ -151,7 +151,7 @@ func (a appRoleAssignments) processEnabledRoles(existing approleassignment.List,
 
 func (a appRoleAssignments) revokeAssignmentsForDisabledRoles(existing approleassignment.List, roles permissions.Permissions) error {
 	for _, role := range roles.Disabled() {
-		a.tx.Log.WithFields(a.logFields).Debugf("revoking assignments for disabled AppRole '%s' (%s)...", role.Name, role.ID)
+		a.tx.Logger.WithFields(a.logFields).Debugf("revoking assignments for disabled AppRole '%s' (%s)...", role.Name, role.ID)
 
 		err := a.revokeFor(existing.FilterByRoleID(role.ID), role.Name)
 		if err != nil {
@@ -166,7 +166,7 @@ func (a appRoleAssignments) revokeAssignmentsWithoutMatchingDesiredRole(existing
 	toRevoke := existing.WithoutMatchingRole(roles)
 
 	if len(toRevoke) > 0 {
-		a.tx.Log.WithFields(a.logFields).Debugf("revoking assignments for non-existing AppRoles...")
+		a.tx.Logger.WithFields(a.logFields).Debugf("revoking assignments for non-existing AppRoles...")
 
 		err := a.revokeFor(toRevoke, unknownRole)
 		if err != nil {
@@ -230,7 +230,7 @@ func (a appRoleAssignments) logAndDo(assignment msgraph.AppRoleAssignment, opera
 		)
 	}
 
-	a.tx.Log.WithFields(logFields).
+	a.tx.Logger.WithFields(logFields).
 		Infof(
 			"%s AppRole assignment for %s '%s' to role '%s'.",
 			operation, assigneePrincipalType, assigneeName, roleName,

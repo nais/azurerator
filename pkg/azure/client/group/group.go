@@ -16,7 +16,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/serviceprincipal"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
-	"github.com/nais/azureator/pkg/azure/transaction"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 var (
@@ -112,14 +112,14 @@ func (g group) getGroupsFromClaims(tx transaction.Transaction) (resource.Resourc
 		exists, groupResult, err := g.getById(tx, group.ID)
 		if err != nil {
 			if errors.Is(err, BadRequestError) {
-				tx.Log.Warnf("skipping assignment for group %s: %+v", group, err)
+				tx.Logger.Warnf("skipping assignment for group %s: %+v", group, err)
 				continue
 			}
 			return nil, fmt.Errorf("getting group '%s': %w", group, err)
 		}
 
 		if !exists {
-			tx.Log.Debugf("skipping Groups assignment: '%s' does not exist", group.ID)
+			tx.Logger.Debugf("skipping Groups assignment: '%s' does not exist", group.ID)
 			continue
 		}
 

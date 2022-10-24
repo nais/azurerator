@@ -90,14 +90,14 @@ func TestRedirectUriApp(t *testing.T) {
 
 func TestGetReplyUrlsStringSlice(t *testing.T) {
 	t.Run("Empty Application should return empty slice of reply URLs", func(t *testing.T) {
-		p := v1.AzureAdApplication{}
+		p := &v1.AzureAdApplication{}
 		actual := redirecturi.ReplyUrlsToStringSlice(p)
 		assert.Empty(t, actual)
 	})
 
 	t.Run("Application with reply URL should return equivalent string slice of reply URLs", func(t *testing.T) {
 		url := "https://test.host/callback"
-		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{ReplyUrls: []v1.AzureAdReplyUrl{{Url: v1.AzureAdReplyUrlString(url)}}}}
+		p := &v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{ReplyUrls: []v1.AzureAdReplyUrl{{Url: v1.AzureAdReplyUrlString(url)}}}}
 		actual := redirecturi.ReplyUrlsToStringSlice(p)
 		assert.NotEmpty(t, actual)
 		assert.Len(t, actual, 1)
@@ -105,7 +105,7 @@ func TestGetReplyUrlsStringSlice(t *testing.T) {
 	})
 
 	t.Run("Application with duplicate reply URLs should return set of reply URLs", func(t *testing.T) {
-		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{
+		p := &v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{
 			ReplyUrls: []v1.AzureAdReplyUrl{
 				{Url: "https://test.host/callback"},
 				{Url: "https://test.host/callback"},
@@ -120,7 +120,7 @@ func TestGetReplyUrlsStringSlice(t *testing.T) {
 	})
 
 	t.Run("Application with invalid URLs should return only valid URLs", func(t *testing.T) {
-		p := v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{
+		p := &v1.AzureAdApplication{Spec: v1.AzureAdApplicationSpec{
 			ReplyUrls: []v1.AzureAdReplyUrl{
 				{Url: "https://test.host/callback"},
 				{Url: "https://test.host/oauth2/callback"},
@@ -151,9 +151,9 @@ func assertJson(t *testing.T, input any, expected string) {
 	assert.JSONEq(t, expected, string(j))
 }
 
-func azureAdApp() v1.AzureAdApplication {
+func azureAdApp() *v1.AzureAdApplication {
 	url := "https://test.host/callback"
-	return v1.AzureAdApplication{
+	return &v1.AzureAdApplication{
 		Spec: v1.AzureAdApplicationSpec{
 			ReplyUrls: []v1.AzureAdReplyUrl{
 				{

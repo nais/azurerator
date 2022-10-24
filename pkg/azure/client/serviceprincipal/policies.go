@@ -8,8 +8,8 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/serviceprincipal/claimsmappingpolicy"
-	"github.com/nais/azureator/pkg/azure/transaction"
 	"github.com/nais/azureator/pkg/customresources"
+	"github.com/nais/azureator/pkg/transaction"
 )
 
 const (
@@ -117,7 +117,7 @@ func (p *policies) prepare(tx transaction.Transaction) error {
 
 func (p *policies) assign(tx transaction.Transaction, policy claimsmappingpolicy.ValidPolicy) error {
 	if policy.Assigned {
-		tx.Log.Debugf("claims-mapping policy '%s' (%s) already assigned to service principal '%s', skipping assignment", policy.Name, policy.ID, p.servicePrincipalID)
+		tx.Logger.Debugf("claims-mapping policy '%s' (%s) already assigned to service principal '%s', skipping assignment", policy.Name, policy.ID, p.servicePrincipalID)
 		return nil
 	}
 
@@ -161,7 +161,7 @@ func (p *policies) assignForPolicy(tx transaction.Transaction, policy claimsmapp
 		return fmt.Errorf("assigning claims-mapping policy '%s' (%s) to service principal '%s': %w", policy.Name, policy.ID, p.servicePrincipalID, err)
 	}
 
-	tx.Log.Infof("successfully assigned claims-mapping policy '%s' (%s) to service principal '%s'", policy.Name, policy.ID, p.servicePrincipalID)
+	tx.Logger.Infof("successfully assigned claims-mapping policy '%s' (%s) to service principal '%s'", policy.Name, policy.ID, p.servicePrincipalID)
 	return nil
 }
 
@@ -177,7 +177,7 @@ func (p *policies) removeForPolicy(tx transaction.Transaction, policy claimsmapp
 		return fmt.Errorf("removing claims-mapping policy '%s' (%s) from service principal '%s'", policy.Name, policy.ID, p.servicePrincipalID)
 	}
 
-	tx.Log.Infof("successfully removed claims-mapping policy '%s' (%s) from service principal '%s'", policy.Name, policy.ID, p.servicePrincipalID)
+	tx.Logger.Infof("successfully removed claims-mapping policy '%s' (%s) from service principal '%s'", policy.Name, policy.ID, p.servicePrincipalID)
 	return nil
 }
 
