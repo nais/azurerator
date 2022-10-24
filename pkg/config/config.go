@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/nais/liberator/pkg/conftools"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -188,17 +187,7 @@ func bindNAIS() {
 }
 
 func init() {
-	// Automatically read configuration options from environment variables.
-	// e.g. --azure.client.id will be configurable using AZURERATOR_AZURE_CLIENT_ID.
-	viper.SetEnvPrefix("AZURERATOR")
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
-
-	// Read configuration file from working directory and/or /etc.
-	// File formats supported include JSON, TOML, YAML, HCL, envfile and Java properties config files
-	viper.SetConfigName("azurerator")
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("/etc/azurerator")
+	conftools.Initialize("AZURERATOR")
 
 	// Ensure NAIS Kafka variables are used
 	bindNAIS()
@@ -256,29 +245,6 @@ func init() {
 	flag.Bool(SecretRotationCleanup, true, "Clean up unused credentials in Azure AD after rotation.")
 }
 
-// PrintAllExcept prints out all configuration options except secret stuff.
-func (c Config) PrintAllExcept(redacted []string) {
-	ok := func(key string) bool {
-		for _, forbiddenKey := range redacted {
-			if forbiddenKey == key {
-				return false
-			}
-		}
-		return true
-	}
-
-	var keys sort.StringSlice = viper.AllKeys()
-
-	keys.Sort()
-	for _, key := range keys {
-		if ok(key) {
-			log.Printf("%s: %s", key, viper.GetString(key))
-		} else {
-			log.Printf("%s: ***REDACTED***", key)
-		}
-	}
-}
-
 func (c Config) Validate(required []string) error {
 	present := func(key string) bool {
 		for _, requiredKey := range required {
@@ -306,35 +272,14 @@ func (c Config) Validate(required []string) error {
 	return nil
 }
 
-func decoderHook(dc *mapstructure.DecoderConfig) {
-	dc.TagName = "json"
-	dc.ErrorUnused = true
-}
-
 func New() (*Config, error) {
-	var err error
-	var cfg Config
+	cfg := new(Config)
 
-	err = viper.ReadInConfig()
-	if err != nil {
-		if err.(viper.ConfigFileNotFoundError) != err {
-			return nil, err
-		}
-	}
-
-	flag.Parse()
-
-	err = viper.BindPFlags(flag.CommandLine)
-	if err != nil {
+	if err := conftools.Load(cfg); err != nil {
 		return nil, err
 	}
 
-	err = viper.Unmarshal(&cfg, decoderHook)
-	if err != nil {
-		return nil, err
-	}
-
-	return &cfg, nil
+	return cfg, nil
 }
 
 func DefaultConfig() (*Config, error) {
@@ -342,9 +287,13 @@ func DefaultConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.PrintAllExcept([]string{
+
+	maskedConfig := []string{
 		AzureClientSecret,
-	})
+	}
+	for _, line := range conftools.Format(maskedConfig) {
+		log.WithField("logger", "config").Info(line)
+	}
 
 	err = cfg.Validate([]string{
 		AzureTenantId,
