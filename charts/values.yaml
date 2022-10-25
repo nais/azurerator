@@ -33,9 +33,6 @@ secret:
             - "2d7f1c0d-5784-4f81-8bb2-8f3a79f8f949"
             - "b4667154-a8f9-477a-be7a-12f815ca3e37"
             - "980edf87-54fe-4b65-88c7-f06205070698"
-        teams-management:
-          enabled: "true"
-          service-principal-id: "4c5e3226-106e-404d-81be-d02f31104b5a"
       permissiongrant-resource-id: "fa08dfc8-337d-4b52-bae8-16eeae834c76"
       tenant:
         id: "62366534-1ec3-4962-8869-9b5535279d0b"
@@ -75,9 +72,6 @@ secret:
         groups-assignment:
           enabled: "true"
           all-users-group-id: "dec3ee50-b683-4644-9507-520e8f054ac2"
-        teams-management:
-          enabled: "false"
-          service-principal-id: ""
       permissiongrant-resource-id: "1a709eb6-68b9-4db9-aa49-4a25c523c509"
       tenant:
         id: "966ac572-f5b7-4bbe-aa88-c76419c0f851"

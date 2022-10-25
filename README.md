@@ -82,8 +82,6 @@ The following flags are available:
 --azure.features.group-membership-claim.default string              Default group membership claim for Azure AD apps. (default "ApplicationGroup")
 --azure.features.groups-assignment.all-users-group-id string        Group ID that contains all users in the tenant. Assigned to all application by default unless overridden by user in the custom resource.
 --azure.features.groups-assignment.enabled                          Feature toggle for assigning explicitly specified groups to applications
---azure.features.teams-management.enabled                           Feature toggle for assigning owners of matching teams to owners of applications
---azure.features.teams-management.service-principal-id string       Service Principal ID for teams management application containing team groups
 --azure.pagination.max-pages int                                    Max number of pages to fetch when fetching paginated resources from the Graph API. (default 1000)
 --azure.permissiongrant-resource-id string                          Object ID for Graph API permissions grant ('GraphAggregatorService' or 'Microsoft Graph' in Enterprise Applications under 'Microsoft Applications')
 --azure.tenant.id string                                            Tenant ID for Azure AD

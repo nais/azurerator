@@ -11,7 +11,6 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
 	"github.com/nais/azureator/pkg/azure/client/application/identifieruri"
 	"github.com/nais/azureator/pkg/azure/client/application/optionalclaims"
-	"github.com/nais/azureator/pkg/azure/client/application/owners"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
 	"github.com/nais/azureator/pkg/azure/client/application/redirecturi"
 	"github.com/nais/azureator/pkg/azure/client/application/requiredresourceaccess"
@@ -30,7 +29,6 @@ type Application interface {
 	AppRoles() approle.AppRoles
 	IdentifierUri() identifieruri.IdentifierUri
 	OAuth2PermissionScopes() permissionscope.OAuth2PermissionScope
-	Owners() owners.Owners
 	RedirectUri() redirecturi.RedirectUri
 
 	Delete(tx transaction.Transaction) error
@@ -67,10 +65,6 @@ func (a application) OAuth2PermissionScopes() permissionscope.OAuth2PermissionSc
 
 func (a application) OptionalClaims() optionalclaims.OptionalClaims {
 	return optionalclaims.NewOptionalClaims()
-}
-
-func (a application) Owners() owners.Owners {
-	return owners.NewOwners(a.RuntimeClient)
 }
 
 func (a application) RedirectUri() redirecturi.RedirectUri {

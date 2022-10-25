@@ -19,10 +19,9 @@ The following is a short overview of operations performed.
     - [1.4 Service Principal](#14-service-principal)
     - [1.5 Delegated Permissions](#15-delegated-permissions)
     - [1.6 Credentials](#16-credentials)
-    - [1.7 Owner Assignment](#17-owner-assignment)
-    - [1.8 Group Assignment](#18-group-assignment)
-    - [1.9 Single-Page Applications](#19-single-page-applications)
-    - [1.10 Principal Assignment Required](#110-principal-assignment-required)
+    - [1.7 Group Assignment](#17-group-assignment)
+    - [1.8 Single-Page Applications](#18-single-page-applications)
+    - [1.9 Principal Assignment Required](#19-principal-assignment-required)
 - [2 Existing applications](#2-existing-applications)
     - [2.1 Credential Rotation](#21-credential-rotation)
 - [3 Cluster Resources](#3-cluster-resources)
@@ -172,15 +171,7 @@ These fields thus denote the currently used set of credentials.
 See <https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal#certificates-and-secrets>
 for details.
 
-### 1.7 Owner Assignment
-
-It is assumed that the namespace an `AzureAdApplication` exists in is equal to the name of the team found in Azure AD.
-
-If configured with a service principal containing a list of teams, Azurerator will attempt to cross-reference this
-namespace to any group within that list. The owners of those groups will be assigned as owners of both the _Application_
-and the equivalent _Service Principal_ (i.e. Enterprise Application).
-
-### 1.8 Group Assignment
+### 1.7 Group Assignment
 
 `spec.claims.groups[]` is a list of Object IDs that reference Azure AD groups to be assigned to the _Service Principal_
 belonging to the `AzureAdApplication`.
@@ -201,13 +192,13 @@ If `spec.claims.groups[]` is not defined, we fall back to assigning a single gro
 access to the application by default. This behaviour can also be explicitly controlled by specifying the `spec.allowAllUsers` 
 field.
 
-### 1.9 Single-Page Applications
+### 1.8 Single-Page Applications
 
 Azure AD supports the [OAuth 2.0 Auth Code Flow with PKCE](https://docs.microsoft.com/en-us/azure/active-directory/develop/scenario-spa-overview) for logins from client-side/browser single-page-applications.
 However, the support for this must be explicitly enabled to avoid issues with CORS by setting
 `spec.singlePageApplication` to `true`.
 
-### 1.10 Principal Assignment Required
+### 1.9 Principal Assignment Required
 
 The `AppRoleAssignmentRequired` property denotes whether Azure AD should enforce/require that Azure AD principals are explicitly
 assigned to the `AzureAdApplication` when using the application in a Web API flow such as the OAuth 2.0 Client Credentials flow.

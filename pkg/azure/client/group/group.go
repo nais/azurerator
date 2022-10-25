@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/nais/msgraph.go/jsonx"
@@ -24,7 +23,6 @@ var (
 )
 
 type Groups interface {
-	GetOwnersFor(ctx context.Context, groupId string) ([]msgraph.DirectoryObject, error)
 	Process(tx transaction.Transaction) error
 }
 
@@ -39,14 +37,6 @@ type group struct {
 
 func NewGroup(client Client) Groups {
 	return group{Client: client}
-}
-
-func (g group) GetOwnersFor(ctx context.Context, groupId string) ([]msgraph.DirectoryObject, error) {
-	owners, err := g.GraphClient().Groups().ID(groupId).Owners().Request().GetN(ctx, g.MaxNumberOfPagesToFetch())
-	if err != nil {
-		return owners, fmt.Errorf("failed to fetch owners for group: %w", err)
-	}
-	return owners, nil
 }
 
 func (g group) Process(tx transaction.Transaction) error {
@@ -217,7 +207,7 @@ func (g group) decodeJsonResponseForGetRequest(res *http.Response, obj any) (boo
 	case http.StatusNoContent, http.StatusNotFound:
 		return false, nil
 	default:
-		b, _ := ioutil.ReadAll(res.Body)
+		b, _ := io.ReadAll(res.Body)
 		errRes := &msgraph.ErrorResponse{Response: res}
 		err := jsonx.Unmarshal(b, errRes)
 		if err != nil {

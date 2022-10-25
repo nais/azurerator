@@ -62,12 +62,6 @@ type AzureFeatures struct {
 	CleanupOrphans            CleanupOrphans            `json:"cleanup-orphans"`
 	GroupsAssignment          GroupsAssignment          `json:"groups-assignment"`
 	GroupMembershipClaim      GroupMembershipClaim      `json:"group-membership-claim"`
-	TeamsManagement           TeamsManagement           `json:"teams-management"`
-}
-
-type TeamsManagement struct {
-	Enabled            bool   `json:"enabled"`
-	ServicePrincipalId string `json:"service-principal-id"`
 }
 
 type ClaimsMappingPolicies struct {
@@ -144,8 +138,6 @@ const (
 	AzureFeaturesClaimsMappingPoliciesNavIdent        = "azure.features.claims-mapping-policies.navident"
 	AzureFeaturesClaimsMappingPoliciesAzpName         = "azure.features.claims-mapping-policies.azp_name"
 	AzureFeaturesClaimsMappingPoliciesAllCustomClaims = "azure.features.claims-mapping-policies.all-custom-claims"
-	AzureFeaturesTeamsManagementEnabled               = "azure.features.teams-management.enabled"
-	AzureFeaturesTeamsManagementServicePrincipalId    = "azure.features.teams-management.service-principal-id"
 	AzureFeaturesGroupsAssignmentEnabled              = "azure.features.groups-assignment.enabled"
 	AzureFeaturesGroupsAllUsersGroupId                = "azure.features.groups-assignment.all-users-group-id"
 	AzureFeaturesGroupMembershipClaimDefault          = "azure.features.group-membership-claim.default"
@@ -204,9 +196,6 @@ func init() {
 	flag.String(AzureFeaturesClaimsMappingPoliciesNavIdent, "", "Claims-mapping policy ID for NavIdent")
 	flag.String(AzureFeaturesClaimsMappingPoliciesAzpName, "", "Claims-mapping policy ID for azp_name (authorized party name, i.e. displayName for the requesting application)")
 	flag.String(AzureFeaturesClaimsMappingPoliciesAllCustomClaims, "", "Claims-mapping policy ID for all custom claims, i.e. NavIdent and azp_name")
-
-	flag.Bool(AzureFeaturesTeamsManagementEnabled, false, "Feature toggle for assigning owners of matching teams to owners of applications")
-	flag.String(AzureFeaturesTeamsManagementServicePrincipalId, "", "Service Principal ID for teams management application containing team groups")
 
 	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Feature toggle for assigning explicitly specified groups to applications")
 	flag.StringSlice(AzureFeaturesGroupsAllUsersGroupId, []string{}, "List of Group IDs that contains all users in the tenant. Assigned to all applications by default unless 'allowAllUsers' is set to false in the custom resource.")

@@ -18,7 +18,6 @@ const (
 )
 
 type ServicePrincipal interface {
-	Owners() Owners
 	Policies() Policies
 
 	Exists(ctx context.Context, id azure.ClientId) (bool, msgraph.ServicePrincipal, error)
@@ -33,10 +32,6 @@ type servicePrincipal struct {
 
 func NewServicePrincipal(runtimeClient azure.RuntimeClient) ServicePrincipal {
 	return servicePrincipal{RuntimeClient: runtimeClient}
-}
-
-func (s servicePrincipal) Owners() Owners {
-	return newOwners(s.RuntimeClient)
 }
 
 func (s servicePrincipal) Policies() Policies {

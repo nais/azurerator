@@ -17,7 +17,6 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/oauth2permissiongrant"
 	"github.com/nais/azureator/pkg/azure/client/preauthorizedapp"
 	"github.com/nais/azureator/pkg/azure/client/serviceprincipal"
-	"github.com/nais/azureator/pkg/azure/client/team"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/config"
@@ -82,10 +81,6 @@ func (c Client) PreAuthApps() preauthorizedapp.PreAuthApps {
 
 func (c Client) ServicePrincipal() serviceprincipal.ServicePrincipal {
 	return serviceprincipal.NewServicePrincipal(c)
-}
-
-func (c Client) Team() team.Team {
-	return team.NewTeam(c)
 }
 
 func New(ctx context.Context, cfg *config.AzureConfig) (azure.Client, error) {
@@ -247,12 +242,6 @@ func (c Client) process(tx transaction.Transaction, permissions permissions.Perm
 	preAuthApps, err := c.PreAuthApps().Process(tx, permissions)
 	if err != nil {
 		return nil, fmt.Errorf("processing preauthorized apps: %w", err)
-	}
-
-	if c.config.Features.TeamsManagement.Enabled {
-		if err = c.Team().Owners().Process(tx); err != nil {
-			return nil, fmt.Errorf("processing owners: %w", err)
-		}
 	}
 
 	if c.config.Features.ClaimsMappingPolicies.Enabled {
