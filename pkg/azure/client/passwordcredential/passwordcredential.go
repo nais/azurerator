@@ -199,55 +199,56 @@ func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.Applic
 }
 
 func (p passwordCredential) revocationCandidates(tx transaction.Transaction, app msgraph.Application) []msgraph.PasswordCredential {
-	keyIdsInUse := append(
+	nonCandidates := append(
 		tx.Secrets.KeyIDs.Used.Password,
 		tx.Secrets.LatestCredentials.Set.Current.Password.KeyId,
 		tx.Secrets.LatestCredentials.Set.Next.Password.KeyId,
 	)
-	keyIdsInUse = stringutils.RemoveDuplicates(keyIdsInUse)
+	nonCandidates = stringutils.RemoveDuplicates(nonCandidates)
 
 	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
 	// This case assumes the possibility of the Azure application being used in applications external to the cluster.
 	// There should always be at least one passwordcredential registered for an application.
-	var newestCredential msgraph.PasswordCredential
-	var newestCredentialIndex int
-	var keyCreatedByAzureratorFound = false
+	var newest msgraph.PasswordCredential
+	var newestIndex int
+	var hasManagedKey = false
 
-	for i, passwordCredential := range app.PasswordCredentials {
-		if newestCredential.StartDateTime == nil || passwordCredential.StartDateTime.After(*newestCredential.StartDateTime) {
-			newestCredential = passwordCredential
-			newestCredentialIndex = i
+	for i, cred := range app.PasswordCredentials {
+		if newest.StartDateTime == nil || cred.StartDateTime.After(*newest.StartDateTime) {
+			newest = cred
+			newestIndex = i
 		}
 
-		if passwordCredential.DisplayName == nil {
+		if cred.DisplayName == nil {
 			continue
 		}
 
-		keyDisplayName := *passwordCredential.DisplayName
+		keyDisplayName := *cred.DisplayName
 		if strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix) {
-			keyCreatedByAzureratorFound = true
+			hasManagedKey = true
 		}
 	}
 
-	// Return early to prevent revoking keys for a pre-existing application that has been managed outside of azurerator
-	if !keyCreatedByAzureratorFound {
+	// Return empty if application was managed outside azurerator
+	if !hasManagedKey {
 		return make([]msgraph.PasswordCredential, 0)
 	}
 
 	revoked := make([]msgraph.PasswordCredential, 0)
-	for i, passwordCredential := range app.PasswordCredentials {
-		if isPasswordInUse(passwordCredential, keyIdsInUse) || i == newestCredentialIndex {
+	for i, password := range app.PasswordCredentials {
+		if hasMatchingKeyID(nonCandidates, password) || i == newestIndex {
 			continue
 		}
-		revoked = append(revoked, passwordCredential)
+		revoked = append(revoked, password)
 	}
+
 	return revoked
 }
 
-func isPasswordInUse(cred msgraph.PasswordCredential, idsInUse []string) bool {
+func hasMatchingKeyID(ids []string, cred msgraph.PasswordCredential) bool {
 	keyId := string(*cred.KeyID)
 
-	for _, idInUse := range idsInUse {
+	for _, idInUse := range ids {
 		if keyId == idInUse {
 			return true
 		}

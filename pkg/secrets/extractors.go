@@ -9,6 +9,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/util/crypto"
+	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
 type Extractor struct {
@@ -49,6 +50,12 @@ func (e Extractor) GetKeyIDs() credentials.KeyIDs {
 		passwordId := string(sec.Data[e.keys.CurrentCredentials.PasswordKeyId])
 		unusedPasswordIDs = appendIfNonEmpty(unusedPasswordIDs, passwordId)
 	}
+
+	usedCertificateIDs = stringutils.RemoveDuplicates(usedCertificateIDs)
+	usedPasswordIDs = stringutils.RemoveDuplicates(usedPasswordIDs)
+
+	unusedCertificateIDs = stringutils.RemoveDuplicates(unusedCertificateIDs)
+	unusedPasswordIDs = stringutils.RemoveDuplicates(unusedPasswordIDs)
 
 	return credentials.KeyIDs{
 		Used: credentials.KeyID{

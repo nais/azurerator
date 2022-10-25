@@ -106,7 +106,7 @@ func (k keyCredential) DeleteExpired(tx transaction.Transaction) error {
 }
 
 func (k keyCredential) DeleteUnused(tx transaction.Transaction) error {
-	keysInUse, err := k.mapToKeyCredentials(tx)
+	keysInUse, err := k.filterRevokedKeys(tx)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (k keyCredential) DeleteUnused(tx transaction.Transaction) error {
 // Rotate generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
 // Except new applications, there should always be at least two active keys available at any given time so that running applications are not interfered with.
 func (k keyCredential) Rotate(tx transaction.Transaction) (*msgraph.KeyCredential, *crypto.Jwk, error) {
-	keysInUse, err := k.mapToKeyCredentials(tx)
+	keysInUse, err := k.filterRevokedKeys(tx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -175,8 +175,7 @@ func (k keyCredential) Validate(tx transaction.Transaction, existing credentials
 	return currentIsValid && nextIsValid, nil
 }
 
-// Maps a list of key IDs to a list of KeyCredentials
-func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction) ([]msgraph.KeyCredential, error) {
+func (k keyCredential) filterRevokedKeys(tx transaction.Transaction) ([]msgraph.KeyCredential, error) {
 	keyIdsInUse := append(
 		tx.Secrets.KeyIDs.Used.Certificate,
 		tx.Secrets.LatestCredentials.Set.Current.Certificate.KeyId,
@@ -189,36 +188,41 @@ func (k keyCredential) mapToKeyCredentials(tx transaction.Transaction) ([]msgrap
 		return nil, err
 	}
 
-	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
-	// This case assumes the possibility of the Azure application being used in applications external to the cluster.
-	// There should always be at least one keycredential registered for an application.
-	var newestCredential msgraph.KeyCredential
-	var keyCreatedByAzureratorFound = false
-	for _, keyCredential := range actualApp.KeyCredentials {
-		keyDisplayName := *keyCredential.DisplayName
-		if strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix) {
-			keyCreatedByAzureratorFound = true
+	var newest msgraph.KeyCredential
+	var newestIndex int
+	var hasManagedKey = false
+
+	for i, cred := range actualApp.KeyCredentials {
+		if newest.StartDateTime == nil || cred.StartDateTime.After(*newest.StartDateTime) {
+			newest = cred
+			newestIndex = i
+		}
+
+		if cred.DisplayName == nil {
+			continue
+		}
+
+		name := *cred.DisplayName
+		if strings.HasPrefix(name, azure.AzureratorPrefix) {
+			hasManagedKey = true
 		}
 	}
 
-	// Return early to prevent revoking keys for a pre-existing application that has been managed outside of azurerator
-	if !keyCreatedByAzureratorFound {
+	// Return existing keys if application was managed outside azurerator
+	if !hasManagedKey {
 		return actualApp.KeyCredentials, nil
 	}
 
-	keyCredentialsInUse := make([]msgraph.KeyCredential, 0)
-	for _, keyCredential := range actualApp.KeyCredentials {
-		if keyCredentialInUse(keyCredential, keyIdsInUse) {
-			keyCredentialsInUse = append(keyCredentialsInUse, keyCredential)
-		} else if keyCredential.DisplayName != nil && keyCredential.KeyID != nil {
-			tx.Logger.Debugf("revoking unused key credential '%s' (ID: %s)", *keyCredential.DisplayName, *keyCredential.KeyID)
-		}
-
-		if newestCredential.StartDateTime == nil || keyCredential.StartDateTime.After(*newestCredential.StartDateTime) {
-			newestCredential = keyCredential
+	filtered := make([]msgraph.KeyCredential, 0)
+	for i, cred := range actualApp.KeyCredentials {
+		if hasMatchingKeyID(keyIdsInUse, cred) || i == newestIndex {
+			filtered = append(filtered, cred)
+		} else if cred.DisplayName != nil && cred.KeyID != nil {
+			tx.Logger.Debugf("revoking unused key credential '%s' (ID: %s)", *cred.DisplayName, *cred.KeyID)
 		}
 	}
-	return append(keyCredentialsInUse, newestCredential), nil
+
+	return filtered, nil
 }
 
 func (k keyCredential) new(tx transaction.Transaction) (*msgraph.KeyCredential, *crypto.Jwk, error) {
@@ -244,9 +248,9 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.Jwk) msgraph.KeyCredential
 	}
 }
 
-func keyCredentialInUse(key msgraph.KeyCredential, keyIdsInUse []string) bool {
-	keyId := string(*key.KeyID)
-	for _, id := range keyIdsInUse {
+func hasMatchingKeyID(ids []string, cred msgraph.KeyCredential) bool {
+	keyId := string(*cred.KeyID)
+	for _, id := range ids {
 		if keyId == id {
 			return true
 		}
