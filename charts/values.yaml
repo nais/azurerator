@@ -22,9 +22,7 @@ secret:
           enabled: "true"
         claims-mapping-policies:
           enabled: "true"
-          navident: "c7880a6d-ab30-4fba-be66-4c41d7e6f22f"
-          azp_name: "ab34aaeb-b3d5-48ab-ba13-b90fd985bbe4"
-          all-custom-claims: "a886ea76-2696-4198-84f1-8e40c3b5ba80"
+          id: "a886ea76-2696-4198-84f1-8e40c3b5ba80"
         cleanup-orphans:
           enabled: "true"
         groups-assignment:
@@ -64,9 +62,7 @@ secret:
           enabled: "true"
         claims-mapping-policies:
           enabled: "true"
-          navident: "53eccc94-e7d4-4c1b-9d25-62baefaab0df"
-          azp_name: "68607c5b-e4b7-4793-bd30-133bec3f33f2"
-          all-custom-claims: "1e14d5e7-c68f-4e37-a8e1-f55ff41a9dc0"
+          id: "1e14d5e7-c68f-4e37-a8e1-f55ff41a9dc0"
         cleanup-orphans:
           enabled: "true"
         groups-assignment:

@@ -74,10 +74,8 @@ The following flags are available:
 --azure.auth.client-secret string                                   Client secret for Azure AD authentication
 --azure.delay.between-modifications duration                        Delay between modification operations to the Graph API. (default 3s)
 --azure.features.app-role-assignment-required.enabled               Feature toggle to enable 'appRoleAssignmentRequired' for service principals.
---azure.features.claims-mapping-policies.all-custom-claims string   Claims-mapping policy ID for all custom claims, i.e. NavIdent and azp_name
---azure.features.claims-mapping-policies.azp_name string            Claims-mapping policy ID for azp_name (authorized party name, i.e. displayName for the requesting application)
+--azure.features.claims-mapping-policies.id string                  Claims-mapping policy ID for custom claims mapping
 --azure.features.claims-mapping-policies.enabled                    Feature toggle for assigning custom claims-mapping policies to a service principal
---azure.features.claims-mapping-policies.navident string            Claims-mapping policy ID for NavIdent
 --azure.features.cleanup-orphans.enabled                            Feature toggle to enable cleanup of orphaned resources.
 --azure.features.group-membership-claim.default string              Default group membership claim for Azure AD apps. (default "ApplicationGroup")
 --azure.features.groups-assignment.all-users-group-id string        Group ID that contains all users in the tenant. Assigned to all application by default unless overridden by user in the custom resource.

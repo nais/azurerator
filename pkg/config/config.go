@@ -65,10 +65,8 @@ type AzureFeatures struct {
 }
 
 type ClaimsMappingPolicies struct {
-	Enabled         bool   `json:"enabled"`
-	AllCustomClaims string `json:"all-custom-claims"`
-	AzpName         string `json:"azp_name"`
-	NavIdent        string `json:"navident"`
+	Enabled bool   `json:"enabled"`
+	ID      string `json:"id"`
 }
 
 type AppRoleAssignmentRequired struct {
@@ -129,22 +127,20 @@ type Validation struct {
 
 // Configuration options
 const (
-	AzureClientId                                     = "azure.auth.client-id"
-	AzureClientSecret                                 = "azure.auth.client-secret"
-	AzureTenantId                                     = "azure.tenant.id"
-	AzureTenantName                                   = "azure.tenant.name"
-	AzurePermissionGrantResourceId                    = "azure.permissiongrant-resource-id"
-	AzureFeaturesClaimsMappingPoliciesEnabled         = "azure.features.claims-mapping-policies.enabled"
-	AzureFeaturesClaimsMappingPoliciesNavIdent        = "azure.features.claims-mapping-policies.navident"
-	AzureFeaturesClaimsMappingPoliciesAzpName         = "azure.features.claims-mapping-policies.azp_name"
-	AzureFeaturesClaimsMappingPoliciesAllCustomClaims = "azure.features.claims-mapping-policies.all-custom-claims"
-	AzureFeaturesGroupsAssignmentEnabled              = "azure.features.groups-assignment.enabled"
-	AzureFeaturesGroupsAllUsersGroupId                = "azure.features.groups-assignment.all-users-group-id"
-	AzureFeaturesGroupMembershipClaimDefault          = "azure.features.group-membership-claim.default"
-	AzureFeaturesAppRoleAssignmentRequiredEnabled     = "azure.features.app-role-assignment-required.enabled"
-	AzureFeaturesCleanupOrphansEnabled                = "azure.features.cleanup-orphans.enabled"
-	AzureDelayBetweenModifications                    = "azure.delay.between-modifications"
-	AzurePaginationMaxPages                           = "azure.pagination.max-pages"
+	AzureClientId                                 = "azure.auth.client-id"
+	AzureClientSecret                             = "azure.auth.client-secret"
+	AzureTenantId                                 = "azure.tenant.id"
+	AzureTenantName                               = "azure.tenant.name"
+	AzurePermissionGrantResourceId                = "azure.permissiongrant-resource-id"
+	AzureFeaturesClaimsMappingPoliciesEnabled     = "azure.features.claims-mapping-policies.enabled"
+	AzureFeaturesClaimsMappingPoliciesID          = "azure.features.claims-mapping-policies.id"
+	AzureFeaturesGroupsAssignmentEnabled          = "azure.features.groups-assignment.enabled"
+	AzureFeaturesGroupsAllUsersGroupId            = "azure.features.groups-assignment.all-users-group-id"
+	AzureFeaturesGroupMembershipClaimDefault      = "azure.features.group-membership-claim.default"
+	AzureFeaturesAppRoleAssignmentRequiredEnabled = "azure.features.app-role-assignment-required.enabled"
+	AzureFeaturesCleanupOrphansEnabled            = "azure.features.cleanup-orphans.enabled"
+	AzureDelayBetweenModifications                = "azure.delay.between-modifications"
+	AzurePaginationMaxPages                       = "azure.pagination.max-pages"
 
 	ControllerContextTimeout          = "controller.context-timeout"
 	ControllerMaxConcurrentReconciles = "controller.max-concurrent-reconciles"
@@ -193,9 +189,7 @@ func init() {
 	flag.String(AzurePermissionGrantResourceId, "", "Object ID for Graph API permissions grant ('GraphAggregatorService' or 'Microsoft Graph' in Enterprise Applications under 'Microsoft Applications')")
 
 	flag.Bool(AzureFeaturesClaimsMappingPoliciesEnabled, false, "Feature toggle for assigning custom claims-mapping policies to a service principal")
-	flag.String(AzureFeaturesClaimsMappingPoliciesNavIdent, "", "Claims-mapping policy ID for NavIdent")
-	flag.String(AzureFeaturesClaimsMappingPoliciesAzpName, "", "Claims-mapping policy ID for azp_name (authorized party name, i.e. displayName for the requesting application)")
-	flag.String(AzureFeaturesClaimsMappingPoliciesAllCustomClaims, "", "Claims-mapping policy ID for all custom claims, i.e. NavIdent and azp_name")
+	flag.String(AzureFeaturesClaimsMappingPoliciesID, "", "Claims-mapping policy ID for custom claims mapping")
 
 	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Feature toggle for assigning explicitly specified groups to applications")
 	flag.StringSlice(AzureFeaturesGroupsAllUsersGroupId, []string{}, "List of Group IDs that contains all users in the tenant. Assigned to all applications by default unless 'allowAllUsers' is set to false in the custom resource.")
@@ -258,6 +252,11 @@ func (c Config) Validate(required []string) error {
 	if len(errs) > 0 {
 		return errors.New("missing configuration values")
 	}
+
+	if c.Azure.Features.ClaimsMappingPolicies.Enabled && len(c.Azure.Features.ClaimsMappingPolicies.ID) == 0 {
+		return fmt.Errorf("'%s' cannot be empty when '%s' is true", AzureFeaturesClaimsMappingPoliciesID, AzureFeaturesClaimsMappingPoliciesEnabled)
+	}
+
 	return nil
 }
 

@@ -7,15 +7,7 @@ import (
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
-	"github.com/nais/azureator/pkg/azure/client/serviceprincipal/claimsmappingpolicy"
-	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/transaction"
-)
-
-const (
-	PolicyClaimNAVIdent        = "NAVident"
-	PolicyClaimAzpName         = "azp_name"
-	PolicyClaimAllCustomClaims = "all"
 )
 
 type Policies interface {
@@ -24,33 +16,26 @@ type Policies interface {
 
 type policies struct {
 	azure.RuntimeClient
+	assignedPolicies   []msgraph.ClaimsMappingPolicy
 	servicePrincipalID azure.ServicePrincipalId
-	validPolicies      *claimsmappingpolicy.ValidPolicies
+	policyID           string
+}
+
+type ClaimsMappingPolicyBody struct {
+	Content string `json:"@odata.id"`
+}
+
+func NewClaimsMappingPolicyBody(id string) ClaimsMappingPolicyBody {
+	return ClaimsMappingPolicyBody{
+		Content: fmt.Sprintf("https://graph.microsoft.com/v1.0/policies/claimsMappingPolicies/%s", id),
+	}
 }
 
 func newPolicies(client azure.RuntimeClient) Policies {
 	return &policies{
 		RuntimeClient: client,
-		validPolicies: &claimsmappingpolicy.ValidPolicies{
-			NavIdent: claimsmappingpolicy.ValidPolicy{
-				Name:     PolicyClaimNAVIdent,
-				ID:       client.Config().Features.ClaimsMappingPolicies.NavIdent,
-				Assigned: false,
-				Desired:  false,
-			},
-			AzpName: claimsmappingpolicy.ValidPolicy{
-				Name:     PolicyClaimAzpName,
-				ID:       client.Config().Features.ClaimsMappingPolicies.AzpName,
-				Assigned: false,
-				Desired:  false,
-			},
-			AllCustomClaims: claimsmappingpolicy.ValidPolicy{
-				Name:     PolicyClaimAllCustomClaims,
-				ID:       client.Config().Features.ClaimsMappingPolicies.AllCustomClaims,
-				Assigned: false,
-				Desired:  false,
-			},
-		}}
+		policyID:      client.Config().Features.ClaimsMappingPolicies.ID,
+	}
 }
 
 func (p *policies) Process(tx transaction.Transaction) error {
@@ -58,37 +43,12 @@ func (p *policies) Process(tx transaction.Transaction) error {
 		return fmt.Errorf("preparing to process service principal policies: %w", err)
 	}
 
-	// revoke existing policies managed by this application if none found in spec
+	// revoke existing policies if no custom claims found in spec
 	if tx.Instance.Spec.Claims == nil || len(tx.Instance.Spec.Claims.Extra) == 0 {
-		return p.revokeAllManagedPolicies(tx)
+		return p.revokeExistingPolicies(tx)
 	}
 
-	if customresources.HasExtraPolicy(tx.Instance.Spec.Claims, PolicyClaimNAVIdent) {
-		p.validPolicies.NavIdent.Desired = true
-	}
-	if customresources.HasExtraPolicy(tx.Instance.Spec.Claims, PolicyClaimAzpName) {
-		p.validPolicies.AzpName.Desired = true
-	}
-	if p.validPolicies.NavIdent.Desired && p.validPolicies.AzpName.Desired {
-		p.validPolicies.NavIdent.Desired = false
-		p.validPolicies.AzpName.Desired = false
-		p.validPolicies.AllCustomClaims.Desired = true
-	}
-
-	err := p.revokeNonDesired(tx)
-	if err != nil {
-		return fmt.Errorf("revoking service principal policies: %w", err)
-	}
-
-	switch {
-	case p.validPolicies.AllCustomClaims.Desired:
-		return p.assign(tx, p.validPolicies.AllCustomClaims)
-	case p.validPolicies.NavIdent.Desired:
-		return p.assign(tx, p.validPolicies.NavIdent)
-	case p.validPolicies.AzpName.Desired:
-		return p.assign(tx, p.validPolicies.AzpName)
-	}
-	return nil
+	return p.assign(tx, p.policyID)
 }
 
 func (p *policies) prepare(tx transaction.Transaction) error {
@@ -103,81 +63,80 @@ func (p *policies) prepare(tx transaction.Transaction) error {
 		return fmt.Errorf("fetching service principal policy assignments: %w", err)
 	}
 
-	// Graph API only allows _one_ policy assigned at a time, otherwise returns a 409 Conflict
-	switch {
-	case policyInPolicies(p.validPolicies.NavIdent, assignedPolicies):
-		p.validPolicies.NavIdent.Assigned = true
-	case policyInPolicies(p.validPolicies.AzpName, assignedPolicies):
-		p.validPolicies.AzpName.Assigned = true
-	case policyInPolicies(p.validPolicies.AllCustomClaims, assignedPolicies):
-		p.validPolicies.AllCustomClaims.Assigned = true
-	}
+	p.assignedPolicies = assignedPolicies
 	return nil
 }
 
-func (p *policies) assign(tx transaction.Transaction, policy claimsmappingpolicy.ValidPolicy) error {
-	if policy.Assigned {
-		tx.Logger.Debugf("claims-mapping policy '%s' (%s) already assigned to service principal '%s', skipping assignment", policy.Name, policy.ID, p.servicePrincipalID)
+func (p *policies) hasPolicyAssignment(id string) bool {
+	for _, policy := range p.assignedPolicies {
+		if policy.ID != nil && *policy.ID == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (p *policies) assign(tx transaction.Transaction, id string) error {
+	if p.hasPolicyAssignment(p.policyID) {
+		tx.Logger.Debugf("skipping claims-mapping policy assignment; '%s' already assigned to service principal '%s'", p.policyID, p.servicePrincipalID)
 		return nil
 	}
 
-	return p.assignForPolicy(tx, policy)
+	// a ServicePrincipal can only have one policy assigned at any given time, so we must first revoke any existing, non-matching policies
+	err := p.revokeExistingPolicies(tx)
+	if err != nil {
+		return fmt.Errorf("revoking non-matching policies: %w", err)
+	}
+
+	return p.assignForPolicy(tx, id)
 }
 
-func (p *policies) revokeNonDesired(tx transaction.Transaction) error {
-	for _, validPolicy := range p.validPolicies.All() {
-		if validPolicy.Assigned && !validPolicy.Desired {
-			err := p.removeForPolicy(tx, validPolicy)
-			if err != nil {
-				return err
-			}
+func (p *policies) revokeExistingPolicies(tx transaction.Transaction) error {
+	for _, policy := range p.assignedPolicies {
+		if policy.ID == nil {
+			continue
+		}
+
+		err := p.removeForPolicy(tx, *policy.ID)
+		if err != nil {
+			return err
 		}
 	}
+
 	return nil
 }
 
-func (p *policies) revokeAllManagedPolicies(tx transaction.Transaction) error {
-	for _, policy := range p.validPolicies.All() {
-		if policy.Assigned {
-			err := p.removeForPolicy(tx, policy)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (p *policies) assignForPolicy(tx transaction.Transaction, policy claimsmappingpolicy.ValidPolicy) error {
-	if len(policy.ID) == 0 {
+func (p *policies) assignForPolicy(tx transaction.Transaction, id string) error {
+	if len(id) == 0 {
 		return nil
 	}
 
-	body := claimsmappingpolicy.NewPayload(policy)
+	body := NewClaimsMappingPolicyBody(id)
 	req := p.GraphClient().ServicePrincipals().ID(p.servicePrincipalID).ClaimsMappingPolicies().Request()
 
 	err := req.JSONRequest(tx.Ctx, http.MethodPost, "/$ref", body, nil)
 	if err != nil {
-		return fmt.Errorf("assigning claims-mapping policy '%s' (%s) to service principal '%s': %w", policy.Name, policy.ID, p.servicePrincipalID, err)
+		return fmt.Errorf("assigning claims-mapping policy '%s' to service principal '%s': %w", id, p.servicePrincipalID, err)
 	}
 
-	tx.Logger.Infof("successfully assigned claims-mapping policy '%s' (%s) to service principal '%s'", policy.Name, policy.ID, p.servicePrincipalID)
+	tx.Logger.Infof("successfully assigned claims-mapping policy '%s' to service principal '%s'", id, p.servicePrincipalID)
 	return nil
 }
 
-func (p *policies) removeForPolicy(tx transaction.Transaction, policy claimsmappingpolicy.ValidPolicy) error {
-	if len(policy.ID) == 0 {
+func (p *policies) removeForPolicy(tx transaction.Transaction, id string) error {
+	if len(id) == 0 {
 		return nil
 	}
 
-	req := p.GraphClient().ServicePrincipals().ID(p.servicePrincipalID).ClaimsMappingPolicies().ID(policy.ID).Request()
+	req := p.GraphClient().ServicePrincipals().ID(p.servicePrincipalID).ClaimsMappingPolicies().ID(id).Request()
 
 	err := req.JSONRequest(tx.Ctx, http.MethodDelete, "/$ref", nil, nil)
 	if err != nil {
-		return fmt.Errorf("removing claims-mapping policy '%s' (%s) from service principal '%s'", policy.Name, policy.ID, p.servicePrincipalID)
+		return fmt.Errorf("removing claims-mapping policy '%s' from service principal '%s'", id, p.servicePrincipalID)
 	}
 
-	tx.Logger.Infof("successfully removed claims-mapping policy '%s' (%s) from service principal '%s'", policy.Name, policy.ID, p.servicePrincipalID)
+	tx.Logger.Infof("successfully removed claims-mapping policy '%s' from service principal '%s'", id, p.servicePrincipalID)
 	return nil
 }
 
@@ -188,17 +147,4 @@ func (p *policies) getAssigned(tx transaction.Transaction) ([]msgraph.ClaimsMapp
 	}
 
 	return response, nil
-}
-
-func policyInPolicies(validPolicy claimsmappingpolicy.ValidPolicy, policies []msgraph.ClaimsMappingPolicy) bool {
-	if len(policies) == 0 {
-		return false
-	}
-
-	for _, policy := range policies {
-		if *policy.ID == validPolicy.ID {
-			return true
-		}
-	}
-	return false
 }
