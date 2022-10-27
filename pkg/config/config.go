@@ -176,6 +176,7 @@ func bindNAIS() {
 
 func init() {
 	conftools.Initialize("AZURERATOR")
+	viper.AddConfigPath("/etc/azurerator")
 
 	// Ensure NAIS Kafka variables are used
 	bindNAIS()
