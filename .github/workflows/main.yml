@@ -4,6 +4,8 @@ on:
   push:
     paths-ignore:
       - 'README.md'
+      - 'charts/**'
+      - '.github/workflows/chart.yaml'
 
 env:
   image: ghcr.io/${{ github.repository }}
