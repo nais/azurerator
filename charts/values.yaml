@@ -31,6 +31,7 @@ secret:
             - "2d7f1c0d-5784-4f81-8bb2-8f3a79f8f949"
             - "b4667154-a8f9-477a-be7a-12f815ca3e37"
             - "980edf87-54fe-4b65-88c7-f06205070698"
+            - "c4da18a1-db54-4001-87ad-eee3def73ea1"
       permissiongrant-resource-id: "fa08dfc8-337d-4b52-bae8-16eeae834c76"
       tenant:
         id: "62366534-1ec3-4962-8869-9b5535279d0b"
