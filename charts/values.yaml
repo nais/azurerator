@@ -24,7 +24,7 @@ secret:
           enabled: "true"
           id: "a886ea76-2696-4198-84f1-8e40c3b5ba80"
         cleanup-orphans:
-          enabled: "true"
+          enabled: "false"
         groups-assignment:
           enabled: "true"
           all-users-group-id:
@@ -65,7 +65,7 @@ secret:
           enabled: "true"
           id: "1e14d5e7-c68f-4e37-a8e1-f55ff41a9dc0"
         cleanup-orphans:
-          enabled: "true"
+          enabled: "false"
         groups-assignment:
           enabled: "true"
           all-users-group-id: "dec3ee50-b683-4644-9507-520e8f054ac2"
