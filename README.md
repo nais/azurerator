@@ -39,16 +39,12 @@ make install
 
 ### Azure AD Setup
 
-You will need the credentials for an Azure AD application with the following built-in roles:
-
-- `Application administrator`
-- `Cloud application administrator`
-
-The application must also have the following Application API permissions for Microsoft Graph:
+You will need the credentials for an Azure AD application with the following Application API permissions for Microsoft Graph:
 
 - `Application.ReadWrite.All`
-- `Policy.Read.All`
-- `User.Read.All`
+- `DelegatedPermissionGrant.ReadWrite.All`
+- `Group.Read.All` (optional, only needed for the groups-assignment feature)
+- `Policy.Read.All` (optional, only needed for the claims-mapping policies feature)
 
 Finally, in order to ensure that Azurerator may pre-approve delegated API permissions for the managed applications,
 you will need to find and configure the `azure.permissiongrant-resource-id` configuration flag.
