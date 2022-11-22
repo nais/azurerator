@@ -15,14 +15,14 @@ jobs:
     name: Checkout code and setup node
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Generate image environment variable
         run: |
           version=$(./version.sh)
           echo "version=${version}" >> $GITHUB_ENV
           echo "IMAGE=${image}:${version}" >> $GITHUB_ENV
       - name: Login to GitHub Docker Registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -38,7 +38,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: azurerator
     - uses: navikt/github-app-token-generator@v1
@@ -48,7 +48,7 @@ jobs:
         app-id: ${{ secrets.NAIS_APP_ID }}
         repo: navikt/nais-yaml
     - name: Checkout nais-yaml
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: navikt/nais-yaml
         token: ${{ steps.get-token.outputs.token }}
