@@ -1,90 +1,55 @@
-team: nais
+nameOverride: ""
+fullnameOverride: ""
 
-trygdeetaten:
+alerts:
   enabled: false
+  slackChannel: # mapped from fasit
+
+azure:
+  clientID:
+  clientSecret:
+  permissionGrantResourceID:
+  tenant:
+    name:
+    id:
+
+clusterName: # mapped from fasit
+
+controller:
+  leaderElection: true
+  maxConcurrentReconciles: 10
+  secretRotation: true
+  tenantNameStrictMatching: false
+
+features:
+  appRoleAssignmentRequired: false
+  claimsMappingPolicies:
+    enabled: false
+    id:
+  cleanupOrphans: false
+  groupsAssignment:
+    enabled: false
+    allUsersGroupIDs: []
 
 image:
-  repository: ghcr.io/nais
-  name: azurerator
+  repository: ghcr.io/nais/azurerator
   tag: 2022-10-27-58d3027
 
+kafka:
+  application:
+    enabled: false
+  pool: nav-infrastructure
+  tls: true
+  topic:
+    create: false
+    name: azurerator-events
+    namespace: # mapped from fasit
+    acl: []
+    # example:
+    # acl: [{ application: azurerator, team: nais }]
+
+networkPolicy:
+  enabled: true
+  apiServerCIDR: # mapped from fasit
+
 webproxy: false
-
-secret:
-  # config for azurerator instance using nav.no tenant in azure
-  azure_nav_tenant:
-    azure:
-      auth:
-        client-id: "fa614abe-ee11-4eec-b1e3-29218e0c53bc"
-        client-secret: "" #  mapped from fasit
-      features:
-        app-role-assignment-required:
-          enabled: "true"
-        claims-mapping-policies:
-          enabled: "true"
-          id: "a886ea76-2696-4198-84f1-8e40c3b5ba80"
-        cleanup-orphans:
-          enabled: "false"
-        groups-assignment:
-          enabled: "true"
-          all-users-group-id:
-            - "2d7f1c0d-5784-4f81-8bb2-8f3a79f8f949"
-            - "b4667154-a8f9-477a-be7a-12f815ca3e37"
-            - "980edf87-54fe-4b65-88c7-f06205070698"
-            - "c4da18a1-db54-4001-87ad-eee3def73ea1"
-      permissiongrant-resource-id: "fa08dfc8-337d-4b52-bae8-16eeae834c76"
-      tenant:
-        id: "62366534-1ec3-4962-8869-9b5535279d0b"
-        name: "nav.no"
-    cluster-name: "" #  mapped from fasit
-    controller:
-      max-concurrent-reconciles: "10"
-    kafka:
-      enabled: false
-      topic: "nais.azurerator-events-nav"
-      tls:
-        enabled: "true"
-    leader-election:
-      enabled: "true"
-    secret-rotation:
-      cleanup: "true"
-    validations:
-      tenant:
-        required: "true"
-
-  # config for azurerator instance using trygdeetaten tenant in azure
-  azure_trygdeetaten_tenant:
-    azure:
-      auth:
-        client-id: "0da98dc8-eb7b-41a9-9a74-7b38d8814dba"
-        client-secret: "" #  mapped from fasit
-      features:
-        app-role-assignment-required:
-          enabled: "true"
-        claims-mapping-policies:
-          enabled: "true"
-          id: "1e14d5e7-c68f-4e37-a8e1-f55ff41a9dc0"
-        cleanup-orphans:
-          enabled: "false"
-        groups-assignment:
-          enabled: "true"
-          all-users-group-id: "dec3ee50-b683-4644-9507-520e8f054ac2"
-      permissiongrant-resource-id: "1a709eb6-68b9-4db9-aa49-4a25c523c509"
-      tenant:
-        id: "966ac572-f5b7-4bbe-aa88-c76419c0f851"
-        name: "trygdeetaten.no"
-    cluster-name: "" #  mapped from fasit
-    controller:
-      max-concurrent-reconciles: "10"
-    kafka:
-      enabled: false
-      topic: "nais.azurerator-events-trygdeetaten"
-      tls:
-        enabled: "true"
-    leader-election:
-      enabled: "true"
-    secret-rotation:
-      cleanup: "true"
-    validations:
-      tenant:
-        required: "false"

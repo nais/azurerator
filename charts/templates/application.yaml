@@ -1,0 +1,41 @@
+---
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ include "azurerator.fullname" . }}
+  labels:
+    {{ include "azurerator.labels" . | nindent 4 }}
+spec:
+  image: "{{ .Values.image.repository }}:{{.Values.image.tag}}"
+  port: 8080
+  liveness:
+    path: /metrics
+  readiness:
+    path: /metrics
+  resources:
+    limits:
+      memory: 2Gi
+    requests:
+      memory: 512Mi
+  replicas:
+    min: 1
+    max: 1
+  prometheus:
+    enabled: true
+    path: /metrics
+  filesFrom:
+    - secret: {{ include "azurerator.fullname" . }}-env
+      mountPath: /etc/azurerator
+  accessPolicy:
+    inbound:
+      rules:
+        - application: prometheus
+    outbound:
+      external:
+        - host: login.microsoftonline.com
+        - host: graph.microsoft.com
+  {{- if .Values.kafka.application.enabled }}
+  kafka:
+    pool: "{{ .Values.kafka.pool }}"
+  {{ end }}
+  webproxy: {{ .Values.webproxy }}
