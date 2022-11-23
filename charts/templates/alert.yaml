@@ -11,7 +11,7 @@ spec:
     slack:
       channel: "{{ .Values.alerts.slackChannel }}"
   alerts:
-    - alert: {{ include "azurerator.fullname" . }} failed provisioning clients in {{ .Values.controller.clusterName }}
+    - alert: {{ include "azurerator.fullname" . }} failed provisioning clients in {{ .Values.clusterName }}
       expr: sum(rate(azureadapp_failed_processing_count{app="{{ include "azurerator.fullname" . }}"}[5m])) > 0
       for: 5m
       description: "{{ include "azurerator.fullname" . }} has failed processing clients for longer than usual\n\nConsequence: applications that have azure.application enabled will not start up as they are dependant on a secret created by Azurerator.\n"
