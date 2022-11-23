@@ -49,7 +49,7 @@ kafka:
     # acl: [{ application: azurerator, team: nais }]
 
 networkPolicy:
-  enabled: true
+  enabled: false
   apiServerCIDR: # mapped from fasit
 
 webproxy: false
