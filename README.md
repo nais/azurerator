@@ -43,7 +43,7 @@ You will need the credentials for an Azure AD application with the following App
 
 - `Application.ReadWrite.All`
 - `DelegatedPermissionGrant.ReadWrite.All`
-- `Group.Read.All` (optional, only needed for the groups-assignment feature)
+- `GroupMember.Read.All` (optional, only needed for the groups-assignment feature)
 - `Policy.Read.All` (optional, only needed for the claims-mapping policies feature)
 
 Finally, in order to ensure that Azurerator may pre-approve delegated API permissions for the managed applications,
