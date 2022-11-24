@@ -36,9 +36,10 @@ jobs:
         run: |
           make test
   build:
-    name: Checkout code and setup node
+    name: Build and publish image to GHCR
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
+    needs: test
     steps:
       - uses: actions/checkout@v3
       - name: Generate image environment variable
