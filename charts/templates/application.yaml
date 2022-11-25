@@ -34,7 +34,7 @@ spec:
       external:
         - host: login.microsoftonline.com
         - host: graph.microsoft.com
-  {{- if .Values.kafka.application.enabled }}
+  {{- if .Values.kafka.application }}
   kafka:
     pool: "{{ .Values.kafka.pool }}"
   {{ end }}

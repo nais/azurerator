@@ -36,17 +36,10 @@ image:
   tag: 2022-10-27-58d3027
 
 kafka:
-  application:
-    enabled: false
+  application: false
   pool: nav-infrastructure
   tls: true
-  topic:
-    create: false
-    name: azurerator-events
-    namespace: # mapped from fasit
-    acl: []
-    # example:
-    # acl: [{ application: azurerator, team: nais }]
+  topic: false
 
 networkPolicy:
   enabled: false

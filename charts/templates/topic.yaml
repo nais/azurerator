@@ -1,10 +1,10 @@
-{{ if .Values.kafka.topic.create }}
+{{ if .Values.kafka.topic }}
 ---
 apiVersion: kafka.nais.io/v1
 kind: Topic
 metadata:
-  name: {{ .Values.kafka.topic.name }}
-  namespace: {{ .Values.kafka.topic.namespace }}
+  name: {{ include "azurerator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{ include "azurerator.labels" . | nindent 4 }}
 spec:
@@ -12,10 +12,5 @@ spec:
     - access: readwrite
       application: {{ include "azurerator.fullname" . }}
       team: {{ .Release.Namespace }}
-  {{- range $val := .Values.kafka.topic.acl }}
-    - access: readwrite
-      application: {{ $val.application }}
-      team: {{ $val.team }}
-  {{- end }}
   pool: {{ .Values.kafka.pool }}
 {{ end }}
