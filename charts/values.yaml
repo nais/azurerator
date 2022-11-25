@@ -22,18 +22,18 @@ controller:
   tenantNameStrictMatching: false
 
 features:
-  appRoleAssignmentRequired: false
+  appRoleAssignmentRequired: true
   claimsMappingPolicies:
     enabled: false
     id:
   cleanupOrphans: false
   groupsAssignment:
-    enabled: false
+    enabled: true
     allUsersGroupIDs: []
 
 image:
   repository: ghcr.io/nais/azurerator
-  tag: 2022-10-27-58d3027
+  tag: 2022-11-24-199aa17
 
 kafka:
   application: false
