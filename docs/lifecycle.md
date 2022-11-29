@@ -185,12 +185,12 @@ the `AzureAdApplication` when using the application in a Web API flow such as th
 
 Additionally, any users that should be able to log in to the application using the OpenID Connect flows must be
 explicitly assigned to the application through one of the groups defined in `spec.claims.groups[]`. The user _must_ be a
-direct member of the group; assignment does not cascade to nested groups. 
+direct member of the group; assignment does not cascade to nested groups. This also applies to tokens acquired by other
+consuming applications through the OAuth 2.0 On-behalf-of flow.
 
-If `spec.claims.groups[]` is not defined, we fall back to assigning a single group (configured by the 
-`azure.features.groups-assignment.all-users-group-id` flag) that should contain all users that should have 
-access to the application by default. This behaviour can also be explicitly controlled by specifying the `spec.allowAllUsers` 
-field.
+If `spec.claims.allowAllUsers` is set to `true`, the group configured by the 
+`azure.features.groups-assignment.all-users-group-id` will be assigned to the application. This group should contain
+all users that should have access to the application by default.
 
 ### 1.8 Single-Page Applications
 
