@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
+	cache "github.com/Code-Hex/go-generics-cache"
 	"github.com/nais/msgraph.go/jsonx"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
@@ -17,6 +19,10 @@ import (
 	"github.com/nais/azureator/pkg/azure/resource"
 	"github.com/nais/azureator/pkg/transaction"
 )
+
+const cacheExpiration = 24 * time.Hour
+
+var groupCache = cache.New[azure.ObjectId, *msgraph.Group]()
 
 var (
 	BadRequestError = errors.New("BadRequest")
@@ -101,14 +107,14 @@ func (g group) getGroupsFromClaims(tx transaction.Transaction) (resource.Resourc
 		exists, groupResult, err := g.getById(tx, group.ID)
 		if err != nil {
 			if errors.Is(err, BadRequestError) {
-				tx.Logger.Warnf("skipping assignment for group %s: %+v", group, err)
+				tx.Logger.Warnf("groups: skipping assignment %s: %+v", group, err)
 				continue
 			}
 			return nil, fmt.Errorf("getting group '%s': %w", group, err)
 		}
 
 		if !exists {
-			tx.Logger.Debugf("skipping Groups assignment: '%s' does not exist", group.ID)
+			tx.Logger.Debugf("groups: skipping assignment: '%s' does not exist", group.ID)
 			continue
 		}
 
@@ -123,7 +129,7 @@ func (g group) getGroupsFromClaims(tx transaction.Transaction) (resource.Resourc
 
 func (g group) getAllUsersGroups(tx transaction.Transaction) ([]resource.Resource, error) {
 	allUsersGroupIDs := g.Config().Features.GroupsAssignment.AllUsersGroupId
-	res := make([]resource.Resource, len(allUsersGroupIDs))
+	groups := make([]resource.Resource, len(allUsersGroupIDs))
 
 	for _, id := range allUsersGroupIDs {
 		exists, groupResult, err := g.getById(tx, id)
@@ -135,15 +141,20 @@ func (g group) getAllUsersGroups(tx transaction.Transaction) ([]resource.Resourc
 			return nil, fmt.Errorf("group '%s' does not exist: %w", allUsersGroupIDs, err)
 		}
 
-		res = append(res, g.mapToResource(*groupResult))
+		groups = append(groups, g.mapToResource(*groupResult))
 	}
-	return res, nil
+	return groups, nil
 }
 
 func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *msgraph.Group, error) {
 	if len(id) == 0 {
 		return false, nil, nil
 	}
+	if val, found := groupCache.Get(id); found {
+		tx.Logger.Debugf("groups: cache hit for '%s'", id)
+		return true, val, nil
+	}
+	tx.Logger.Debugf("groups: cache miss for '%s'", id)
 
 	r := g.GraphClient().Groups().ID(id).Request()
 
@@ -178,6 +189,7 @@ func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *ms
 		return false, nil, nil
 	}
 
+	groupCache.Set(id, group, cache.WithExpiration(cacheExpiration))
 	return true, group, nil
 }
 

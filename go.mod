@@ -3,6 +3,7 @@ module github.com/nais/azureator
 go 1.19
 
 require (
+	github.com/Code-Hex/go-generics-cache v1.2.1
 	github.com/Shopify/sarama v1.37.2
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/go-logr/zapr v1.2.3
@@ -86,6 +87,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
+	golang.org/x/exp v0.0.0-20220328175248-053ad81199eb // indirect
 	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/sys v0.2.0 // indirect
 	golang.org/x/term v0.2.0 // indirect
