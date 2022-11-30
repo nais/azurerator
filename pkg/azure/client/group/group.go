@@ -74,14 +74,16 @@ func (g group) getGroups(tx transaction.Transaction) (resource.Resources, error)
 		return groups, nil
 	}
 
-	allUsersGroups, err := g.getAllUsersGroups(tx)
-	if err != nil {
-		return nil, fmt.Errorf("mapping all-users group to resources: %w", err)
-	}
-
 	allowAllUsersEnabled := tx.Instance.Spec.AllowAllUsers != nil && *tx.Instance.Spec.AllowAllUsers == true
-	if allowAllUsersEnabled && allUsersGroups != nil {
-		groups.AddAll(allUsersGroups...)
+	if allowAllUsersEnabled {
+		allUsersGroups, err := g.getAllUsersGroups(tx)
+		if err != nil {
+			return nil, fmt.Errorf("mapping all-users group to resources: %w", err)
+		}
+
+		if allUsersGroups != nil {
+			groups.AddAll(allUsersGroups...)
+		}
 	}
 
 	return groups, nil
