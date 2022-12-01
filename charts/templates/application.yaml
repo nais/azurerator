@@ -4,6 +4,7 @@ kind: Application
 metadata:
   name: {{ include "azurerator.fullname" . }}
   labels:
+    team: nais
     {{ include "azurerator.labels" . | nindent 4 }}
 spec:
   image: "{{ .Values.image.repository }}:{{.Values.image.tag}}"
