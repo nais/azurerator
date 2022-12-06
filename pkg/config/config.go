@@ -44,8 +44,9 @@ func (a AzureTenant) String() string {
 }
 
 type AzureAuth struct {
-	ClientId     string `json:"client-id"`
-	ClientSecret string `json:"client-secret"`
+	ClientId     string     `json:"client-id"`
+	ClientSecret string     `json:"client-secret"`
+	Google       GoogleAuth `json:"google"`
 }
 
 type AzureDelay struct {
@@ -84,6 +85,11 @@ type GroupsAssignment struct {
 
 type GroupMembershipClaim struct {
 	Default groupmembershipclaim.GroupMembershipClaim `json:"default"`
+}
+
+type GoogleAuth struct {
+	Enabled   bool   `json:"enabled"`
+	ProjectID string `json:"project-id"`
 }
 
 type Controller struct {
@@ -129,6 +135,8 @@ type Validation struct {
 const (
 	AzureClientId                                 = "azure.auth.client-id"
 	AzureClientSecret                             = "azure.auth.client-secret"
+	AzureAuthGoogleEnabled                        = "azure.auth.google.enabled"
+	AzureAuthGoogleProjectID                      = "azure.auth.google.project-id"
 	AzureTenantId                                 = "azure.tenant.id"
 	AzureTenantName                               = "azure.tenant.name"
 	AzurePermissionGrantResourceId                = "azure.permissiongrant-resource-id"
@@ -183,6 +191,8 @@ func init() {
 
 	flag.String(AzureClientId, "", "Client ID for Azure AD authentication")
 	flag.String(AzureClientSecret, "", "Client secret for Azure AD authentication")
+	flag.Bool(AzureAuthGoogleEnabled, false, "Use Google credentials with as federated credentials for auth.")
+	flag.String(AzureAuthGoogleProjectID, "", "Google Project ID for Service Account when using federated credentials.")
 
 	flag.String(AzureTenantId, "", "Tenant ID for Azure AD")
 	flag.String(AzureTenantName, "", "Alias/name of tenant for Azure AD")
@@ -284,13 +294,20 @@ func DefaultConfig() (*Config, error) {
 		log.WithField("logger", "config").Info(line)
 	}
 
-	err = cfg.Validate([]string{
+	required := []string{
 		AzureTenantId,
 		AzureClientId,
-		AzureClientSecret,
 		AzurePermissionGrantResourceId,
 		ClusterName,
-	})
+	}
+
+	if cfg.Azure.Auth.Google.Enabled {
+		required = append(required, AzureAuthGoogleProjectID)
+	} else {
+		required = append(required, AzureClientSecret)
+	}
+
+	err = cfg.Validate(required)
 	if err != nil {
 		return nil, err
 	}

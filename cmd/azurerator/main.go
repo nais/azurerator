@@ -55,7 +55,8 @@ func main() {
 }
 
 func run() error {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	zapLogger, err := logger.ZapLogger()
 	if err != nil {

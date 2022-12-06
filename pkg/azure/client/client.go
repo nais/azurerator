@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nais/msgraph.go/msauth"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"golang.org/x/oauth2"
 
@@ -84,11 +83,16 @@ func (c Client) ServicePrincipal() serviceprincipal.ServicePrincipal {
 }
 
 func New(ctx context.Context, cfg *config.AzureConfig) (azure.Client, error) {
-	m := msauth.NewManager()
-	scopes := []string{msauth.DefaultMSGraphScope}
-	ts, err := m.ClientCredentialsGrant(ctx, cfg.Tenant.Id, cfg.Auth.ClientId, cfg.Auth.ClientSecret, scopes)
+	var ts oauth2.TokenSource
+	var err error
+
+	if cfg.Auth.Google.Enabled {
+		ts, err = NewGoogleFederatedCredentialsTokenSource(ctx, cfg)
+	} else {
+		ts, err = NewClientCredentialsTokenSource(ctx, cfg)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("instantiating graph client: %w", err)
+		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
 
 	httpClient := oauth2.NewClient(ctx, ts)
