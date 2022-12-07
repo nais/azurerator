@@ -31,9 +31,13 @@ features:
     enabled: true
     allUsersGroupIDs: []
 
+google:
+  federatedAuth: false
+  projectID:
+
 image:
   repository: ghcr.io/nais/azurerator
-  tag: 2022-11-24-199aa17
+  tag: 2022-12-06-1974bb5
 
 kafka:
   application: false
