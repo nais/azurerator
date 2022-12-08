@@ -4,7 +4,6 @@ apiVersion: kafka.nais.io/v1
 kind: Topic
 metadata:
   name: {{ include "azurerator.fullname" . }}
-  namespace: {{ .Release.Namespace }}
   labels:
     {{ include "azurerator.labels" . | nindent 4 }}
 spec:
