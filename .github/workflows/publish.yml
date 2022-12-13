@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - 'README.md'
+      - 'charts/**'
+      - '.github/workflows/chart.yaml'
 
 env:
   REGISTRY: europe-north1-docker.pkg.dev/nais-io/nais/images
