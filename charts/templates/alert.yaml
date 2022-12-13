@@ -9,7 +9,7 @@ metadata:
 spec:
   receivers:
     slack:
-      channel: "{{ .Values.global.alerts.slackChannel | .Values.alerts.slackChannel }}"
+      channel: "{{ .Values.global.alerts.slackChannel | default .Values.alerts.slackChannel }}"
   alerts:
     - alert: {{ include "azurerator.fullname" . }} failed provisioning clients in {{ .Values.global.clusterName | default .Values.clusterName }}
       expr: sum(rate(azureadapp_failed_processing_count{app="{{ include "azurerator.fullname" . }}"}[5m])) > 0
