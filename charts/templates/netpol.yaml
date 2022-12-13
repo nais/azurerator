@@ -1,4 +1,4 @@
-{{ if .Values.networkPolicy.enabled }}
+{{ if .Values.global.networkPolicy.enabled | default .Values.networkPolicy.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -9,7 +9,7 @@ spec:
   egress:
     - to:
         - ipBlock:
-            cidr: {{ .Values.networkPolicy.apiServerCIDR }}
+            cidr: {{ .Values.global.networkPolicy.apiServerCIDR | default .Values.networkPolicy.apiServerCIDR }}
   podSelector:
     matchLabels:
       {{ include "azurerator.selectorLabels" . | nindent 6 }}

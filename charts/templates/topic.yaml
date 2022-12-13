@@ -1,4 +1,4 @@
-{{ if .Values.kafka.topic }}
+{{ if .Values.global.kafka.topic | default .Values.kafka.topic }}
 ---
 apiVersion: kafka.nais.io/v1
 kind: Topic
@@ -11,5 +11,5 @@ spec:
     - access: readwrite
       application: {{ include "azurerator.fullname" . }}
       team: {{ .Release.Namespace }}
-  pool: {{ .Values.kafka.pool }}
+  pool: {{ .Values.global.kafka.pool | default .Values.kafka.pool }}
 {{ end }}

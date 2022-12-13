@@ -1,10 +1,42 @@
 nameOverride: ""
 fullnameOverride: ""
 
+# globals (if set) override any local values
+global:
+  alerts:
+    enabled:
+    slackChannel:
+  clusterName:
+  controller:
+    leaderElection:
+    maxConcurrentReconciles:
+    secretRotation:
+  features:
+    appRoleAssignmentRequired:
+    claimsMappingPolicies:
+      enabled:
+    cleanupOrphans:
+    groupsAssignment:
+      enabled:
+  google:
+    federatedAuth:
+    projectID:
+  image:
+    repository:
+    tag:
+  kafka:
+    application:
+    pool:
+    tls:
+    topic:
+  networkPolicy:
+    enabled:
+    apiServerCIDR:
+  webproxy:
+
 alerts:
   enabled: false
-  slackChannel: # mapped from fasit
-
+  slackChannel:
 azure:
   clientID:
   clientSecret:
@@ -12,15 +44,12 @@ azure:
   tenant:
     name:
     id:
-
-clusterName: # mapped from fasit
-
+clusterName:
 controller:
   leaderElection: true
   maxConcurrentReconciles: 10
   secretRotation: true
   tenantNameStrictMatching: false
-
 features:
   appRoleAssignmentRequired: true
   claimsMappingPolicies:
@@ -30,23 +59,18 @@ features:
   groupsAssignment:
     enabled: true
     allUsersGroupIDs: []
-
 google:
   federatedAuth: false
   projectID:
-
 image:
   repository: ghcr.io/nais/azurerator
   tag: 2022-12-06-1974bb5
-
 kafka:
   application: false
   pool: nav-infrastructure
   tls: true
   topic: false
-
 networkPolicy:
   enabled: false
-  apiServerCIDR: # mapped from fasit
-
+  apiServerCIDR:
 webproxy: false

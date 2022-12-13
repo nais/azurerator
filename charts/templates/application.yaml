@@ -7,7 +7,7 @@ metadata:
     team: nais
     {{ include "azurerator.labels" . | nindent 4 }}
 spec:
-  image: "{{ .Values.image.repository }}:{{.Values.image.tag}}"
+  image: "{{ .Values.global.image.repository | default .Values.image.repository }}:{{ .Values.global.image.tag | default .Values.image.tag }}"
   port: 8080
   liveness:
     path: /metrics
@@ -35,8 +35,8 @@ spec:
       external:
         - host: login.microsoftonline.com
         - host: graph.microsoft.com
-  {{- if .Values.kafka.application }}
+  {{- if .Values.global.kafka.application | default .Values.kafka.application }}
   kafka:
-    pool: "{{ .Values.kafka.pool }}"
+    pool: "{{ .Values.global.kafka.pool | default .Values.kafka.pool }}"
   {{ end }}
-  webproxy: {{ .Values.webproxy }}
+  webproxy: {{ .Values.global.webproxy | default .Values.webproxy }}
