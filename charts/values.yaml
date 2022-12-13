@@ -38,13 +38,13 @@ alerts:
   enabled: false
   slackChannel:
 azure:
-  clientID:
-  clientSecret:
-  permissionGrantResourceID:
+  clientID: # required
+  clientSecret: # required
+  permissionGrantResourceID: # required
   tenant:
-    name:
-    id:
-clusterName:
+    name: # required
+    id: # required
+clusterName: # required
 controller:
   leaderElection: true
   maxConcurrentReconciles: 10
@@ -61,7 +61,7 @@ features:
     allUsersGroupIDs: []
 google:
   federatedAuth: false
-  projectID:
+  projectID: # required if google.federatedAuth is enabled
 image:
   repository: ghcr.io/nais/azurerator
   tag: 2022-12-06-1974bb5
