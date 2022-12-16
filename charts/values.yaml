@@ -39,7 +39,7 @@ alerts:
   slackChannel:
 azure:
   clientID: # required
-  clientSecret: # required
+  clientSecret: # required if google.federatedAuth is disabled
   permissionGrantResourceID: # required
   tenant:
     name: # required
