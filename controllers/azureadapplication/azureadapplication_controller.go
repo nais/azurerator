@@ -15,6 +15,7 @@ import (
 	"github.com/nais/liberator/pkg/kubernetes"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -200,7 +201,12 @@ func (r *Reconciler) Process(tx transaction.Transaction) error {
 }
 
 func (r *Reconciler) HandleError(tx transaction.Transaction, err error) (ctrl.Result, error) {
-	tx.Logger.Error(fmt.Errorf("failed to process AzureAdApplication: %w", err))
+	if apierrors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
+		// do not requeue reconciliation as all subsequent attempts will fail
+		return ctrl.Result{}, nil
+	}
+
+	tx.Logger.Errorf("failed to process AzureAdApplication: %+v", err)
 	r.ReportEvent(tx, corev1.EventTypeWarning, events.FailedSynchronization, "Failed to synchronize AzureAdApplication")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.Instance.Namespace)
 
