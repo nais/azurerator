@@ -49,13 +49,9 @@ func NewAzureReconciler(
 
 func (a azureReconciler) Process(tx transaction.Transaction) (*result.Application, error) {
 	var applicationResult *result.Application
+	var err error
 
-	exists, err := a.Exists(tx)
-	if err != nil {
-		return nil, fmt.Errorf("looking up existence of application: %w", err)
-	}
-
-	if !exists {
+	if !tx.ExistsInAzure {
 		applicationResult, err = a.create(tx)
 	} else if tx.Options.Process.Azure.Synchronize {
 		applicationResult, err = a.update(tx)
@@ -186,16 +182,11 @@ func (a azureReconciler) DeleteUnusedCredentials(tx transaction.Transaction) err
 }
 
 func (a azureReconciler) DeleteExpiredCredentials(tx transaction.Transaction) error {
-	exists, err := a.Exists(tx)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
+	if !tx.ExistsInAzure {
 		return nil
 	}
 
-	err = a.azureClient.Credentials().DeleteExpired(tx)
+	err := a.azureClient.Credentials().DeleteExpired(tx)
 	if err != nil {
 		return fmt.Errorf("deleting expired credentials for Azure application: %w", err)
 	}
@@ -223,12 +214,7 @@ func (a azureReconciler) RotateCredentials(tx transaction.Transaction) (*credent
 }
 
 func (a azureReconciler) PurgeCredentials(tx transaction.Transaction) error {
-	exists, err := a.Exists(tx)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
+	if !tx.ExistsInAzure {
 		return nil
 	}
 
@@ -237,12 +223,7 @@ func (a azureReconciler) PurgeCredentials(tx transaction.Transaction) error {
 }
 
 func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, error) {
-	exists, err := a.Exists(tx)
-	if err != nil {
-		return false, err
-	}
-
-	if !exists || !tx.Options.Process.Secret.Valid {
+	if !tx.ExistsInAzure || !tx.Options.Process.Secret.Valid {
 		return false, nil
 	}
 
@@ -262,11 +243,7 @@ func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, 
 
 func (a azureReconciler) Delete(tx transaction.Transaction) error {
 	tx.Logger.Info("deleting application in Azure AD...")
-	exists, err := a.Exists(tx)
-	if err != nil {
-		return err
-	}
-	if !exists {
+	if !tx.ExistsInAzure {
 		tx.Logger.Info("Azure application does not exist - skipping deletion")
 		return nil
 	}
@@ -304,12 +281,7 @@ func (a azureReconciler) Exists(tx transaction.Transaction) (bool, error) {
 }
 
 func (a azureReconciler) ProcessOrphaned(tx transaction.Transaction) error {
-	exists, err := a.Exists(tx)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
+	if !tx.ExistsInAzure {
 		return nil
 	}
 
@@ -317,7 +289,7 @@ func (a azureReconciler) ProcessOrphaned(tx transaction.Transaction) error {
 	metrics.IncWithNamespaceLabel(metrics.AzureAppOrphanedTotal, tx.Instance.GetNamespace())
 
 	if tx.Options.Process.Azure.CleanupOrphans {
-		err = a.Delete(tx)
+		err := a.Delete(tx)
 		if err != nil {
 			return err
 		}

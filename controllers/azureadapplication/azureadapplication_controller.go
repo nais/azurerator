@@ -174,7 +174,7 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 		return nil, fmt.Errorf("preparing transaction options: %w", err)
 	}
 
-	return &transaction.Transaction{
+	tx := &transaction.Transaction{
 		Ctx:                 ctx,
 		ClusterName:         r.Config.ClusterName,
 		Instance:            instance,
@@ -183,7 +183,15 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 		Options:             opts,
 		ID:                  correlationId,
 		UniformResourceName: kubernetes.UniformResourceName(instance, r.Config.ClusterName),
-	}, nil
+	}
+
+	exists, err := r.Azure().Exists(*tx)
+	if err != nil {
+		return nil, fmt.Errorf("looking up existence of application in azure: %w", err)
+	}
+
+	tx.ExistsInAzure = exists
+	return tx, nil
 }
 
 func (r *Reconciler) Process(tx transaction.Transaction) error {

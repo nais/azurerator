@@ -14,6 +14,7 @@ import (
 type Transaction struct {
 	Ctx                 context.Context
 	ClusterName         string
+	ExistsInAzure       bool
 	Instance            *v1.AzureAdApplication
 	Logger              log.Entry
 	Options             options.TransactionOptions
