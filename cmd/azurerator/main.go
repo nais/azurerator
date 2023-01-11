@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"os"
+	"log"
 	"time"
 
 	"github.com/go-logr/zapr"
@@ -45,10 +45,8 @@ func init() {
 
 func main() {
 	err := run()
-
 	if err != nil {
-		setupLog.Error(err, "Run loop errored")
-		os.Exit(1)
+		log.Fatalf("Run loop errored: %+v", err)
 	}
 
 	setupLog.Info("Manager shutting down")
