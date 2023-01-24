@@ -4,8 +4,6 @@ fullnameOverride: ""
 # globals (if set) override any local values
 global:
   alerts:
-    enabled:
-    slackChannel:
   clusterName:
   controller:
     leaderElection:
@@ -34,9 +32,7 @@ global:
     apiServerCIDR:
   webproxy:
 
-alerts:
-  enabled: false
-  slackChannel:
+alerts: false
 azure:
   clientID: # required
   clientSecret: # required if google.federatedAuth is disabled

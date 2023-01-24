@@ -1,21 +1,25 @@
-{{ if .Values.global.alerts.enabled | default .Values.alerts.enabled }}
+{{ if .Values.global.alerts | default .Values.alerts }}
 ---
-apiVersion: "nais.io/v1"
-kind: "Alert"
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
 metadata:
   name: {{ include "azurerator.fullname" . }}-alerts
   labels:
     {{ include "azurerator.labels" . | nindent 4 }}
 spec:
-  receivers:
-    slack:
-      channel: "{{ .Values.global.alerts.slackChannel | default .Values.alerts.slackChannel }}"
-  alerts:
-    - alert: {{ include "azurerator.fullname" . }} failed provisioning clients in {{ .Values.global.clusterName | default .Values.clusterName }}
-      expr: sum(rate(azureadapp_failed_processing_count{app="{{ include "azurerator.fullname" . }}"}[5m])) > 0
-      for: 5m
-      description: "{{ include "azurerator.fullname" . }} has failed processing clients for longer than usual\n\nConsequence: applications that have azure.application enabled will not start up as they are dependant on a secret created by Azurerator.\n"
-      action: "Check logs:\n- `kubectl logs -n nais deploy/{{ include "azurerator.fullname" . }}`"
-      sla: respond within office hours
-      severity: danger
+  groups:
+    - name: "azurerator"
+      rules:
+        - alert: {{ include "azurerator.fullname" . }} failed provisioning clients
+          expr: sum(rate(azureadapp_failed_processing_count{app="{{ include "azurerator.fullname" . }}"}[5m])) > 0
+          for: 5m
+          annotations:
+            summary: {{ include "azurerator.fullname" . }} has failed processing clients for longer than usual
+            consequence: Applications that have spec.azure.application enabled will not start up as they are dependant on a secret created by Azurerator
+            action: |
+              * Check the logs: `kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "azurerator.fullname" . }}`"
+              * Check the Azure Status page: <https://azure.status.microsoft/status>
+          labels:
+            severity: critical
+            namespace: {{ .Release.Namespace }}
 {{ end }}
