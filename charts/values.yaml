@@ -32,7 +32,7 @@ global:
     apiServerCIDR:
   webproxy:
 
-alerts: false
+alerts: true
 azure:
   clientID: # required
   clientSecret: # required if google.federatedAuth is disabled
