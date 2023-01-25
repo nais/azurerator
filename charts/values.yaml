@@ -59,8 +59,8 @@ google:
   federatedAuth: false
   projectID: # required if google.federatedAuth is enabled
 image:
-  repository: ghcr.io/nais/azurerator
-  tag: 2022-12-06-1974bb5
+  repository: europe-north1-docker.pkg.dev/nais-io/nais/images/azurerator
+  tag: 2023-01-25-ad7adcb
 kafka:
   application: false
   pool: nav-infrastructure
