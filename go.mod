@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.3.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.2.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.2.1
 	github.com/Code-Hex/go-generics-cache v1.2.1
 	github.com/Shopify/sarama v1.38.1
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
@@ -32,7 +32,7 @@ require (
 	cloud.google.com/go/compute v1.15.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.1.2 // indirect
-	github.com/AzureAD/microsoft-authentication-library-for-go v0.7.0 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v0.8.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
