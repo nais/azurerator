@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	cache "github.com/Code-Hex/go-generics-cache"
 	"github.com/nais/liberator/pkg/strings"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
@@ -17,9 +18,12 @@ const (
 	TagHideApp = "HideApp"
 )
 
+var clientIdCache = cache.New[azure.ServicePrincipalId, azure.ClientId]()
+
 type ServicePrincipal interface {
 	Policies() Policies
 
+	GetClientId(ctx context.Context, id azure.ServicePrincipalId) (azure.ClientId, error)
 	Exists(ctx context.Context, id azure.ClientId) (bool, msgraph.ServicePrincipal, error)
 	Register(tx transaction.Transaction) (msgraph.ServicePrincipal, error)
 	SetAppRoleAssignmentRequired(tx transaction.Transaction) error
@@ -36,6 +40,22 @@ func NewServicePrincipal(runtimeClient azure.RuntimeClient) ServicePrincipal {
 
 func (s servicePrincipal) Policies() Policies {
 	return newPolicies(s.RuntimeClient)
+}
+
+func (s servicePrincipal) GetClientId(ctx context.Context, id azure.ServicePrincipalId) (azure.ClientId, error) {
+	if val, found := clientIdCache.Get(id); found {
+		return val, nil
+	}
+
+	sp, err := s.GraphClient().ServicePrincipals().ID(id).Request().Get(ctx)
+	if err != nil {
+		return "", fmt.Errorf("fetching service principal with id '%s': %w", id, err)
+	}
+
+	clientId := *sp.AppID
+	clientIdCache.Set(id, clientId)
+
+	return clientId, nil
 }
 
 func (s servicePrincipal) Register(tx transaction.Transaction) (msgraph.ServicePrincipal, error) {
@@ -62,7 +82,11 @@ func (s servicePrincipal) Exists(ctx context.Context, id azure.ClientId) (bool, 
 	if len(sps) == 0 {
 		return false, msgraph.ServicePrincipal{}, nil
 	}
-	return true, sps[0], nil
+
+	sp := sps[0]
+	clientIdCache.Set(*sp.ID, *sp.AppID)
+
+	return true, sp, nil
 }
 
 func (s servicePrincipal) SetAppRoleAssignmentRequired(tx transaction.Transaction) error {

@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/azure"
+	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/client/approleassignment"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/resource"
@@ -31,18 +32,24 @@ type AppRoleAssignments interface {
 	ProcessForServicePrincipals(assignees resource.Resources, roles permissions.Permissions) error
 }
 
-type appRoleAssignments struct {
+type Client interface {
 	azure.RuntimeClient
+	Application() application.Application
+	ServicePrincipal() ServicePrincipal
+}
+
+type appRoleAssignments struct {
+	Client
 	tx        transaction.Transaction
 	targetId  azure.ServicePrincipalId
 	logFields log.Fields
 }
 
-func NewAppRoleAssignments(client azure.RuntimeClient, tx transaction.Transaction, targetId azure.ServicePrincipalId) AppRoleAssignments {
+func NewAppRoleAssignments(client Client, tx transaction.Transaction, targetId azure.ServicePrincipalId) AppRoleAssignments {
 	return appRoleAssignments{
-		RuntimeClient: client,
-		tx:            tx,
-		targetId:      targetId,
+		Client:   client,
+		tx:       tx,
+		targetId: targetId,
 		logFields: log.Fields{
 			"targetId": targetId,
 		},
@@ -73,7 +80,39 @@ func (a appRoleAssignments) GetAllServicePrincipals() (approleassignment.List, e
 		return nil, err
 	}
 
-	return assignments.ServicePrincipals(), nil
+	spAssignments := assignments.ServicePrincipals()
+
+	// only return and process existing assignments for applications managed by us
+	filtered := make(approleassignment.List, 0)
+	for _, assignment := range spAssignments {
+		clientId, err := a.ServicePrincipal().GetClientId(a.tx.Ctx, azure.ServicePrincipalId(*assignment.PrincipalID))
+		if err != nil {
+			return nil, err
+		}
+
+		isManaged, found := application.IsManagedCache.Get(clientId)
+		if !found {
+			// as opposed to preAuthorizedApplications, appRoleAssignments are automatically removed when apps are
+			// deleted - so we skip checking for app existence
+			app, err := a.Application().GetByClientId(a.tx.Ctx, clientId)
+			if err != nil {
+				return nil, err
+			}
+
+			isManaged = application.IsManaged(app)
+		}
+
+		if isManaged {
+			filtered = append(filtered, assignment)
+		} else {
+			a.tx.Logger.WithFields(a.logFields).Debugf(
+				"preserving AppRole assignment for unmanaged service principal '%s' (%s) to role '%s'",
+				*assignment.PrincipalDisplayName, *assignment.PrincipalID, *assignment.AppRoleID,
+			)
+		}
+	}
+
+	return filtered, nil
 }
 
 func (a appRoleAssignments) ProcessForGroups(assignees resource.Resources, roles permissions.Permissions) error {

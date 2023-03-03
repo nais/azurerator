@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	cache "github.com/Code-Hex/go-generics-cache"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
@@ -23,7 +24,10 @@ import (
 const (
 	IntegratedAppTag string = "WindowsAzureActiveDirectoryIntegratedApp"
 	IaCAppTag        string = "azurerator_appreg"
+	LegacyIaCAppTag  string = "iac_appreg"
 )
+
+var IsManagedCache = cache.New[azure.ClientId, bool]()
 
 type Application interface {
 	AppRoles() approle.AppRoles
@@ -219,6 +223,12 @@ func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msg
 	if err != nil {
 		return nil, fmt.Errorf("failed to get list applications: %w", err)
 	}
+
+	for _, app := range applications {
+		// populate IsManagedCache
+		IsManaged(app)
+	}
+
 	return applications, nil
 }
 
@@ -257,4 +267,22 @@ func (a application) getSingleByFilterOrError(ctx context.Context, filter azure.
 	default:
 		return &applications[0], nil
 	}
+}
+
+func IsManaged(app msgraph.Application) bool {
+	id := *app.AppID
+
+	if val, found := IsManagedCache.Get(id); found {
+		return val
+	}
+
+	for _, tag := range app.Tags {
+		if tag == IaCAppTag || tag == LegacyIaCAppTag {
+			IsManagedCache.Set(id, true)
+			return true
+		}
+	}
+
+	IsManagedCache.Set(id, false)
+	return false
 }

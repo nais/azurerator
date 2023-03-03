@@ -54,15 +54,14 @@ func NewPreAuthApps(client Client) PreAuthApps {
 
 func (p preAuthApps) Process(tx transaction.Transaction, permissions permissions.Permissions) (*result.PreAuthorizedApps, error) {
 	servicePrincipalId := tx.Instance.GetServicePrincipalId()
-	objectId := tx.Instance.GetObjectId()
 
-	preAuthorizedApps, err := p.mapToResources(tx)
+	preAuthorizedApps, err := p.mapDesiredPreAuthorizedApps(tx)
 	if err != nil {
 		return nil, fmt.Errorf("mapping preauthorizedapps to resources: %w", err)
 	}
 
-	payload := p.mapToGraphRequest(preAuthorizedApps.Valid, permissions)
-	if err := p.Application().Patch(tx.Ctx, objectId, payload); err != nil {
+	err = p.patchPreAuthorizedApplications(tx, preAuthorizedApps.Valid, permissions)
+	if err != nil {
 		return nil, fmt.Errorf("patching preauthorizedapps for application: %w", err)
 	}
 
@@ -71,12 +70,13 @@ func (p preAuthApps) Process(tx transaction.Transaction, permissions permissions
 	if err != nil {
 		return nil, fmt.Errorf("updating approle assignments for service principals: %w", err)
 	}
+
 	return preAuthorizedApps, nil
 }
 
 func (p preAuthApps) Get(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
 	// lookup desired apps in Azure AD to check for existence
-	desired, err := p.mapToResources(tx)
+	desired, err := p.mapDesiredPreAuthorizedApps(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +99,12 @@ func (p preAuthApps) Get(tx transaction.Transaction) (*result.PreAuthorizedApps,
 	}
 
 	for _, valid := range desired.Valid {
-		if !actual.HasResource(valid) || !allAssignments.HasResource(valid) {
-			unassigned = append(unassigned, valid)
+		if actual.HasResource(valid) && allAssignments.HasResource(valid) {
+			assigned = append(assigned, valid)
 			continue
 		}
-		assigned = append(assigned, valid)
+
+		unassigned = append(unassigned, valid)
 	}
 
 	return &result.PreAuthorizedApps{
@@ -116,7 +117,7 @@ func (p preAuthApps) exists(ctx context.Context, app v1.AccessPolicyInboundRule)
 	return p.Application().ExistsByFilter(ctx, util.FilterByName(customresources.GetUniqueName(app.AccessPolicyRule)))
 }
 
-func (p preAuthApps) mapToResources(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
+func (p preAuthApps) mapDesiredPreAuthorizedApps(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
 	seen := make(map[string]bool)
 
 	validResources := make([]resource.Resource, 0)
@@ -152,13 +153,52 @@ func (p preAuthApps) mapToResources(tx transaction.Transaction) (*result.PreAuth
 	}, nil
 }
 
-func (p preAuthApps) mapToGraphRequest(resources []resource.Resource, permissions permissions.Permissions) appPatch {
+func (p preAuthApps) patchPreAuthorizedApplications(tx transaction.Transaction, resources []resource.Resource, permissions permissions.Permissions) error {
+	added := make(map[azure.ClientId]bool)
 	apps := make([]msgraph.PreAuthorizedApplication, 0)
-	for _, app := range resources {
-		apps = append(apps, app.ToPreAuthorizedApp(permissions))
+
+	// add all resources which are valid apps that we've previously checked for existence
+	for _, r := range resources {
+		apps = append(apps, r.ToPreAuthorizedApp(permissions))
+		added[r.ClientId] = true
 	}
 
-	return appPatch{API: preAuthAppPatch{PreAuthorizedApplications: apps}}
+	msgraphApp, err := p.Application().Get(tx)
+	if err != nil {
+		return err
+	}
+
+	// we want to keep existing pre-authorized applications, but only those that aren't managed by us
+	for _, existingPreAuthorizedApp := range msgraphApp.API.PreAuthorizedApplications {
+		clientId := *existingPreAuthorizedApp.AppID
+
+		// skip applications already added from resources
+		if added[clientId] {
+			continue
+		}
+
+		isManaged, found := application.IsManagedCache.Get(clientId)
+		if found && isManaged {
+			continue
+		}
+
+		// cache miss or unmanaged, check for existence first - because AAD doesn't automatically remove deleted
+		// apps from this list...
+		app, exists, err := p.Application().ExistsByFilter(tx.Ctx, util.FilterByAppId(clientId))
+		if err != nil {
+			return fmt.Errorf("checking existence for pre-authorized app '%s': %w", clientId, err)
+		}
+
+		if exists && !application.IsManaged(*app) {
+			tx.Logger.Debugf("preserving unmanaged pre-authorized app '%s' (%s)", *app.DisplayName, clientId)
+			apps = append(apps, existingPreAuthorizedApp)
+		}
+	}
+
+	objectId := tx.Instance.GetObjectId()
+	payload := appPatch{API: preAuthAppPatch{PreAuthorizedApplications: apps}}
+
+	return p.Application().Patch(tx.Ctx, objectId, payload)
 }
 
 func (p preAuthApps) mapToResource(tx transaction.Transaction, app v1.AccessPolicyInboundRule) (*resource.Resource, bool, error) {
