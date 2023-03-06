@@ -110,7 +110,7 @@ jobs:
       id-token: write
     env:
       GHCR_IMG: ghcr.io/${{ github.repository }}@${{ needs.publish-images.outputs.digest }}
-      GAR_IMG: ${{ env.GOOGLE_REGISTRY }}/azurerator@${{ needs.publish-images.outputs.digest }}
+      GAR_IMG: europe-north1-docker.pkg.dev/nais-io/nais/images/azurerator@${{ needs.publish-images.outputs.digest }}
     steps:
       - name: Install cosign
         uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # ratchet:sigstore/cosign-installer@main
