@@ -60,7 +60,7 @@ google:
   projectID: # required if google.federatedAuth is enabled
 image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images/azurerator
-  tag: 2023-01-25-ad7adcb
+  tag: latest
 kafka:
   application: false
   pool: nav-infrastructure
