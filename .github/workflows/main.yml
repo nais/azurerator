@@ -113,7 +113,7 @@ jobs:
           scan-type: 'image'
           format: 'cyclonedx'
           output: 'cyclone.sbom.json'
-          image-ref: ${{ env.GHCR_IMG }}
+          image-ref: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}@${{ steps.build-push.outputs.digest }}
       - name: Attest image
         run: |
           cosign attest --yes --predicate cyclone.sbom.json --type cyclonedx ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}@${{ steps.build-push.outputs.digest }}
