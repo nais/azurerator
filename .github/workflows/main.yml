@@ -5,9 +5,11 @@ on:
       - 'README.md'
       - 'charts/**'
       - '.github/workflows/chart.yaml'
+
 env:
   GOOGLE_REGISTRY: europe-north1-docker.pkg.dev/nais-io/nais/images
   GITHUB_REGISTRY: ghcr.io
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -33,6 +35,7 @@ jobs:
       - name: Test Go
         run: |
           make test
+
   publish-images:
     needs: test
     name: Publish to Google and GitHub registries
@@ -96,49 +99,14 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-    outputs:
-      digest: "${{ steps.build-push.outputs.digest }}"
-  slsafy:
-    name: Sign and attest the images
-    if: github.ref == 'refs/heads/master'
-    needs:
-      - publish-images
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-    env:
-      GHCR_IMG: ghcr.io/${{ github.repository }}@${{ needs.publish-images.outputs.digest }}
-      GAR_IMG: europe-north1-docker.pkg.dev/nais-io/nais/images/azurerator@${{ needs.publish-images.outputs.digest }}
-    steps:
       - name: Install cosign
         uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # ratchet:sigstore/cosign-installer@main
         with:
           cosign-release: 'v2.0.0'
-      - name: Login to GitHub Packages Docker Registry
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a # ratchet:docker/login-action@v2
-        with:
-          registry: ${{ env.GITHUB_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: "auth"
-        name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d" # ratchet:google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: "gh-azurerator@nais-io.iam.gserviceaccount.com"
-          token_format: "access_token"
-      - name: Login to Google Artifact Registry
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a # ratchet:docker/login-action@v2
-        with:
-          registry: ${{ env.GOOGLE_REGISTRY }}
-          username: "oauth2accesstoken"
-          password: "${{ steps.auth.outputs.access_token }}"
       - name: Sign the container image
         run: |
-          echo "y" | cosign sign ${{ env.GHCR_IMG }}
-          echo "y" | cosign sign ${{ env.GAR_IMG }}
+          cosign sign --yes ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}@${{ steps.build-push.outputs.digest }}
+          cosign sign --yes ${{ env.GOOGLE_REGISTRY }}/azurerator@${{ steps.build-push.outputs.digest }}
       - name: Create SBOM
         uses: aquasecurity/trivy-action@8bd2f9fbda2109502356ff8a6a89da55b1ead252 # ratchet:aquasecurity/trivy-action@master
         with:
@@ -148,5 +116,13 @@ jobs:
           image-ref: ${{ env.GHCR_IMG }}
       - name: Attest image
         run: |
-          echo "y" | cosign attest --predicate cyclone.sbom.json --type cyclonedx ${{ env.GHCR_IMG }}
-          echo "y" | cosign attest --predicate cyclone.sbom.json --type cyclonedx ${{ env.GAR_IMG }}
+          cosign attest --yes --predicate cyclone.sbom.json --type cyclonedx ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}@${{ steps.build-push.outputs.digest }}
+          cosign attest --yes --predicate cyclone.sbom.json --type cyclonedx ${{ env.GOOGLE_REGISTRY }}/azurerator@${{ steps.build-push.outputs.digest }}
+          
+          
+  
+
+      
+      
+      
+      
