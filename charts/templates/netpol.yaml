@@ -15,4 +15,36 @@ spec:
       {{ include "azurerator.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Egress
+---
+apiVersion: nais.io/v1
+kind: ReplicationConfig
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "azurerator.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchExpressions:
+      - key: team
+        operator: Exists
+  resources:
+    - template: |
+        apiVersion: networking.gke.io/v1alpha3
+        kind: FQDNNetworkPolicy
+        metadata:
+          name: {{ .Release.Name }}-azure-fqdn
+        spec:
+          egress:
+            - ports:
+                - port: 443
+                  protocol: TCP
+              to:
+                - fqdns:
+                  - login.microsoftonline.com
+                  - graph.microsoft.com
+          podSelector:
+            matchLabels:
+              azure: enabled
+          policyTypes:
+            - Egress
 {{ end }}
