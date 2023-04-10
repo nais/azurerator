@@ -100,7 +100,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Install cosign
-        uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # ratchet:sigstore/cosign-installer@main
+        uses: sigstore/cosign-installer@9e9de2292db7abb3f51b7f4808d98f0d347a8919 # ratchet:sigstore/cosign-installer@main
         with:
           cosign-release: 'v2.0.0'
       - name: Sign the container image
