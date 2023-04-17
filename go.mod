@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/nais/liberator v0.0.0-20230310123448-b928dcaf2230
 	github.com/nais/msgraph.go v0.1.5
-	github.com/prometheus/client_golang v1.14.0
+	github.com/prometheus/client_golang v1.15.0
 	github.com/sethvargo/go-retry v0.2.4
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5
@@ -84,7 +84,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
-	github.com/prometheus/common v0.39.0 // indirect
+	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rickb777/date v1.20.1 // indirect
