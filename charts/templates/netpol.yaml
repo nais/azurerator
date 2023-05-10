@@ -10,6 +10,14 @@ spec:
     - to:
         - ipBlock:
             cidr: {{ .Values.global.networkPolicy.apiServerCIDR | default .Values.networkPolicy.apiServerCIDR }}
+    - ports:
+        - port: 443
+          protocol: TCP
+      to:
+        - ipBlock:
+            cidr: 20.190.128.0/18
+        - ipBlock:
+            cidr: 40.126.0.0/18
   podSelector:
     matchLabels:
       {{ include "azurerator.selectorLabels" . | nindent 6 }}
