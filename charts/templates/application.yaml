@@ -40,3 +40,4 @@ spec:
     pool: "{{ .Values.global.kafka.pool | default .Values.kafka.pool }}"
   {{ end }}
   webproxy: {{ .Values.global.webproxy | default .Values.webproxy }}
+  skipCaBundle: true
