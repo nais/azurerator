@@ -22,7 +22,7 @@ require (
 	golang.org/x/oauth2 v0.8.0
 	google.golang.org/api v0.122.0
 	gopkg.in/square/go-jose.v2 v2.6.0
-	k8s.io/api v0.26.3
+	k8s.io/api v0.27.2
 	k8s.io/apimachinery v0.27.2
 	k8s.io/client-go v0.26.3
 	sigs.k8s.io/controller-runtime v0.14.6
