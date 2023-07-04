@@ -5,19 +5,14 @@ on:
       - 'README.md'
       - 'charts/**'
       - '.github/workflows/chart.yaml'
-
-env:
-  GOOGLE_REGISTRY: europe-north1-docker.pkg.dev/nais-io/nais/images
-  GITHUB_REGISTRY: ghcr.io
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout latest code
-        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # ratchet:actions/checkout@v3
       - name: Set up Go
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # ratchet:actions/setup-go@v3
+        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # ratchet:actions/setup-go@v3
         with:
           go-version: 1.20
           check-latest: true
@@ -35,7 +30,6 @@ jobs:
       - name: Test Go
         run: |
           make test
-
   publish-images:
     needs: test
     name: Publish to Google and GitHub registries
@@ -47,86 +41,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
-      - id: "auth"
-        name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d" # ratchet:google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: "gh-azurerator@nais-io.iam.gserviceaccount.com"
-          token_format: "access_token"
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # ratchet:actions/checkout@v3
       - name: Install cosign
-        uses: sigstore/cosign-installer@d13028333d784fcc802b67ec924bcebe75aa0a5f # ratchet:sigstore/cosign-installer@main
+        uses: sigstore/cosign-installer@6e04d228eb30da1757ee4e1dd75a0ec73a653e06 # ratchet:sigstore/cosign-installer@main
         with:
           cosign-release: 'v2.0.0'
       - name: Verify builder image
         run: cosign verify --certificate-identity "https://github.com/chainguard-images/images/.github/workflows/release.yaml@refs/heads/main"  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" cgr.dev/chainguard/go:1.20
       - name: Verify runner image
         run: cosign verify --certificate-oidc-issuer https://accounts.google.com  --certificate-identity keyless@distroless.iam.gserviceaccount.com gcr.io/distroless/static-debian11:nonroot
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@16c0bc4a6e6ada2cfd8afd41d22d95379cf7c32a # ratchet:docker/setup-buildx-action@v2
-      - name: Login to Google Artifact Registry
-        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # ratchet:docker/login-action@v2
+      - uses: nais/platform-build-push-sign@a4d8dd01a8d6308f95403e28103066e44a40d61b # ratchet:nais/platform-build-push-sign@main
+        id: build_push_sign
         with:
-          registry: ${{ env.GOOGLE_REGISTRY }}
-          username: "oauth2accesstoken"
-          password: "${{ steps.auth.outputs.access_token }}"
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # ratchet:docker/login-action@v2
-        with:
-          registry: ${{ env.GITHUB_REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Docker meta
-        id: metadata
-        uses: docker/metadata-action@c4ee3adeed93b1fa6a762f209fb01608c1a22f1e # ratchet:docker/metadata-action@v4
-        with:
-          images: |
-            ${{ env.GOOGLE_REGISTRY }}/azurerator
-            ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}
-          flavor: |
-            latest=true
-          # Docker tags based on the following events/attributes
-          tags: |
-            type=schedule
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern=v{{version}}
-            type=semver,pattern=v{{major}}.{{minor}}
-            type=semver,pattern=v{{major}}
-            type=sha,prefix={{date 'YYYY-MM-DD'}}-
-      - name: Build and push
-        id: build-push
-        uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # ratchet:docker/build-push-action@v4
-        with:
-          context: .
-          file: Dockerfile
+          name: azurerator
+          dockerfile: Dockerfile
+          google_service_account: gh-azurerator
           push: true
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Sign the container image
-        run: |
-          cosign sign --yes ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}@${{ steps.build-push.outputs.digest }}
-          cosign sign --yes ${{ env.GOOGLE_REGISTRY }}/azurerator@${{ steps.build-push.outputs.digest }}
-      - name: Create SBOM
-        uses: aquasecurity/trivy-action@e5f43133f6e8736992c9f3c1b3296e24b37e17f2 # ratchet:aquasecurity/trivy-action@master
-        with:
-          scan-type: 'image'
-          format: 'cyclonedx'
-          output: 'cyclone.sbom.json'
-          image-ref: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}@${{ steps.build-push.outputs.digest }}
-      - name: Attest image
-        run: |
-          cosign attest --yes --predicate cyclone.sbom.json --type cyclonedx ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}@${{ steps.build-push.outputs.digest }}
-          cosign attest --yes --predicate cyclone.sbom.json --type cyclonedx ${{ env.GOOGLE_REGISTRY }}/azurerator@${{ steps.build-push.outputs.digest }}
-          
-          
-  
-
-      
-      
-      
-      
+          push_ghcr: true
+          workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
