@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM cgr.dev/chainguard/go:1.19 as builder
+FROM cgr.dev/chainguard/go:1.20 as builder
 
 ENV os "linux"
 ENV arch "amd64"
