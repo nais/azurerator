@@ -13,6 +13,12 @@ import (
 
 func TestOptionalClaims_DescribeCreate(t *testing.T) {
 	desired := msgraph.OptionalClaims{
+		AccessToken: []msgraph.OptionalClaim{
+			{
+				Essential: ptr.Bool(true),
+				Name:      ptr.String("idtyp"),
+			},
+		},
 		IDToken: []msgraph.OptionalClaim{
 			{
 				Essential: ptr.Bool(true),
@@ -35,6 +41,12 @@ func TestOptionalClaims_DescribeUpdate(t *testing.T) {
 			name:     "no existing optional claims",
 			existing: msgraph.OptionalClaims{},
 			want: msgraph.OptionalClaims{
+				AccessToken: []msgraph.OptionalClaim{
+					{
+						Essential: ptr.Bool(true),
+						Name:      ptr.String("idtyp"),
+					},
+				},
 				IDToken: []msgraph.OptionalClaim{
 					{
 						Essential: ptr.Bool(true),
@@ -46,6 +58,12 @@ func TestOptionalClaims_DescribeUpdate(t *testing.T) {
 		{
 			name: "existing non-conflicting optional claims",
 			existing: msgraph.OptionalClaims{
+				AccessToken: []msgraph.OptionalClaim{
+					{
+						Essential: ptr.Bool(true),
+						Name:      ptr.String("upn"),
+					},
+				},
 				IDToken: []msgraph.OptionalClaim{
 					{
 						Essential: ptr.Bool(false),
@@ -54,6 +72,16 @@ func TestOptionalClaims_DescribeUpdate(t *testing.T) {
 				},
 			},
 			want: msgraph.OptionalClaims{
+				AccessToken: []msgraph.OptionalClaim{
+					{
+						Essential: ptr.Bool(true),
+						Name:      ptr.String("upn"),
+					},
+					{
+						Essential: ptr.Bool(true),
+						Name:      ptr.String("idtyp"),
+					},
+				},
 				IDToken: []msgraph.OptionalClaim{
 					{
 						Essential: ptr.Bool(false),
@@ -69,6 +97,12 @@ func TestOptionalClaims_DescribeUpdate(t *testing.T) {
 		{
 			name: "existing conflicting optional claims",
 			existing: msgraph.OptionalClaims{
+				AccessToken: []msgraph.OptionalClaim{
+					{
+						Essential: ptr.Bool(true),
+						Name:      ptr.String("idtyp"),
+					},
+				},
 				IDToken: []msgraph.OptionalClaim{
 					{
 						Essential: ptr.Bool(false),
@@ -77,6 +111,12 @@ func TestOptionalClaims_DescribeUpdate(t *testing.T) {
 				},
 			},
 			want: msgraph.OptionalClaims{
+				AccessToken: []msgraph.OptionalClaim{
+					{
+						Essential: ptr.Bool(true),
+						Name:      ptr.String("idtyp"),
+					},
+				},
 				IDToken: []msgraph.OptionalClaim{
 					{
 						Essential: ptr.Bool(true),

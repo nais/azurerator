@@ -31,15 +31,17 @@ func (o optionalClaims) DescribeUpdate(existing msgraph.Application) *msgraph.Op
 
 func defaultClaims() *msgraph.OptionalClaims {
 	return &msgraph.OptionalClaims{
-		IDToken: defaultIDTokenClaims(),
-	}
-}
-
-func defaultIDTokenClaims() []msgraph.OptionalClaim {
-	return []msgraph.OptionalClaim{
-		{
-			Essential: ptr.Bool(true),
-			Name:      ptr.String("sid"),
+		AccessToken: []msgraph.OptionalClaim{
+			{
+				Essential: ptr.Bool(true),
+				Name:      ptr.String("idtyp"),
+			},
+		},
+		IDToken: []msgraph.OptionalClaim{
+			{
+				Essential: ptr.Bool(true),
+				Name:      ptr.String("sid"),
+			},
 		},
 	}
 }
