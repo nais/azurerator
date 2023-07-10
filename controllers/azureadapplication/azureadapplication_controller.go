@@ -83,6 +83,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	tx, err := r.Prepare(ctx, req)
 	if err != nil {
+		metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, req.Namespace)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -187,7 +188,7 @@ func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transactio
 
 	exists, err := r.Azure().Exists(*tx)
 	if err != nil {
-		return nil, fmt.Errorf("looking up existence of application in azure: %w", err)
+		return nil, err
 	}
 
 	tx.ExistsInAzure = exists
