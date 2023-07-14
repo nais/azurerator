@@ -83,8 +83,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	tx, err := r.Prepare(ctx, req)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+
+		log.WithFields(log.Fields{
+			"application_name":      req.Name,
+			"application_namespace": req.Namespace,
+		}).Errorf("preparing reconciliation: %+v", err)
 		metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, req.Namespace)
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, err
 	}
 
 	if tx.Options.Tenant.Ignore {
