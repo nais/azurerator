@@ -11,7 +11,7 @@ spec:
     - name: "azurerator"
       rules:
         - alert: {{ include "azurerator.fullname" . }} failed provisioning clients
-          expr: sum(rate(azureadapp_failed_processing_count{app="{{ include "azurerator.fullname" . }}"}[5m])) > 0
+          expr: sum(increase(azureadapp_failed_processing_count{app="{{ include "azurerator.fullname" . }}"}[5m])) > 10
           for: 5m
           annotations:
             summary: {{ include "azurerator.fullname" . }} has failed processing clients for longer than usual
