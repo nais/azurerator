@@ -1,0 +1,53 @@
+dependencies:
+  - allOf:
+      - nais-crds
+      - naiserator
+      - reloader
+environmentKinds:
+  - tenant
+values:
+  azure.clientID:
+    required: true
+    config:
+      type: string
+  azure.permissionGrantResourceID:
+    description: Object ID for Microsoft Graph application within AAD tenant, needed for pre-approval of delegated permissions.
+    displayName: Microsoft Graph Object ID
+    required: true
+    config:
+      type: string
+  azure.tenant.id:
+    required: true
+    config:
+      type: string
+  azure.tenant.name:
+    description: Alias used to identify the tenant, such as the primary domain that is configured for the Azure AD tenant.
+    required: true
+    config:
+      type: string
+  clusterName:
+    displayName: Cluster name
+    computed:
+      template: '"{{.Env.name}}"'
+  features.groupsAssignment.allUsersGroupIDs:
+    description: Default set of Azure AD group object IDs to be assigned to applications if all users should have access.
+    displayName: All users group IDs
+    required: true
+    config:
+      type: string_array
+  google.federatedAuth:
+    description: Enable client authentication using federated Google credentials
+    computed:
+      template: "true"
+  google.projectID:
+    computed:
+      template: '"{{.Env.project_id}}"'
+  image.tag:
+    config:
+      type: string
+  networkPolicy.apiServerCIDR:
+    computed:
+      template: '"{{ .Env.apiserver_endpoint }}/32"'
+  networkPolicy.enabled:
+    computed:
+      template: "true"
