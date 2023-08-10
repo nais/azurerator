@@ -72,7 +72,7 @@ jobs:
       - name: Package chart
         id: package_chart
         env:
-          CHART_PATH: ./charts/${{ env.FEATURE_NAME }}
+          CHART_PATH: ./charts
         run: |
           base_version="$(yq '.version' < "${{ env.CHART_PATH }}/Chart.yaml")"
           chart_version="${base_version}-${{ steps.build_push_sign.outputs.version }}"
