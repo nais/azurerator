@@ -9,7 +9,7 @@ require (
 	github.com/Shopify/sarama v1.38.1
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/go-logr/zapr v1.2.4
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/nais/liberator v0.0.0-20230310123448-b928dcaf2230
 	github.com/nais/msgraph.go v0.1.5
 	github.com/prometheus/client_golang v1.16.0
