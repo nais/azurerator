@@ -23,11 +23,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	controller "github.com/nais/azureator/controllers/azureadapplication"
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/azure/fake"
-	client2 "github.com/nais/azureator/pkg/azure/fake/client"
+	az "github.com/nais/azureator/pkg/azure/fake/client"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/fixtures"
@@ -50,7 +51,7 @@ const (
 )
 
 var cli client.Client
-var azureClient = client2.NewFakeAzureClient()
+var azureClient = az.NewFakeAzureClient()
 var secretDataKeys = secrets.NewSecretDataKeys()
 
 func TestMain(m *testing.M) {
@@ -71,11 +72,11 @@ func TestReconciler_CreateAzureAdApplication(t *testing.T) {
 	}{
 		{
 			"Application already exists in Azure AD",
-			client2.ApplicationExists,
+			az.ApplicationExists,
 		},
 		{
 			"Application does not exist in Azure AD",
-			client2.ApplicationNotExistsName,
+			az.ApplicationNotExistsName,
 		},
 	}
 	for _, c := range cases {
@@ -136,7 +137,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 }
 
 func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotRetry(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 
 	previousHash := instance.Status.SynchronizationHash
 	previousSyncTime := instance.Status.SynchronizationTime
@@ -195,7 +196,7 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotR
 }
 
 func TestReconciler_UpdateAzureAdApplication_ResyncAnnotation_ShouldResyncAndNotModifySecrets(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 
 	previousHash := instance.Status.SynchronizationHash
 	previousSyncTime := instance.Status.SynchronizationTime
@@ -230,7 +231,7 @@ func TestReconciler_UpdateAzureAdApplication_ResyncAnnotation_ShouldResyncAndNot
 }
 
 func TestReconciler_UpdateAzureAdApplication_RotateAnnotation_ShouldRotateSecrets(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 
 	previousHash := instance.Status.SynchronizationHash
 	previousSyncTime := instance.Status.SynchronizationTime
@@ -265,7 +266,7 @@ func TestReconciler_UpdateAzureAdApplication_RotateAnnotation_ShouldRotateSecret
 }
 
 func TestReconciler_UpdateAzureAdApplication_NewSecretName_ShouldRotateCredentials(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
 	previousSecretName := instance.Spec.SecretName
@@ -300,7 +301,7 @@ func TestReconciler_UpdateAzureAdApplication_NewSecretName_ShouldRotateCredentia
 }
 
 func TestReconciler_UpdateAzureAdApplication_SpecChangeAndNotExpiredSecret_ShouldNotRotateCredentials(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
 	previousSecretName := instance.Spec.SecretName
@@ -337,7 +338,7 @@ func TestReconciler_UpdateAzureAdApplication_SpecChangeAndNotExpiredSecret_Shoul
 }
 
 func TestReconciler_UpdateAzureAdApplication_SpecChangeAndExpiredSecret_ShouldAddNewCredentials(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
 	previousSecretName := instance.Spec.SecretName
@@ -383,7 +384,7 @@ func TestReconciler_UpdateAzureAdApplication_SpecChangeAndExpiredSecret_ShouldAd
 }
 
 func TestReconciler_UpdateAzureAdApplication_NewSecretNameAndExpired_ShouldAddNewCredentials(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
 	previousSecretName := instance.Spec.SecretName
@@ -432,7 +433,7 @@ func TestReconciler_UpdateAzureAdApplication_NewSecretNameAndExpired_ShouldAddNe
 }
 
 func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTimeAndNewSecretName_ShouldRotateCredentials(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
 	previousSecretName := instance.Spec.SecretName
@@ -472,7 +473,7 @@ func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTimeAndNewSecr
 }
 
 func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTime_ShouldNotRotateCredentials(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
 	previousSecretName := instance.Spec.SecretName
@@ -516,14 +517,14 @@ func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTime_ShouldNot
 }
 
 func TestReconciler_DeleteAzureAdApplication(t *testing.T) {
-	instance := assertApplicationExists(t, client2.ApplicationExists)
+	instance := assertApplicationExists(t, az.ApplicationExists)
 
 	t.Run("Delete existing AzureAdApplication", func(t *testing.T) {
 		err := cli.Delete(context.Background(), instance)
 		assert.NoError(t, err, "deleting existing AzureAdApplication should not return error")
 
 		key := client.ObjectKey{
-			Name:      client2.ApplicationExists,
+			Name:      az.ApplicationExists,
 			Namespace: namespace,
 		}
 		assert.Eventually(t, resourceDoesNotExist(key, instance), timeout, interval)
@@ -773,6 +774,9 @@ func setup() (*envtest.Environment, error) {
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
 	})
 	if err != nil {
 		return nil, err

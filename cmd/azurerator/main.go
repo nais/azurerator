@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/nais/azureator/controllers/azureadapplication"
 	"github.com/nais/azureator/pkg/azure/client"
@@ -71,8 +72,10 @@ func run() error {
 	renewDeadline := 20 * time.Second
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                     scheme,
-		MetricsBindAddress:         cfg.MetricsAddr,
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: cfg.MetricsAddr,
+		},
 		LeaderElection:             cfg.LeaderElection.Enabled,
 		LeaderElectionID:           fmt.Sprintf("azurerator.nais.io-%s", cfg.Azure.Tenant.Id),
 		LeaderElectionNamespace:    cfg.LeaderElection.Namespace,
