@@ -20,7 +20,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.26.0
 	golang.org/x/oauth2 v0.12.0
-	google.golang.org/api v0.142.0
+	google.golang.org/api v0.143.0
 	gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
@@ -47,7 +47,6 @@ require (
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
