@@ -12,8 +12,6 @@ spec:
   # everything below is optional
   allowAllUsers: false
   claims:
-    extra:
-      - "NAVident"
     groups:
       - id: "00000000-0000-0000-0000-000000000000"
   logoutUrl: "https://localhost:3000/oauth2/logout"

@@ -10,15 +10,6 @@ import (
 	"github.com/nais/azureator/pkg/event"
 )
 
-func HasExtraPolicy(in *nais_io_v1.AzureAdClaims, policyName nais_io_v1.AzureAdExtraClaim) bool {
-	for _, policy := range in.Extra {
-		if policy == policyName {
-			return true
-		}
-	}
-	return false
-}
-
 func IsHashChanged(in *nais_io_v1.AzureAdApplication) (bool, error) {
 	newHash, err := in.Hash()
 	if err != nil {

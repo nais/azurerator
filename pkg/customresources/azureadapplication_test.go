@@ -31,24 +31,6 @@ func TestAzureAdApplication_IsHashChanged(t *testing.T) {
 	})
 }
 
-func TestHasExtraPolicy(t *testing.T) {
-	claims := &nais_io_v1.AzureAdClaims{
-		Extra: []nais_io_v1.AzureAdExtraClaim{
-			"some-policy",
-			"some-other-policy",
-		},
-	}
-
-	t.Run("Checking for non-existent extra claim should return false", func(t *testing.T) {
-		actual := customresources.HasExtraPolicy(claims, "non-existent")
-		assert.False(t, actual)
-	})
-	t.Run("Checking for extra claim should return true", func(t *testing.T) {
-		actual := customresources.HasExtraPolicy(claims, "some-policy")
-		assert.True(t, actual)
-	})
-}
-
 func TestIsSecretNameChanged(t *testing.T) {
 	t.Run("Application with unchanged secret name", func(t *testing.T) {
 		app := fixtures.MinimalApplication()

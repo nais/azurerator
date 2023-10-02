@@ -249,7 +249,7 @@ func (c Client) process(tx transaction.Transaction, permissions permissions.Perm
 	}
 
 	if c.config.Features.ClaimsMappingPolicies.Enabled {
-		if err := c.ServicePrincipal().Policies().Process(tx); err != nil {
+		if err := c.ServicePrincipal().Policies().Process(tx, c.config.Features.ClaimsMappingPolicies.ID); err != nil {
 			return nil, fmt.Errorf("processing service principal policies: %w", err)
 		}
 	}
