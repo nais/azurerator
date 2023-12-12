@@ -1,24 +1,20 @@
 name: Build and deploy
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 env:
   GOOGLE_REGISTRY: "europe-north1-docker.pkg.dev"
   FEATURE_NAME: "azurerator"
-
 on:
   push:
     paths-ignore:
       - "*.md"
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout latest code
-        uses: actions/checkout@v4 # ratchet:actions/checkout@v3
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # ratchet:actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # ratchet:actions/setup-go@v5
         with:
@@ -38,7 +34,6 @@ jobs:
       - name: Test Go
         run: |
           make test
-
   build_and_push:
     needs: test
     name: Publish to Google and GitHub registries
@@ -50,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 # ratchet:actions/checkout@v3
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # ratchet:actions/checkout@v4
       - name: Install cosign
         uses: sigstore/cosign-installer@9614fae9e5c5eddabb09f90a270fcb487c9f7149 # ratchet:sigstore/cosign-installer@main
         with:
@@ -100,7 +95,6 @@ jobs:
       chart_name: ${{ steps.package_chart.outputs.name }}
       chart_version: ${{ steps.package_chart.outputs.version }}
       chart_archive: ${{ steps.package_chart.outputs.archive }}
-
   rollout:
     runs-on: fasit-deploy
     if: github.ref == 'refs/heads/master'
