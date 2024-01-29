@@ -29,6 +29,8 @@ values:
     displayName: Cluster name
     computed:
       template: '"{{.Env.name}}"'
+    config:
+      type: string
   features.groupsAssignment.allUsersGroupIDs:
     description: Default set of Azure AD group object IDs to be assigned to applications if all users should have access.
     displayName: All users group IDs
