@@ -302,6 +302,10 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction.Tra
 	assigned := make([]v1.AzureAdPreAuthorizedApp, 0)
 
 	for _, app := range preAuthApps.Valid {
+		message := fmt.Sprintf("assigned '%s'", app.Name)
+		tx.Logger.WithField("event_type", "access_policy_assigned").Debug(message)
+		a.recorder.Event(tx.Instance, corev1.EventTypeNormal, "AccessPolicyAssigned", message)
+
 		rule := app.AccessPolicyRule
 		assigned = append(assigned, v1.AzureAdPreAuthorizedApp{
 			AccessPolicyRule:         &rule,
@@ -311,13 +315,9 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction.Tra
 	}
 
 	for _, app := range preAuthApps.Invalid {
-		message := fmt.Sprintf(
-			"WARNING: Application '%s' was not found in the Azure AD tenant (%s) and will _NOT_ be pre-authorized.",
-			app.Name, a.config.Azure.Tenant.String(),
-		)
-
-		tx.Logger.Warnf(message)
-		a.recorder.Eventf(tx.Instance, corev1.EventTypeNormal, v1.EventSkipped, message)
+		message := fmt.Sprintf("skipped '%s'; not found in tenant (%s)", app.Name, a.config.Azure.Tenant.String())
+		tx.Logger.WithField("event_type", "access_policy_skipped").Warn(message)
+		a.recorder.Event(tx.Instance, corev1.EventTypeNormal, "AccessPolicySkipped", message)
 
 		rule := app.AccessPolicyRule
 		unassigned = append(unassigned, v1.AzureAdPreAuthorizedApp{
