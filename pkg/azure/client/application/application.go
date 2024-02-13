@@ -36,6 +36,7 @@ type Application interface {
 	RedirectUri() redirecturi.RedirectUri
 
 	Delete(tx transaction.Transaction) error
+	EnableAcceptMappedClaims(tx transaction.Transaction, application *msgraph.Application) error
 	Exists(tx transaction.Transaction) (*msgraph.Application, bool, error)
 	ExistsByFilter(ctx context.Context, filter azure.Filter) (*msgraph.Application, bool, error)
 	Get(tx transaction.Transaction) (msgraph.Application, error)
@@ -216,6 +217,25 @@ func (a application) RemoveDisabledPermissions(tx transaction.Transaction, appli
 	return nil
 }
 
+func (a application) EnableAcceptMappedClaims(tx transaction.Transaction, application *msgraph.Application) error {
+	if application.API != nil && application.API.AcceptMappedClaims != nil && *application.API.AcceptMappedClaims {
+		// skip if acceptMappedClaims is already enabled
+		return nil
+	}
+
+	payload := struct {
+		API struct {
+			AcceptMappedClaims bool `json:"acceptMappedClaims"`
+		} `json:"api"`
+	}{
+		struct {
+			AcceptMappedClaims bool `json:"acceptMappedClaims"`
+		}{true},
+	}
+
+	return a.Patch(tx.Ctx, tx.Instance.GetObjectId(), payload)
+}
+
 func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msgraph.Application, error) {
 	r := a.GraphClient().Applications().Request()
 	r.Filter(util.MapFiltersToFilter(filters))
@@ -241,7 +261,6 @@ func (a application) defaultTemplate(tx transaction.Transaction) *msgraph.Applic
 			IntegratedAppTag,
 		},
 		API: &msgraph.APIApplication{
-			AcceptMappedClaims:          ptr.Bool(true),
 			RequestedAccessTokenVersion: ptr.Int(2),
 		},
 		Web: &msgraph.WebApplication{

@@ -134,11 +134,9 @@ func (c Client) Create(tx transaction.Transaction) (*result.Application, error) 
 		return nil, fmt.Errorf("setting identifier URIs for application: %w", err)
 	}
 
-	actualPermissions := permissions.ExtractPermissions(app)
-
-	var preAuthApps *result.PreAuthorizedApps
+	var res *processResult
 	err = doRetry(tx.Ctx, func(ctx context.Context) error {
-		preAuthApps, err = c.process(tx, actualPermissions)
+		res, err = c.process(tx, app)
 		return retry.RetryableError(err)
 	})
 	if err != nil {
@@ -149,8 +147,8 @@ func (c Client) Create(tx transaction.Transaction) (*result.Application, error) 
 		ClientId:           *app.AppID,
 		ObjectId:           *app.ID,
 		ServicePrincipalId: *servicePrincipal.ID,
-		Permissions:        actualPermissions,
-		PreAuthorizedApps:  *preAuthApps,
+		Permissions:        res.permissions,
+		PreAuthorizedApps:  res.preAuthorizedApps,
 		Tenant:             c.config.Tenant.Id,
 		Result:             result.OperationCreated,
 	}, nil
@@ -217,8 +215,7 @@ func (c Client) Update(tx transaction.Transaction) (*result.Application, error) 
 		return nil, fmt.Errorf("updating redirect URIs: %w", err)
 	}
 
-	actualPermissions := permissions.ExtractPermissions(app)
-	preAuthApps, err := c.process(tx, actualPermissions)
+	res, err := c.process(tx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -231,24 +228,36 @@ func (c Client) Update(tx transaction.Transaction) (*result.Application, error) 
 		ClientId:           clientId,
 		ObjectId:           objectId,
 		ServicePrincipalId: servicePrincipalId,
-		Permissions:        actualPermissions,
-		PreAuthorizedApps:  *preAuthApps,
+		Permissions:        res.permissions,
+		PreAuthorizedApps:  res.preAuthorizedApps,
 		Tenant:             c.config.Tenant.Id,
 		Result:             result.OperationUpdated,
 	}, nil
 }
 
-func (c Client) process(tx transaction.Transaction, permissions permissions.Permissions) (*result.PreAuthorizedApps, error) {
+type processResult struct {
+	preAuthorizedApps result.PreAuthorizedApps
+	permissions       permissions.Permissions
+}
+
+func (c Client) process(tx transaction.Transaction, app *msgraph.Application) (*processResult, error) {
 	if err := c.OAuth2PermissionGrant().Process(tx); err != nil {
 		return nil, fmt.Errorf("processing oauth2 permission grants: %w", err)
 	}
 
-	preAuthApps, err := c.PreAuthApps().Process(tx, permissions)
+	perms := permissions.ExtractPermissions(app)
+	preAuthApps, err := c.PreAuthApps().Process(tx, perms)
 	if err != nil {
 		return nil, fmt.Errorf("processing preauthorized apps: %w", err)
 	}
 
 	if c.config.Features.ClaimsMappingPolicies.Enabled {
+		// ensure that the application is configured to accept mapped claims, this is required for the claims mapping policies to work
+		// bug: cannot _register_ applications with acceptMappedClaims while only holding the `Application.ReadWrite.OwnedBy` permission, but we can _update_ them.
+		if err := c.Application().EnableAcceptMappedClaims(tx, app); err != nil {
+			return nil, fmt.Errorf("enabling acceptMappedClaims for application: %w", err)
+		}
+
 		if err := c.ServicePrincipal().Policies().Process(tx, c.config.Features.ClaimsMappingPolicies.ID); err != nil {
 			return nil, fmt.Errorf("processing service principal policies: %w", err)
 		}
@@ -266,7 +275,10 @@ func (c Client) process(tx transaction.Transaction, permissions permissions.Perm
 		}
 	}
 
-	return preAuthApps, nil
+	return &processResult{
+		preAuthorizedApps: *preAuthApps,
+		permissions:       perms,
+	}, nil
 }
 
 func doRetry(ctx context.Context, fn func(context.Context) error) error {
