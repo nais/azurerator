@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	cache "github.com/Code-Hex/go-generics-cache"
+	"github.com/nais/azureator/pkg/azure/client/application/owners"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
@@ -33,6 +34,7 @@ type Application interface {
 	AppRoles() approle.AppRoles
 	IdentifierUri() identifieruri.IdentifierUri
 	OAuth2PermissionScopes() permissionscope.OAuth2PermissionScope
+	Owners() owners.Owners
 	RedirectUri() redirecturi.RedirectUri
 
 	Delete(tx transaction.Transaction) error
@@ -70,6 +72,10 @@ func (a application) OAuth2PermissionScopes() permissionscope.OAuth2PermissionSc
 
 func (a application) OptionalClaims() optionalclaims.OptionalClaims {
 	return optionalclaims.NewOptionalClaims()
+}
+
+func (a application) Owners() owners.Owners {
+	return owners.NewOwners(a.RuntimeClient)
 }
 
 func (a application) RedirectUri() redirecturi.RedirectUri {

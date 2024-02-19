@@ -41,7 +41,9 @@ make install
 
 You will need the credentials for an Azure AD application with the following Application API permissions for Microsoft Graph:
 
-- `Application.ReadWrite.All`
+- `Application.ReadWrite.All` or `Application.ReadWrite.Owned`
+  - If you use `Application.ReadWrite.Owned`, Azurerator will only be able to manage applications and service principals that it has created.
+    It will no longer be able to process these resources if removed as an owner, unless the `Application.ReadWrite.All` permission is granted.
 - `DelegatedPermissionGrant.ReadWrite.All`
 - `GroupMember.Read.All` (optional, only needed for the groups-assignment feature)
 - `Policy.Read.All` (optional, only needed for the claims-mapping policies feature)

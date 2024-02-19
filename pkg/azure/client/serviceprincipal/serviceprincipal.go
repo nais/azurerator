@@ -19,11 +19,14 @@ const (
 )
 
 var clientIdCache = cache.New[azure.ServicePrincipalId, azure.ClientId]()
+var servicePrincipalIdCache = cache.New[azure.ClientId, azure.ServicePrincipalId]()
 
 type ServicePrincipal interface {
+	Owners() Owners
 	Policies() Policies
 
 	GetClientId(ctx context.Context, id azure.ServicePrincipalId) (azure.ClientId, error)
+	GetIdByClientId(ctx context.Context, id azure.ClientId) (azure.ServicePrincipalId, error)
 	Exists(ctx context.Context, id azure.ClientId) (bool, msgraph.ServicePrincipal, error)
 	Register(tx transaction.Transaction) (msgraph.ServicePrincipal, error)
 	SetAppRoleAssignmentRequired(tx transaction.Transaction) error
@@ -36,6 +39,10 @@ type servicePrincipal struct {
 
 func NewServicePrincipal(runtimeClient azure.RuntimeClient) ServicePrincipal {
 	return servicePrincipal{RuntimeClient: runtimeClient}
+}
+
+func (s servicePrincipal) Owners() Owners {
+	return newOwners(s.RuntimeClient)
 }
 
 func (s servicePrincipal) Policies() Policies {
@@ -56,6 +63,26 @@ func (s servicePrincipal) GetClientId(ctx context.Context, id azure.ServicePrinc
 	clientIdCache.Set(id, clientId)
 
 	return clientId, nil
+}
+
+func (s servicePrincipal) GetIdByClientId(ctx context.Context, id azure.ClientId) (azure.ServicePrincipalId, error) {
+	if val, found := servicePrincipalIdCache.Get(id); found {
+		return val, nil
+	}
+
+	exists, sp, err := s.Exists(ctx, id)
+	if err != nil {
+		return "", err
+	}
+
+	if !exists {
+		return "", fmt.Errorf("service principal with client id '%s' not found", id)
+	}
+
+	servicePrincipalId := *sp.ID
+	servicePrincipalIdCache.Set(id, servicePrincipalId)
+
+	return servicePrincipalId, nil
 }
 
 func (s servicePrincipal) Register(tx transaction.Transaction) (msgraph.ServicePrincipal, error) {

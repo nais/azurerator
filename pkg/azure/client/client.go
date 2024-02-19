@@ -245,6 +245,18 @@ func (c Client) process(tx transaction.Transaction, app *msgraph.Application) (*
 		return nil, fmt.Errorf("processing oauth2 permission grants: %w", err)
 	}
 
+	// ensure authenticated principal is an owner of application and service principal
+	ownerId, err := c.ServicePrincipal().GetIdByClientId(tx.Ctx, c.config.Auth.ClientId)
+	if err != nil {
+		return nil, fmt.Errorf("fetching authenticated service principal id: %w", err)
+	}
+	if err := c.Application().Owners().Process(tx, ownerId); err != nil {
+		return nil, fmt.Errorf("processing application owners: %w", err)
+	}
+	if err := c.ServicePrincipal().Owners().Process(tx, ownerId); err != nil {
+		return nil, fmt.Errorf("processing service principal owners: %w", err)
+	}
+
 	perms := permissions.ExtractPermissions(app)
 	preAuthApps, err := c.PreAuthApps().Process(tx, perms)
 	if err != nil {
