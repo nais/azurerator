@@ -47,6 +47,7 @@ You will need the credentials for an Azure AD application with the following App
 - `DelegatedPermissionGrant.ReadWrite.All`
 - `GroupMember.Read.All` (optional, only needed for the groups-assignment feature)
 - `Policy.Read.All` (optional, only needed for the claims-mapping policies feature)
+- `CustomSecAttributeAssignment.ReadWrite.All` (optional, only needed for the custom security attributes feature)
 
 Finally, in order to ensure that Azurerator may pre-approve delegated API permissions for the managed applications,
 you will need to find and configure the `azure.permissiongrant-resource-id` configuration flag.
@@ -71,13 +72,14 @@ The following flags are available:
 --azure.auth.client-id string                                       Client ID for Azure AD authentication
 --azure.auth.client-secret string                                   Client secret for Azure AD authentication
 --azure.delay.between-modifications duration                        Delay between modification operations to the Graph API. (default 3s)
---azure.features.app-role-assignment-required.enabled               Feature toggle to enable 'appRoleAssignmentRequired' for service principals.
+--azure.features.app-role-assignment-required.enabled               Enable 'appRoleAssignmentRequired' for service principals.
 --azure.features.claims-mapping-policies.id string                  Claims-mapping policy ID for custom claims mapping
---azure.features.claims-mapping-policies.enabled                    Feature toggle for assigning custom claims-mapping policies to a service principal
---azure.features.cleanup-orphans.enabled                            Feature toggle to enable cleanup of orphaned resources.
+--azure.features.claims-mapping-policies.enabled                    Assign custom claims-mapping policies to a service principal
+--azure.features.custom-security-attributes.enabled                 Set custom security attributes on service principals (attribute set of 'Applications':'ManagedBy':'NAIS')  
+--azure.features.cleanup-orphans.enabled                            Enable cleanup of orphaned resources.
 --azure.features.group-membership-claim.default string              Default group membership claim for Azure AD apps. (default "ApplicationGroup")
 --azure.features.groups-assignment.all-users-group-id string        Group ID that contains all users in the tenant. Assigned to all application by default unless overridden by user in the custom resource.
---azure.features.groups-assignment.enabled                          Feature toggle for assigning explicitly specified groups to applications
+--azure.features.groups-assignment.enabled                          Assign groups to applications
 --azure.pagination.max-pages int                                    Max number of pages to fetch when fetching paginated resources from the Graph API. (default 1000)
 --azure.permissiongrant-resource-id string                          Object ID for Graph API permissions grant ('GraphAggregatorService' or 'Microsoft Graph' in Enterprise Applications under 'Microsoft Applications')
 --azure.tenant.id string                                            Tenant ID for Azure AD

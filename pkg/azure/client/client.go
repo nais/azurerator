@@ -287,6 +287,13 @@ func (c Client) process(tx transaction.Transaction, app *msgraph.Application) (*
 		}
 	}
 
+	if c.config.Features.CustomSecurityAttributes.Enabled {
+		err = c.ServicePrincipal().SetSecurityAttributes(tx)
+		if err != nil {
+			return nil, fmt.Errorf("setting security attributes for service principal: %w", err)
+		}
+	}
+
 	return &processResult{
 		preAuthorizedApps: *preAuthApps,
 		permissions:       perms,

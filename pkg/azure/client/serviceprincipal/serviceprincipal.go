@@ -3,6 +3,7 @@ package serviceprincipal
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	cache "github.com/Code-Hex/go-generics-cache"
 	"github.com/nais/liberator/pkg/strings"
@@ -29,6 +30,7 @@ type ServicePrincipal interface {
 	GetIdByClientId(ctx context.Context, id azure.ClientId) (azure.ServicePrincipalId, error)
 	Exists(ctx context.Context, id azure.ClientId) (bool, msgraph.ServicePrincipal, error)
 	Register(tx transaction.Transaction) (msgraph.ServicePrincipal, error)
+	SetSecurityAttributes(tx transaction.Transaction) error
 	SetAppRoleAssignmentRequired(tx transaction.Transaction) error
 	SetAppRoleAssignmentNotRequired(tx transaction.Transaction) error
 }
@@ -122,6 +124,33 @@ func (s servicePrincipal) SetAppRoleAssignmentRequired(tx transaction.Transactio
 
 func (s servicePrincipal) SetAppRoleAssignmentNotRequired(tx transaction.Transaction) error {
 	return s.setAppRoleAssignment(tx, false)
+}
+
+type CustomSecurityAttributesPayload struct {
+	CustomSecurityAttributes AttributeSetApplications `json:"customSecurityAttributes"`
+}
+
+type AttributeSetApplications struct {
+	Applications AttributeManagedBy `json:"Applications"`
+}
+
+type AttributeManagedBy struct {
+	ODataType string `json:"@odata.type"`
+	ManagedBy string `json:"ManagedBy"`
+}
+
+func (s servicePrincipal) SetSecurityAttributes(tx transaction.Transaction) error {
+	id := tx.Instance.GetServicePrincipalId()
+	payload := CustomSecurityAttributesPayload{
+		CustomSecurityAttributes: AttributeSetApplications{
+			Applications: AttributeManagedBy{
+				ODataType: "#Microsoft.DirectoryServices.CustomSecurityAttributeValue",
+				ManagedBy: "NAIS",
+			},
+		},
+	}
+
+	return s.GraphClient().ServicePrincipals().ID(id).Request().JSONRequest(tx.Ctx, http.MethodPatch, "", payload, nil)
 }
 
 func (s servicePrincipal) update(tx transaction.Transaction, request *msgraph.ServicePrincipal) error {

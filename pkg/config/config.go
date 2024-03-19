@@ -61,8 +61,13 @@ type AzureFeatures struct {
 	AppRoleAssignmentRequired AppRoleAssignmentRequired `json:"app-role-assignment-required"`
 	ClaimsMappingPolicies     ClaimsMappingPolicies     `json:"claims-mapping-policies"`
 	CleanupOrphans            CleanupOrphans            `json:"cleanup-orphans"`
+	CustomSecurityAttributes  CustomSecurityAttributes  `json:"custom-security-attributes"`
 	GroupsAssignment          GroupsAssignment          `json:"groups-assignment"`
 	GroupMembershipClaim      GroupMembershipClaim      `json:"group-membership-claim"`
+}
+
+type AppRoleAssignmentRequired struct {
+	Enabled bool `json:"enabled"`
 }
 
 type ClaimsMappingPolicies struct {
@@ -70,11 +75,11 @@ type ClaimsMappingPolicies struct {
 	ID      string `json:"id"`
 }
 
-type AppRoleAssignmentRequired struct {
+type CleanupOrphans struct {
 	Enabled bool `json:"enabled"`
 }
 
-type CleanupOrphans struct {
+type CustomSecurityAttributes struct {
 	Enabled bool `json:"enabled"`
 }
 
@@ -142,6 +147,7 @@ const (
 	AzurePermissionGrantResourceId                = "azure.permissiongrant-resource-id"
 	AzureFeaturesClaimsMappingPoliciesEnabled     = "azure.features.claims-mapping-policies.enabled"
 	AzureFeaturesClaimsMappingPoliciesID          = "azure.features.claims-mapping-policies.id"
+	AzureFeaturesCustomSecurityAttributesEnabled  = "azure.features.custom-security-attributes.enabled"
 	AzureFeaturesGroupsAssignmentEnabled          = "azure.features.groups-assignment.enabled"
 	AzureFeaturesGroupsAllUsersGroupId            = "azure.features.groups-assignment.all-users-group-id"
 	AzureFeaturesGroupMembershipClaimDefault      = "azure.features.group-membership-claim.default"
@@ -199,15 +205,13 @@ func init() {
 
 	flag.String(AzurePermissionGrantResourceId, "", "Object ID for Graph API permissions grant ('GraphAggregatorService' or 'Microsoft Graph' in Enterprise Applications under 'Microsoft Applications')")
 
-	flag.Bool(AzureFeaturesClaimsMappingPoliciesEnabled, false, "Feature toggle for assigning custom claims-mapping policies to a service principal")
+	flag.Bool(AzureFeaturesAppRoleAssignmentRequiredEnabled, false, "Enable 'appRoleAssignmentRequired' for service principals.")
+	flag.Bool(AzureFeaturesClaimsMappingPoliciesEnabled, false, "Assign custom claims-mapping policies to a service principal")
 	flag.String(AzureFeaturesClaimsMappingPoliciesID, "", "Claims-mapping policy ID for custom claims mapping")
-
-	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Feature toggle for assigning explicitly specified groups to applications")
+	flag.Bool(AzureFeaturesCustomSecurityAttributesEnabled, false, "Set custom security attributes on service principals (attribute set of 'Applications':'ManagedBy':'NAIS')")
+	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Assign groups to applications")
 	flag.StringSlice(AzureFeaturesGroupsAllUsersGroupId, []string{}, "List of Group IDs that contains all users in the tenant. Assigned to all applications by default unless 'allowAllUsers' is set to false in the custom resource.")
-
 	flag.String(AzureFeaturesGroupMembershipClaimDefault, string(groupmembershipclaim.GroupMembershipClaimApplicationGroup), "Default group membership claim for Azure AD apps.")
-
-	flag.Bool(AzureFeaturesAppRoleAssignmentRequiredEnabled, false, "Feature toggle to enable 'appRoleAssignmentRequired' for service principals.")
 
 	flag.Bool(AzureFeaturesCleanupOrphansEnabled, false, "Feature toggle to enable cleanup of orphaned resources.")
 
