@@ -5,7 +5,7 @@ go 1.22
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.2
-	github.com/Code-Hex/go-generics-cache v1.3.1
+	github.com/Code-Hex/go-generics-cache v1.5.1
 	github.com/Shopify/sarama v1.38.1
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/go-logr/zapr v1.3.0
