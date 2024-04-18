@@ -6,8 +6,8 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 
+	"github.com/go-jose/go-jose/v4"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	"gopkg.in/square/go-jose.v2"
 )
 
 const (

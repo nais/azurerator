@@ -8,6 +8,7 @@ require (
 	github.com/Code-Hex/go-generics-cache v1.5.1
 	github.com/Shopify/sarama v1.38.1
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
+	github.com/go-jose/go-jose/v4 v4.0.1
 	github.com/go-logr/zapr v1.3.0
 	github.com/google/uuid v1.6.0
 	github.com/nais/liberator v0.0.0-20230919140655-f3c67d98b64e
@@ -21,7 +22,6 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.19.0
 	google.golang.org/api v0.172.0
-	gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/api v0.29.3
 	k8s.io/apimachinery v0.29.3
 	k8s.io/client-go v0.29.3
