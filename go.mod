@@ -16,7 +16,7 @@ require (
 	github.com/nais/liberator v0.0.0-20230919140655-f3c67d98b64e
 	github.com/nais/msgraph.go v0.1.5
 	github.com/prometheus/client_golang v1.19.1
-	github.com/sethvargo/go-retry v0.2.4
+	github.com/sethvargo/go-retry v0.3.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
