@@ -65,7 +65,7 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=*,resources=events,verbs=get;list;watch;create;update
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	ratelimiter := workqueue.NewItemExponentialFailureRateLimiter(retryMinInterval, retryMaxInterval)
+	ratelimiter := workqueue.NewTypedItemExponentialFailureRateLimiter[ctrl.Request](retryMinInterval, retryMaxInterval)
 	opts := controller.Options{
 		MaxConcurrentReconciles: r.Config.Controller.MaxConcurrentReconciles,
 		RateLimiter:             ratelimiter,
