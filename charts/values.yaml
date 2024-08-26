@@ -4,6 +4,8 @@ fullnameOverride: ""
 # globals (if set) override any local values
 global:
   alerts:
+    enabled:
+    failedProcessingThreshold:
   clusterName:
   controller:
     leaderElection:
@@ -34,7 +36,9 @@ global:
     apiServerCIDR:
   webproxy:
 
-alerts: true
+alerts:
+  enabled: true
+  failedProcessingThreshold: 50
 azure:
   clientID: # required
   clientSecret: # required if google.federatedAuth is disabled

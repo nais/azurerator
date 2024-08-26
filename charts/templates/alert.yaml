@@ -1,4 +1,4 @@
-{{ if .Values.global.alerts | default .Values.alerts }}
+{{ if .Values.global.alerts.enabled | default .Values.alerts.enabled }}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -11,7 +11,7 @@ spec:
     - name: "azurerator"
       rules:
         - alert: {{ include "azurerator.fullname" . }} failed provisioning clients
-          expr: sum(increase(azureadapp_failed_processing_count{app="{{ include "azurerator.fullname" . }}"}[5m])) > 10
+          expr: sum(increase(azureadapp_failed_processing_count{app="{{ include "azurerator.fullname" . }}"}[5m])) > {{ .Values.global.alerts.failedProcessingThreshold | .Values.alerts.failedProcessingThreshold }}
           for: 5m
           annotations:
             summary: {{ include "azurerator.fullname" . }} has failed processing clients for longer than usual
