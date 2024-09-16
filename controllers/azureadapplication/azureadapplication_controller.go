@@ -42,8 +42,9 @@ import (
 )
 
 const (
-	retryMinInterval = 1 * time.Second
-	retryMaxInterval = 15 * time.Minute
+	orphanedSecretCleanupGracePeriod = 5 * time.Minute
+	retryMinInterval                 = 1 * time.Second
+	retryMaxInterval                 = 15 * time.Minute
 )
 
 var appsync sync.Mutex
@@ -145,7 +146,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// return early if no other operations needed
 	if !tx.Options.Process.Synchronize {
-		return ctrl.Result{}, nil
+		// controller-runtime cache resync events are ignored when EventFilter is used,
+		// so we requeue manually after a period of time to evaluate secret rotation
+		requeueAfter := r.Config.SecretRotation.MaxAge - orphanedSecretCleanupGracePeriod
+		if requeueAfter <= 0 {
+			requeueAfter = r.Config.SecretRotation.MaxAge
+		}
+
+		return ctrl.Result{RequeueAfter: requeueAfter}, nil
 	}
 
 	err = r.Process(*tx)
@@ -289,7 +297,7 @@ func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	return ctrl.Result{RequeueAfter: orphanedSecretCleanupGracePeriod}, nil
 }
 
 func (r *Reconciler) UpdateApplication(ctx context.Context, app *v1.AzureAdApplication, updateFunc func(existing *v1.AzureAdApplication) error) error {
