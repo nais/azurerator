@@ -3,7 +3,7 @@ module github.com/nais/azureator
 go 1.23.0
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.15.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.0
 	github.com/Code-Hex/go-generics-cache v1.5.1
 	github.com/Shopify/sarama v1.38.1
