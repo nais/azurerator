@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/config"
