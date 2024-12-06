@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"time"
 
 	cache "github.com/Code-Hex/go-generics-cache"
 	"github.com/nais/azureator/pkg/azure/client/application/owners"
@@ -308,6 +309,9 @@ func IsManaged(app msgraph.Application) bool {
 		}
 	}
 
-	IsManagedCache.Set(id, false)
+	// Set expiry to avoid stale state:
+	// - we might've recently adopted the application
+	// - the application might've been updated externally to fulfill management criteria
+	IsManagedCache.Set(id, false, cache.WithExpiration(15*time.Minute))
 	return false
 }
