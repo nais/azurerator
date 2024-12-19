@@ -58,7 +58,7 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 		return nil, fmt.Errorf("getting managed secrets: %w", err)
 	}
 
-	secretsExtractor := secrets.NewExtractor(*managedSecrets, dataKeys)
+	secretsExtractor := secrets.NewExtractor(managedSecrets, dataKeys)
 
 	keyIDs := func() credentials.KeyIDs {
 		keyIDs := secretsExtractor.GetKeyIDs()
@@ -79,7 +79,7 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 		},
 		DataKeys:       dataKeys,
 		KeyIDs:         keyIDs,
-		ManagedSecrets: *managedSecrets,
+		ManagedSecrets: managedSecrets,
 	}, nil
 }
 
@@ -156,26 +156,13 @@ func (s secretsReconciler) createOrUpdate(tx transaction.Transaction, result res
 	return nil
 }
 
-func (s secretsReconciler) getManaged(ctx context.Context, instance *v1.AzureAdApplication) (*kubernetes.SecretLists, error) {
-	// fetch all application pods for this app
-	podList, err := kubernetes.ListPodsForApplication(ctx, s.reader, instance.GetName(), instance.GetNamespace())
-	if err != nil {
-		return nil, err
+func (s secretsReconciler) getManaged(ctx context.Context, instance *v1.AzureAdApplication) (kubernetes.SecretLists, error) {
+	objectKey := client.ObjectKey{
+		Name:      instance.GetName(),
+		Namespace: instance.GetNamespace(),
 	}
-
-	// fetch all managed secrets
-	var allSecrets corev1.SecretList
-	opts := []client.ListOption{
-		client.InNamespace(instance.GetNamespace()),
-		client.MatchingLabels(labels.Labels(instance)),
-	}
-	if err := s.reader.List(ctx, &allSecrets, opts...); err != nil {
-		return nil, err
-	}
-
-	// find intersect between secrets in use by application pods and all managed secrets
-	podSecrets := kubernetes.ListUsedAndUnusedSecretsForPods(allSecrets, podList)
-	return &podSecrets, nil
+	secretLabels := labels.Labels(instance)
+	return kubernetes.ListSecretsForApplication(ctx, s.reader, objectKey, secretLabels)
 }
 
 func (s secretsReconciler) DeleteUnused(tx transaction.Transaction) error {

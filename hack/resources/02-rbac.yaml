@@ -18,7 +18,7 @@ rules:
       - create
       - update
   - apiGroups:
-      - '*'
+      - ""
     resources:
       - secrets
       - events
@@ -31,10 +31,18 @@ rules:
       - update
       - patch
   - apiGroups:
-      - '*'
+      - ""
     resources:
       - pods
       - namespaces
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
     verbs:
       - list
       - get

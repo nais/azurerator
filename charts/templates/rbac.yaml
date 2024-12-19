@@ -39,6 +39,14 @@ rules:
       - list
       - get
       - watch
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - list
+      - get
+      - watch
 
 ---
 # permissions to do leader election.
