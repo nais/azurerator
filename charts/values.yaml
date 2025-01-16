@@ -11,6 +11,7 @@ global:
     leaderElection:
     maxConcurrentReconciles:
     secretRotation:
+    secretRotationMaxAge:
   features:
     appRoleAssignmentRequired:
     claimsMappingPolicies:
@@ -51,6 +52,7 @@ controller:
   leaderElection: true
   maxConcurrentReconciles: 10
   secretRotation: true
+  secretRotationMaxAge: 168h # 7 days
   tenantNameStrictMatching: false
 features:
   appRoleAssignmentRequired: true
