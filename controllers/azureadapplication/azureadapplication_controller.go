@@ -318,16 +318,16 @@ func (r *Reconciler) ReportEvent(tx transaction.Transaction, eventType, event, m
 	r.Recorder.Event(tx.Instance, eventType, event, message)
 }
 
-func (r Reconciler) Azure() reconciler.Azure {
-	return azureReconciler.NewAzureReconciler(&r, r.AzureClient, *r.Config, r.Recorder, r.KafkaProducer)
+func (r *Reconciler) Azure() reconciler.Azure {
+	return azureReconciler.NewAzureReconciler(r, r.AzureClient, *r.Config, r.Recorder, r.KafkaProducer)
 }
 
-func (r Reconciler) Finalizer() reconciler.Finalizer {
-	return finalizer.NewFinalizer(&r, r.Client)
+func (r *Reconciler) Finalizer() reconciler.Finalizer {
+	return finalizer.NewFinalizer(r, r.Client)
 }
 
-func (r Reconciler) Secrets() reconciler.Secrets {
-	return secrets.NewSecretsReconciler(&r, r.AzureOpenIDConfig, r.Client, r.Reader, r.Scheme)
+func (r *Reconciler) Secrets() reconciler.Secrets {
+	return secrets.NewSecretsReconciler(r, r.AzureOpenIDConfig, r.Client, r.Reader, r.Scheme)
 }
 
 func (r *Reconciler) updateAnnotations(tx transaction.Transaction) error {
