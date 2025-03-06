@@ -31,10 +31,6 @@ spec:
     inbound:
       rules:
         - application: prometheus
-    outbound:
-      external:
-        - host: login.microsoftonline.com
-        - host: graph.microsoft.com
   {{- if .Values.global.kafka.application | default .Values.kafka.application }}
   kafka:
     pool: "{{ .Values.global.kafka.pool | default .Values.kafka.pool }}"
