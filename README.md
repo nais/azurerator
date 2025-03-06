@@ -77,7 +77,7 @@ The following flags are available:
 --azure.features.claims-mapping-policies.enabled                    Assign custom claims-mapping policies to a service principal
 --azure.features.custom-security-attributes.enabled                 Set custom security attributes on service principals (attribute set of 'Applications':'ManagedBy':'NAIS')  
 --azure.features.cleanup-orphans.enabled                            Enable cleanup of orphaned resources.
---azure.features.group-membership-claim.default string              Default group membership claim for Azure AD apps. (default "ApplicationGroup")
+--azure.features.group-membership-claim.default string              Default group membership claim for Azure AD apps. Only affects new registrations. (default "ApplicationGroup")
 --azure.features.groups-assignment.all-users-group-id string        Group ID that contains all users in the tenant. Assigned to all application by default unless overridden by user in the custom resource.
 --azure.features.groups-assignment.enabled                          Assign groups to applications
 --azure.pagination.max-pages int                                    Max number of pages to fetch when fetching paginated resources from the Graph API. (default 1000)

@@ -211,7 +211,7 @@ func init() {
 	flag.Bool(AzureFeaturesCustomSecurityAttributesEnabled, false, "Set custom security attributes on service principals (attribute set of 'Applications':'ManagedBy':'NAIS')")
 	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Assign groups to applications")
 	flag.StringSlice(AzureFeaturesGroupsAllUsersGroupId, []string{}, "List of Group IDs that contains all users in the tenant. Assigned to all applications by default unless 'allowAllUsers' is set to false in the custom resource.")
-	flag.String(AzureFeaturesGroupMembershipClaimDefault, string(groupmembershipclaim.GroupMembershipClaimApplicationGroup), "Default group membership claim for Azure AD apps.")
+	flag.String(AzureFeaturesGroupMembershipClaimDefault, groupmembershipclaim.ApplicationGroup, "Default group membership claim for Azure AD apps. Only affects new registrations.")
 
 	flag.Bool(AzureFeaturesCleanupOrphansEnabled, false, "Feature toggle to enable cleanup of orphaned resources.")
 

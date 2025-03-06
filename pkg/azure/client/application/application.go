@@ -6,6 +6,7 @@ import (
 	"time"
 
 	cache "github.com/Code-Hex/go-generics-cache"
+	"github.com/nais/azureator/pkg/azure/client/application/groupmembershipclaim"
 	"github.com/nais/azureator/pkg/azure/client/application/owners"
 	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
@@ -114,9 +115,14 @@ func (a application) Register(tx transaction.Transaction) (*msgraph.Application,
 
 	optionalClaims := a.OptionalClaims().DescribeCreate()
 
+	groupMembershipClaims, err := groupmembershipclaim.FromAzureAdApplicationOrDefault(tx.Instance, a.Config().Features.GroupMembershipClaim.Default)
+	if err != nil {
+		return nil, err
+	}
+
 	req := util.Application(a.defaultTemplate(tx)).
 		AppRoles(roles.GetResult()).
-		GroupMembershipClaims(a.Config().Features.GroupMembershipClaim.Default).
+		GroupMembershipClaims(groupMembershipClaims).
 		OptionalClaims(optionalClaims).
 		PermissionScopes(scopes.GetResult()).
 		RedirectUris(redirectUris, tx.Instance).
@@ -152,13 +158,21 @@ func (a application) Update(tx transaction.Transaction) (*msgraph.Application, e
 
 	identifierUris := identifieruri.DescribeUpdate(tx.Instance, actualApp.IdentifierUris, tx.ClusterName)
 	optionalClaims := a.OptionalClaims().DescribeUpdate(actualApp)
-	app := util.Application(a.defaultTemplate(tx)).
+	builder := util.Application(a.defaultTemplate(tx)).
 		AppRoles(roles.GetResult()).
 		IdentifierUriList(identifierUris).
 		OptionalClaims(optionalClaims).
-		PermissionScopes(scopes.GetResult()).
-		Build()
+		PermissionScopes(scopes.GetResult())
 
+	groupMembershipClaims, err := groupmembershipclaim.FromAzureAdApplication(tx.Instance)
+	if err != nil {
+		return nil, err
+	}
+	if groupMembershipClaims != "" {
+		builder.GroupMembershipClaims(groupMembershipClaims)
+	}
+
+	app := builder.Build()
 	return app, a.Patch(tx.Ctx, objectId, app)
 }
 
