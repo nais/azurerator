@@ -50,9 +50,11 @@ const (
 	namespace = "aura"
 )
 
-var cli client.Client
-var azureClient = az.NewFakeAzureClient()
-var secretDataKeys = secrets.NewSecretDataKeys()
+var (
+	cli            client.Client
+	azureClient    = az.NewFakeAzureClient()
+	secretDataKeys = secrets.NewSecretDataKeys()
+)
 
 func TestMain(m *testing.M) {
 	testEnv, err := setup()
@@ -595,15 +597,6 @@ func assertApplicationShouldNotProcess(t *testing.T, testName string, key client
 	return instance
 }
 
-func assertAnnotationExists(t *testing.T, instance *v1.AzureAdApplication, annotationKey, annotationValue string) {
-	assert.Eventually(t, func() bool {
-		log.Infof("%+v", instance.GetAnnotations())
-		_, key := instance.Annotations[annotationKey]
-		return key
-	}, timeout, interval, fmt.Sprintf("Annotation '%s' should exist on resource", annotationKey))
-	assert.Equal(t, annotationValue, instance.Annotations[annotationKey], fmt.Sprintf("AzureAdApplication should contain annotation %s", annotationKey))
-}
-
 func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplication) *corev1.Secret {
 	secret := &corev1.Secret{}
 
@@ -641,7 +634,6 @@ func assertSecretExists(t *testing.T, name string, instance *v1.AzureAdApplicati
 		assert.Equal(t, azureOpenIdConfig.Issuer, string(secret.Data[secretDataKeys.OpenId.Issuer]))
 		assert.Equal(t, azureOpenIdConfig.JwksURI, string(secret.Data[secretDataKeys.OpenId.JwksUri]))
 		assert.Equal(t, azureOpenIdConfig.TokenEndpoint, string(secret.Data[secretDataKeys.OpenId.TokenEndpoint]))
-
 	})
 
 	return secret
@@ -661,13 +653,13 @@ var relevantSecretValues = []string{
 
 func assertSecretsAreAdded(t *testing.T, previous *corev1.Secret, new *corev1.Secret) {
 	for _, key := range relevantSecretValues {
-		assert.NotEqual(t, previous.Data[key], new.Data[key], fmt.Sprintf("%s", key))
+		assert.NotEqual(t, previous.Data[key], new.Data[key], key)
 	}
 }
 
 func assertSecretsAreRotated(t *testing.T, previous *corev1.Secret, new *corev1.Secret) {
 	for _, key := range relevantSecretValues {
-		assert.NotEqual(t, previous.Data[key], new.Data[key], fmt.Sprintf("%s", key))
+		assert.NotEqual(t, previous.Data[key], new.Data[key], key)
 	}
 	assert.Equal(t, previous.Data[secretDataKeys.NextCredentials.CertificateKeyId], new.Data[secretDataKeys.CurrentCredentials.CertificateKeyId])
 	assert.Equal(t, previous.Data[secretDataKeys.NextCredentials.ClientSecret], new.Data[secretDataKeys.CurrentCredentials.ClientSecret])
@@ -677,7 +669,7 @@ func assertSecretsAreRotated(t *testing.T, previous *corev1.Secret, new *corev1.
 
 func assertSecretsAreNotRotated(t *testing.T, previous *corev1.Secret, new *corev1.Secret) {
 	for _, key := range relevantSecretValues {
-		assert.Equal(t, previous.Data[key], new.Data[key], fmt.Sprintf("%s", key))
+		assert.Equal(t, previous.Data[key], new.Data[key], key)
 	}
 }
 

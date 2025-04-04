@@ -145,7 +145,6 @@ func (m metrics) InitWithNamespaceLabels() {
 	err = retry.Fibonacci(1*time.Second).
 		WithMaxDuration(1*time.Minute).
 		Do(context.Background(), retryable)
-
 	if err != nil {
 		log.Error(err)
 	}

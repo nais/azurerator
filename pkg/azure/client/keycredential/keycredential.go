@@ -190,7 +190,7 @@ func (k keyCredential) filterRevokedKeys(tx transaction.Transaction) ([]msgraph.
 
 	var newest msgraph.KeyCredential
 	var newestIndex int
-	var hasManagedKey = false
+	hasManagedKey := false
 
 	for i, cred := range actualApp.KeyCredentials {
 		if newest.StartDateTime == nil || cred.StartDateTime.After(*newest.StartDateTime) {

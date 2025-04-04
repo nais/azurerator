@@ -222,7 +222,6 @@ func (a appRoleAssignments) assignFor(toAssign approleassignment.List, roleName 
 			_, err := a.request().Add(a.tx.Ctx, &assignment)
 			return err
 		})
-
 		if err != nil {
 			return err
 		}
@@ -235,7 +234,6 @@ func (a appRoleAssignments) revokeFor(revoked approleassignment.List, roleName s
 		err := a.logAndDo(assignment, operationRevoked, roleName, func() error {
 			return a.requestWithID(*assignment.ID).Delete(a.tx.Ctx)
 		})
-
 		if err != nil {
 			return err
 		}

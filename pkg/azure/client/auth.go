@@ -13,9 +13,7 @@ import (
 	"github.com/nais/azureator/pkg/config"
 )
 
-var (
-	scopes = []string{msauth.DefaultMSGraphScope}
-)
+var scopes = []string{msauth.DefaultMSGraphScope}
 
 func NewClientCredentialsTokenSource(ctx context.Context, cfg *config.AzureConfig) (oauth2.TokenSource, error) {
 	m := msauth.NewManager()

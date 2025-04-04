@@ -19,8 +19,10 @@ const (
 	TagHideApp = "HideApp"
 )
 
-var clientIdCache = cache.New[azure.ServicePrincipalId, azure.ClientId]()
-var servicePrincipalIdCache = cache.New[azure.ClientId, azure.ServicePrincipalId]()
+var (
+	clientIdCache           = cache.New[azure.ServicePrincipalId, azure.ClientId]()
+	servicePrincipalIdCache = cache.New[azure.ClientId, azure.ServicePrincipalId]()
+)
 
 type ServicePrincipal interface {
 	Owners() Owners

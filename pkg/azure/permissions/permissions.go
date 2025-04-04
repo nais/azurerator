@@ -203,9 +203,7 @@ func flatten(in []naisiov1.AccessPolicyInboundRule, rule func(rule naisiov1.Acce
 	result := make([]naisiov1.AccessPolicyPermission, 0)
 
 	for _, app := range in {
-		for _, permission := range rule(app) {
-			result = append(result, permission)
-		}
+		result = append(result, rule(app)...)
 	}
 
 	return result

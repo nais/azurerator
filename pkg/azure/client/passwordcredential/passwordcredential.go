@@ -211,7 +211,7 @@ func (p passwordCredential) revocationCandidates(tx transaction.Transaction, app
 	// There should always be at least one passwordcredential registered for an application.
 	var newest msgraph.PasswordCredential
 	var newestIndex int
-	var hasManagedKey = false
+	hasManagedKey := false
 
 	for i, cred := range app.PasswordCredentials {
 		if newest.StartDateTime == nil || cred.StartDateTime.After(*newest.StartDateTime) {

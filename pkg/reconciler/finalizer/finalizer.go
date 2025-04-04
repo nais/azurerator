@@ -52,7 +52,6 @@ func (f finalizer) register(tx transaction.Transaction) error {
 		controllerutil.AddFinalizer(existing, options.FinalizerName)
 		return f.client.Update(tx.Ctx, existing)
 	})
-
 	if err != nil {
 		return fmt.Errorf("error when registering finalizer: %w", err)
 	}

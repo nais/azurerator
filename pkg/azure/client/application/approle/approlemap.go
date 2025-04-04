@@ -73,10 +73,7 @@ func (m Map) ToDisable(desired permissions.Permissions) Map {
 	}
 
 	// ensure default AppRole is not disabled
-	if _, found := toDisable[permissions.DefaultAppRoleValue]; found {
-		delete(toDisable, permissions.DefaultAppRoleValue)
-	}
-
+	delete(toDisable, permissions.DefaultAppRoleValue)
 	return toDisable
 }
 

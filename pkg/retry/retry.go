@@ -8,8 +8,7 @@ import (
 )
 
 type Backoff struct {
-	base time.Duration
-	b    retry.Backoff
+	b retry.Backoff
 }
 
 func RetryableError(err error) error {

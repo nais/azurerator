@@ -36,7 +36,7 @@ func (c *Consumer) Cleanup(_ sarama.ConsumerGroupSession) error {
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	var retry = true
+	retry := true
 	var err error
 
 	for message := range claim.Messages() {

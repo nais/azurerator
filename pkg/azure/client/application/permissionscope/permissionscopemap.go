@@ -73,10 +73,7 @@ func (m Map) ToDisable(desired permissions.Permissions) Map {
 	}
 
 	// ensure default PermissionScope is not disabled
-	if _, found := toDisable[permissions.DefaultPermissionScopeValue]; found {
-		delete(toDisable, permissions.DefaultPermissionScopeValue)
-	}
-
+	delete(toDisable, permissions.DefaultPermissionScopeValue)
 	return toDisable
 }
 

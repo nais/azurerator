@@ -24,9 +24,7 @@ const cacheExpiration = 24 * time.Hour
 
 var groupCache = cache.New[azure.ObjectId, *msgraph.Group]()
 
-var (
-	BadRequestError = errors.New("BadRequest")
-)
+var ErrBadRequest = errors.New("BadRequest")
 
 type Groups interface {
 	Process(tx transaction.Transaction) error
@@ -80,7 +78,7 @@ func (g group) getGroups(tx transaction.Transaction) (resource.Resources, error)
 		return groups, nil
 	}
 
-	allowAllUsersEnabled := tx.Instance.Spec.AllowAllUsers != nil && *tx.Instance.Spec.AllowAllUsers == true
+	allowAllUsersEnabled := tx.Instance.Spec.AllowAllUsers != nil && *tx.Instance.Spec.AllowAllUsers
 	if allowAllUsersEnabled {
 		allUsersGroups, err := g.getAllUsersGroups(tx)
 		if err != nil {
@@ -106,7 +104,7 @@ func (g group) getGroupsFromClaims(tx transaction.Transaction) (resource.Resourc
 	for _, group := range tx.Instance.Spec.Claims.Groups {
 		exists, groupResult, err := g.getById(tx, group.ID)
 		if err != nil {
-			if errors.Is(err, BadRequestError) {
+			if errors.Is(err, ErrBadRequest) {
 				tx.Logger.Warnf("groups: skipping assignment %s: %+v", group, err)
 				continue
 			}
@@ -176,7 +174,7 @@ func (g group) getById(tx transaction.Transaction, id azure.ObjectId) (bool, *ms
 			return false, nil, fmt.Errorf("reading server response: %w", err)
 		}
 
-		return false, nil, fmt.Errorf("%w: %s", BadRequestError, body)
+		return false, nil, fmt.Errorf("%w: %s", ErrBadRequest, body)
 	}
 
 	var group *msgraph.Group
