@@ -23,6 +23,9 @@ jobs:
       - name: Setup Test
         run: |
           make kubebuilder
+      - name: Check for vulnerable dependencies and static code
+        run: |
+          make check
       - name: Test Go
         run: |
           make test
