@@ -18,7 +18,7 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.0
 	github.com/go-logr/zapr v1.3.0
 	github.com/google/uuid v1.6.0
-	github.com/nais/liberator v0.0.0-20250408101050-2ffa1b42f7f2
+	github.com/nais/liberator v0.0.0-20250415063409-1f1c95868c49
 	github.com/nais/msgraph.go v0.1.5
 	github.com/prometheus/client_golang v1.22.0
 	github.com/sethvargo/go-retry v0.3.0
