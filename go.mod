@@ -1,6 +1,6 @@
 module github.com/nais/azureator
 
-go 1.24.2
+go 1.24.4
 
 tool (
 	golang.org/x/tools/cmd/deadcode
