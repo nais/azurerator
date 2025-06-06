@@ -165,8 +165,8 @@ github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9G
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/nais/liberator v0.0.0-20250428065725-7619bf4635da h1:u1a0s4RQeXHY1iA3/vQ9NKeQTQPWbfp6j6w0WFJXMMk=
-github.com/nais/liberator v0.0.0-20250428065725-7619bf4635da/go.mod h1:YZNeWAtVfMBml21vngj3AYkJdft1utyYCKra4Gl6mbo=
+github.com/nais/liberator v0.0.0-20250602062459-b6e768f1fe5b h1:40eTwFtR6BYuuvlt143sUKOT8DWrjhIPa9rdeYhEIkg=
+github.com/nais/liberator v0.0.0-20250602062459-b6e768f1fe5b/go.mod h1:YZNeWAtVfMBml21vngj3AYkJdft1utyYCKra4Gl6mbo=
 github.com/nais/msgraph.go v0.1.5 h1:Sf9/DUZ8mMipgG2bDE249mHTo8E9qV8tBJpAbuuQsJw=
 github.com/nais/msgraph.go v0.1.5/go.mod h1:WhEs+KY7Nrt3rpUZwCpSKtwy2CiL+YG+OJ+vhh2/ZMU=
 github.com/onsi/ginkgo/v2 v2.22.1 h1:QW7tbJAUDyVDVOM5dFa7qaybo+CRfR7bemlQUN6Z8aM=
