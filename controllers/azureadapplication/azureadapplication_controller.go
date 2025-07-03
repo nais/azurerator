@@ -307,6 +307,9 @@ func (r *Reconciler) UpdateApplication(ctx context.Context, app *v1.AzureAdAppli
 	existing := &v1.AzureAdApplication{}
 	err := r.Reader.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, existing)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		return fmt.Errorf("get newest version of AzureAdApplication: %s", err)
 	}
 
