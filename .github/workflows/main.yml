@@ -41,7 +41,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
       - name: Install cosign
-        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # ratchet:sigstore/cosign-installer@main
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # ratchet:sigstore/cosign-installer@main
         with:
           cosign-release: 'v2.2.3'
       - name: Verify runner image
