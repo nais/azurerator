@@ -21,7 +21,7 @@ jobs:
           go-version-file: 'go.mod'
       - name: Setup Test
         run: |
-          make kubebuilder
+          make setup-envtest
       - name: Check for vulnerable dependencies and static code
         run: |
           make check
