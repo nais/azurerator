@@ -89,14 +89,6 @@ func (a application) RequiredResourceAccess() requiredresourceaccess.RequiredRes
 }
 
 func (a application) Exists(tx transaction.Transaction) (*msgraph.Application, bool, error) {
-	if tx.Instance.GetClientId() != "" {
-		app, err := a.Get(tx)
-		if err != nil {
-			return nil, false, err
-		}
-		return &app, true, nil
-	}
-
 	return a.ExistsByFilter(tx.Ctx, util.FilterByName(tx.UniformResourceName))
 }
 
@@ -208,9 +200,6 @@ func (a application) ExistsByFilter(ctx context.Context, filter azure.Filter) (*
 }
 
 func (a application) Get(tx transaction.Transaction) (msgraph.Application, error) {
-	if tx.Instance.GetClientId() != "" {
-		return a.GetByClientId(tx.Ctx, tx.Instance.GetClientId())
-	}
 	return a.GetByName(tx.Ctx, tx.UniformResourceName)
 }
 
