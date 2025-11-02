@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -13,15 +14,14 @@ import (
 	"github.com/nais/azureator/pkg/config"
 )
 
+type Callback func(message *sarama.ConsumerMessage, logger *log.Entry) (retry bool, err error)
+
+var _ sarama.ConsumerGroupHandler = (*Consumer)(nil)
+
 type Consumer struct {
 	callback      Callback
-	cancel        context.CancelFunc
-	consumer      sarama.ConsumerGroup
-	ctx           context.Context
-	groupID       string
 	logger        *log.Logger
 	retryInterval time.Duration
-	topic         string
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -60,7 +60,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	return nil
 }
 
-func NewConsumer(cfg config.Config, tlsConfig *tls.Config, logger *log.Logger, callback Callback) (*Consumer, error) {
+func NewConsumer(ctx context.Context, cfg config.Config, tlsConfig *tls.Config, logger *log.Logger, callback Callback) (*Consumer, error) {
 	consumerCfg := sarama.NewConfig()
 	consumerCfg.Net.TLS.Enable = cfg.Kafka.TLS.Enabled
 	consumerCfg.Net.TLS.Config = tlsConfig
@@ -72,24 +72,19 @@ func NewConsumer(cfg config.Config, tlsConfig *tls.Config, logger *log.Logger, c
 
 	groupID := fmt.Sprintf("azurerator-%s-%s-v1", cfg.ClusterName, cfg.Azure.Tenant.Id)
 
-	consumer, err := sarama.NewConsumerGroup(cfg.Kafka.Brokers, groupID, consumerCfg)
+	group, err := sarama.NewConsumerGroup(cfg.Kafka.Brokers, groupID, consumerCfg)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &Consumer{
 		callback:      callback,
-		consumer:      consumer,
-		groupID:       groupID,
 		logger:        logger,
 		retryInterval: cfg.Kafka.RetryInterval,
-		topic:         cfg.Kafka.Topic,
 	}
 
-	c.ctx, c.cancel = context.WithCancel(context.Background())
-
 	go func() {
-		for err := range c.consumer.Errors() {
+		for err := range group.Errors() {
 			c.logger.Errorf("Consumer encountered error: %s", err)
 		}
 	}()
@@ -97,15 +92,17 @@ func NewConsumer(cfg config.Config, tlsConfig *tls.Config, logger *log.Logger, c
 	go func() {
 		for {
 			c.logger.Infof("(re-)starting consumer on topic %s", cfg.Kafka.Topic)
-			err := c.consumer.Consume(c.ctx, []string{cfg.Kafka.Topic}, c)
+			err := group.Consume(ctx, []string{cfg.Kafka.Topic}, c)
 			if err != nil {
-				c.logger.Errorf("Error setting up consumer: %s", err)
+				c.logger.Errorf("Error consuming: %s", err)
 			}
+
 			// check if context was cancelled, signaling that the consumer should stop
-			if c.ctx.Err() != nil {
-				c.logger.Errorf("Consumer context error: %s", c.ctx.Err())
-				c.ctx, c.cancel = context.WithCancel(context.Background())
+			if errors.Is(ctx.Err(), context.Canceled) {
+				c.logger.Debug("Consumer context cancelled, stopping consumer")
+				return
 			}
+
 			time.Sleep(10 * time.Second)
 		}
 	}()

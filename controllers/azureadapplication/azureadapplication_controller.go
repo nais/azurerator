@@ -37,6 +37,7 @@ import (
 	azureReconciler "github.com/nais/azureator/pkg/reconciler/azure"
 	"github.com/nais/azureator/pkg/reconciler/finalizer"
 	"github.com/nais/azureator/pkg/reconciler/secrets"
+	"github.com/nais/azureator/pkg/synchronizer"
 	"github.com/nais/azureator/pkg/transaction"
 	"github.com/nais/azureator/pkg/transaction/options"
 )
@@ -58,7 +59,8 @@ type Reconciler struct {
 	Recorder          record.EventRecorder
 	Config            *config.Config
 	AzureOpenIDConfig config.AzureOpenIdConfig
-	KafkaProducer     kafka.Producer
+	KafkaProducer     *kafka.Producer
+	Synchronizer      *synchronizer.Synchronizer
 }
 
 // +kubebuilder:rbac:groups=nais.io,resources=AzureAdApplications,verbs=get;list;watch;create;update;patch;delete
@@ -322,7 +324,7 @@ func (r *Reconciler) ReportEvent(tx transaction.Transaction, eventType, event, m
 }
 
 func (r *Reconciler) Azure() reconciler.Azure {
-	return azureReconciler.NewAzureReconciler(r, r.AzureClient, *r.Config, r.Recorder, r.KafkaProducer)
+	return azureReconciler.NewAzureReconciler(r, r.AzureClient, *r.Config, r.Recorder, r.KafkaProducer, r.Synchronizer)
 }
 
 func (r *Reconciler) Finalizer() reconciler.Finalizer {

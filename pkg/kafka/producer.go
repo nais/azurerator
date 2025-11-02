@@ -13,17 +13,12 @@ import (
 	"github.com/nais/azureator/pkg/event"
 )
 
-type Producer interface {
-	Produce(msg Message) (int64, error)
-	ProduceEvent(event.Event) (int64, error)
-}
-
-type producer struct {
+type Producer struct {
 	producer sarama.SyncProducer
 	topic    string
 }
 
-func NewProducer(config config.Config, tlsConfig *tls.Config, logger *log.Logger) (Producer, error) {
+func NewProducer(config config.Config, tlsConfig *tls.Config, logger *log.Logger) (*Producer, error) {
 	cfg := sarama.NewConfig()
 	cfg.Net.TLS.Enable = true
 	cfg.Net.TLS.Config = tlsConfig
@@ -38,27 +33,23 @@ func NewProducer(config config.Config, tlsConfig *tls.Config, logger *log.Logger
 		return nil, err
 	}
 
-	return &producer{
+	return &Producer{
 		producer: syncProducer,
 		topic:    config.Kafka.Topic,
 	}, nil
 }
 
-func (p *producer) Produce(msg Message) (offset int64, err error) {
-	producerMessage := &sarama.ProducerMessage{
-		Topic:     p.topic,
-		Value:     sarama.ByteEncoder(msg),
-		Timestamp: time.Now(),
-	}
-	_, offset, err = p.producer.SendMessage(producerMessage)
-	return
-}
-
-func (p *producer) ProduceEvent(e event.Event) (int64, error) {
+func (p *Producer) Send(e event.Event) (int64, error) {
 	message, err := e.Marshal()
 	if err != nil {
 		return -1, fmt.Errorf("marshalling event: %w", err)
 	}
 
-	return p.Produce(message)
+	producerMessage := &sarama.ProducerMessage{
+		Topic:     p.topic,
+		Value:     sarama.ByteEncoder(message),
+		Timestamp: time.Now(),
+	}
+	_, offset, err := p.producer.SendMessage(producerMessage)
+	return offset, err
 }

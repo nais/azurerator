@@ -100,7 +100,9 @@ func run() error {
 		return fmt.Errorf("fetching Azure OpenID Configuration: %w", err)
 	}
 
-	var kafkaProducer kafka.Producer
+	syncer := synchronizer.New(cfg.ClusterName, mgr.GetClient(), mgr.GetAPIReader())
+
+	var kafkaProducer *kafka.Producer
 	if cfg.Kafka.Enabled {
 		kafkaLogger := logrus.StandardLogger()
 		var tlsConfig *tls.Config
@@ -117,9 +119,7 @@ func run() error {
 			return fmt.Errorf("setting up kafka producer: %w", err)
 		}
 
-		callback := synchronizer.NewSynchronizer(*cfg, mgr.GetClient(), mgr.GetAPIReader()).Callback()
-
-		_, err = kafka.NewConsumer(*cfg, tlsConfig, kafkaLogger, callback)
+		_, err = kafka.NewConsumer(ctx, *cfg, tlsConfig, kafkaLogger, syncer.Kafka())
 		if err != nil {
 			return fmt.Errorf("setting up kafka consumer: %w", err)
 		}
@@ -134,6 +134,7 @@ func run() error {
 		Recorder:          mgr.GetEventRecorderFor("azurerator"),
 		AzureOpenIDConfig: *azureOpenIDConfig,
 		KafkaProducer:     kafkaProducer,
+		Synchronizer:      syncer,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller: %w", err)
 	}

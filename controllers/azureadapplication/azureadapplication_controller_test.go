@@ -35,6 +35,7 @@ import (
 	"github.com/nais/azureator/pkg/fixtures"
 	"github.com/nais/azureator/pkg/labels"
 	"github.com/nais/azureator/pkg/secrets"
+	"github.com/nais/azureator/pkg/synchronizer"
 	"github.com/nais/azureator/pkg/transaction/options"
 	"github.com/nais/azureator/pkg/util/test"
 )
@@ -674,6 +675,7 @@ func setup() (*envtest.Environment, error) {
 		Recorder:          mgr.GetEventRecorderFor("azurerator"),
 		Config:            azureratorCfg,
 		AzureOpenIDConfig: azureOpenIDConfig,
+		Synchronizer:      synchronizer.New(azureratorCfg.ClusterName, mgr.GetClient(), mgr.GetAPIReader()),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return nil, err
