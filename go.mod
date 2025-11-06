@@ -1,6 +1,6 @@
 module github.com/nais/azureator
 
-go 1.25.3
+go 1.25.4
 
 tool (
 	golang.org/x/tools/cmd/deadcode
@@ -28,6 +28,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.32.0
+	golang.org/x/sync v0.17.0
 	google.golang.org/api v0.254.0
 	k8s.io/api v0.34.1
 	k8s.io/apimachinery v0.34.1
@@ -123,7 +124,6 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/net v0.46.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
 	golang.org/x/term v0.36.0 // indirect
