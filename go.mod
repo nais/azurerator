@@ -11,7 +11,7 @@ tool (
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
 	github.com/Code-Hex/go-generics-cache v1.5.1
 	github.com/IBM/sarama v1.46.3
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
