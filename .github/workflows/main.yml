@@ -9,6 +9,8 @@ on:
   push:
     paths-ignore:
       - "*.md"
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -33,7 +35,6 @@ jobs:
     name: Publish to Google and GitHub registries
     if: github.ref == 'refs/heads/master'
     permissions:
-      contents: "read"
       id-token: "write"
       packages: "write"
     runs-on: ubuntu-latest
