@@ -3,6 +3,7 @@ package finalizer
 import (
 	"fmt"
 
+	"github.com/nais/azureator/pkg/annotations"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -11,10 +12,15 @@ import (
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/reconciler"
 	"github.com/nais/azureator/pkg/transaction"
-	"github.com/nais/azureator/pkg/transaction/options"
 )
 
-// Finalizers allow the controller to implement an asynchronous pre-delete hook
+const (
+	Name string = "azure.nais.io/finalizer"
+	// OldName is not domain-qualified and triggers a warning from the API server, use FinalizerName instead.
+	// TODO: remove once no instances with the old finalizer exist.
+	OldName string = "finalizer.azurerator.nais.io"
+)
+
 type finalizer struct {
 	reconciler.AzureAdApplication
 	client client.Client
@@ -27,29 +33,27 @@ func NewFinalizer(reconciler reconciler.AzureAdApplication, client client.Client
 	}
 }
 
-func (f finalizer) Process(tx transaction.Transaction) (processed bool, err error) {
-	processed = false
+func (f finalizer) Process(tx transaction.Transaction) (bool, error) {
+	hasFinalizer := controllerutil.ContainsFinalizer(tx.Instance, Name)
+	hasOldFinalizer := controllerutil.ContainsFinalizer(tx.Instance, OldName)
+	shouldFinalize := !tx.Instance.GetDeletionTimestamp().IsZero()
 
-	if tx.Options.Finalizer.Finalize {
-		err = f.finalize(tx)
-		processed = true
-		return
+	if (hasFinalizer || hasOldFinalizer) && shouldFinalize {
+		return true, f.finalize(tx)
 	}
 
-	if tx.Options.Finalizer.Register {
-		err = f.register(tx)
-		processed = true
-		return
+	if !hasFinalizer {
+		return true, f.register(tx)
 	}
 
-	return
+	return false, nil
 }
 
 func (f finalizer) register(tx transaction.Transaction) error {
 	tx.Logger.Debug("finalizer for object not found, registering...")
 
 	err := f.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {
-		controllerutil.AddFinalizer(existing, options.FinalizerName)
+		controllerutil.AddFinalizer(existing, Name)
 		return f.client.Update(tx.Ctx, existing)
 	})
 	if err != nil {
@@ -60,28 +64,27 @@ func (f finalizer) register(tx transaction.Transaction) error {
 }
 
 func (f finalizer) finalize(tx transaction.Transaction) error {
-	if tx.Options.Finalizer.Register {
-		return nil
-	}
-
 	tx.Logger.Debug("finalizer triggered, deleting resources...")
 
-	if tx.Options.Finalizer.DeleteFromAzure {
+	_, shouldPreserve := annotations.HasAnnotation(tx.Instance, annotations.PreserveKey)
+	if shouldPreserve {
+		err := f.Azure().PurgeCredentials(tx)
+		if err != nil {
+			return fmt.Errorf("purging credentials from Azure AD: %w", err)
+		}
+	} else {
 		err := f.Azure().Delete(tx)
 		if err != nil {
 			return fmt.Errorf("failed to delete resources: %w", err)
 		}
 
 		f.ReportEvent(tx, corev1.EventTypeNormal, v1.EventDeletedInAzure, "Azure application is deleted")
-	} else {
-		err := f.Azure().PurgeCredentials(tx)
-		if err != nil {
-			return fmt.Errorf("purging credentials from Azure AD: %w", err)
-		}
 	}
 
 	err := f.UpdateApplication(tx.Ctx, tx.Instance, func(existing *v1.AzureAdApplication) error {
-		controllerutil.RemoveFinalizer(existing, options.FinalizerName)
+		controllerutil.RemoveFinalizer(existing, Name)
+		// TODO: remove once old finalizer is no longer in use
+		controllerutil.RemoveFinalizer(existing, OldName)
 		return f.client.Update(tx.Ctx, existing)
 	})
 	if err != nil {
@@ -89,6 +92,5 @@ func (f finalizer) finalize(tx transaction.Transaction) error {
 	}
 
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsDeletedCount, tx.Instance.Namespace)
-
 	return nil
 }

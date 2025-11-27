@@ -13,7 +13,6 @@ import (
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/crd"
 	"github.com/nais/liberator/pkg/events"
-	"github.com/nais/liberator/pkg/finalizer"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +21,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -34,9 +34,9 @@ import (
 	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/fixtures"
 	"github.com/nais/azureator/pkg/labels"
+	"github.com/nais/azureator/pkg/reconciler/finalizer"
 	"github.com/nais/azureator/pkg/secrets"
 	"github.com/nais/azureator/pkg/synchronizer"
-	"github.com/nais/azureator/pkg/transaction/options"
 	"github.com/nais/azureator/pkg/util/test"
 )
 
@@ -137,7 +137,7 @@ func TestReconciler_CreateAzureAdApplication_ShouldNotProcessNonMatchingTenantAn
 	}
 	instance := assertApplicationShouldNotProcess(t, "AzureAdApplication with tenant should not be processed", key)
 	assert.Empty(t, instance.Status.SynchronizationState, "AzureAdApplication should not be processed")
-	assert.False(t, finalizer.HasFinalizer(instance, options.FinalizerName), "AzureAdApplication should not contain a finalizer")
+	assert.False(t, controllerutil.ContainsFinalizer(instance, finalizer.Name), "AzureAdApplication should not contain a finalizer")
 }
 
 func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotRetry(t *testing.T) {
@@ -403,7 +403,7 @@ func assertApplicationExists(t *testing.T, name string) *v1.AzureAdApplication {
 		return !isHashChanged && !hasExpiredSecrets && !secretNameChanged && !hasSynchronizeAnnotation && !hasRotateAnnotation
 	}, timeout, interval, "AzureAdApplication should be synchronized")
 
-	assert.True(t, finalizer.HasFinalizer(instance, options.FinalizerName), "AzureAdApplication should contain a finalizer")
+	assert.True(t, controllerutil.ContainsFinalizer(instance, finalizer.Name), "AzureAdApplication should contain a finalizer")
 
 	test.AssertAllNotEmpty(t, []any{
 		instance.Status.CertificateKeyIds,

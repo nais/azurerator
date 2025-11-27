@@ -8,9 +8,8 @@ import (
 )
 
 type TransactionOptions struct {
-	Finalizer FinalizerOptions
-	Tenant    TenantOptions
-	Process   ProcessOptions
+	Tenant  TenantOptions
+	Process ProcessOptions
 }
 
 type optionsBuilder struct {
@@ -32,8 +31,7 @@ func NewOptions(instance v1.AzureAdApplication, cfg config.Config, secrets secre
 	}
 
 	return TransactionOptions{
-		Finalizer: builder.Finalizer(),
-		Process:   process,
-		Tenant:    builder.Tenant(),
+		Process: process,
+		Tenant:  builder.Tenant(),
 	}, nil
 }
