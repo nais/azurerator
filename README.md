@@ -144,7 +144,7 @@ make run # starts the controller
 make sample
 ```
 
-Kubebuilder is required for running the tests. Install with `make kubebuilder`.
+Kubebuilder is required for running the tests. Install with `make setup-envtest`.
 
 ## Verifying the Azurerator image and its contents
 

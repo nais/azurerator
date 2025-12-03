@@ -35,7 +35,10 @@ deadcode:
 helm-lint:
 	helm lint --strict ./charts
 
-check: static deadcode vuln
+actions-lint:
+	go tool ratchet lint .github/workflows/*.yaml
+
+check: static deadcode vuln actions-lint
 
 install:
 	kubectl apply -f https://raw.githubusercontent.com/nais/liberator/main/config/crd/bases/nais.io_azureadapplications.yaml
