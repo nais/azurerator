@@ -17,9 +17,11 @@ spec:
             summary: {{ include "azurerator.fullname" . }} has failed processing clients for longer than usual
             consequence: Applications that have spec.azure.application enabled will not start up as they are dependant on a secret created by Azurerator
             action: |
-              * Check the logs: `kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "azurerator.fullname" . }}`"
               * Check the Azure Status page: <https://azure.status.microsoft/status>
+              * Check the dashboard for errors
+            dashboard_url: "https://monitoring.nais.io/d/aete2mx93vx1cd/azurerator?var-tenant={{ .Values.fasit.tenant.name }}&var-cluster={{ .Values.fasit.env.name }}"
+            runbook_url: "https://github.com/nais/vakt/blob/master/azurerator.md"
           labels:
-            severity: critical
+            severity: warning
             namespace: {{ .Release.Namespace }}
 {{ end }}
