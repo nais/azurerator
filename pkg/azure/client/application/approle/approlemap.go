@@ -1,7 +1,6 @@
 package approle
 
 import (
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure/permissions"
@@ -67,7 +66,7 @@ func (m Map) ToDisable(desired permissions.Permissions) Map {
 		name := *role.Value
 		if _, found := desired[name]; !found {
 			disabledRole := role
-			disabledRole.IsEnabled = ptr.Bool(false)
+			disabledRole.IsEnabled = new(false)
 			toDisable[name] = disabledRole
 		}
 	}

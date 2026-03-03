@@ -26,10 +26,10 @@ var (
 	}
 	assignee1AppRoleAssignment = msgraph.AppRoleAssignment{
 		AppRoleID:            &role.ID,
-		PrincipalDisplayName: ptr.String("assignee-1"),
-		PrincipalID:          (*msgraph.UUID)(ptr.String("assignee-1-id")),
+		PrincipalDisplayName: new("assignee-1"),
+		PrincipalID:          (*msgraph.UUID)(new("assignee-1-id")),
 		PrincipalType:        ptr.String(string(resource.PrincipalTypeServicePrincipal)),
-		ResourceID:           (*msgraph.UUID)(ptr.String(target)),
+		ResourceID:           (*msgraph.UUID)(new(target)),
 	}
 	assignee2 = resource.Resource{
 		Name:          "assignee-2",
@@ -38,10 +38,10 @@ var (
 	}
 	assignee2AppRoleAssignment = msgraph.AppRoleAssignment{
 		AppRoleID:            &role.ID,
-		PrincipalDisplayName: ptr.String("assignee-2"),
-		PrincipalID:          (*msgraph.UUID)(ptr.String("assignee-2-id")),
+		PrincipalDisplayName: new("assignee-2"),
+		PrincipalID:          (*msgraph.UUID)(new("assignee-2-id")),
 		PrincipalType:        ptr.String(string(resource.PrincipalTypeGroup)),
-		ResourceID:           (*msgraph.UUID)(ptr.String(target)),
+		ResourceID:           (*msgraph.UUID)(new(target)),
 	}
 )
 
@@ -66,14 +66,14 @@ func TestList_Has(t *testing.T) {
 
 	t.Run("different approle ID should return false", func(t *testing.T) {
 		expected := assignee1AppRoleAssignment
-		expected.AppRoleID = (*msgraph.UUID)(ptr.String("some-other-role"))
+		expected.AppRoleID = (*msgraph.UUID)(new("some-other-role"))
 
 		assert.False(t, assignments.Has(expected))
 	})
 
 	t.Run("different principal ID should return false", func(t *testing.T) {
 		expected := assignee1AppRoleAssignment
-		expected.PrincipalID = (*msgraph.UUID)(ptr.String("some-other-target"))
+		expected.PrincipalID = (*msgraph.UUID)(new("some-other-target"))
 
 		assert.False(t, assignments.Has(expected))
 	})

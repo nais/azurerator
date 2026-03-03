@@ -7,7 +7,6 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/application/redirecturi"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	"github.com/nais/msgraph.go/ptr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,7 +49,7 @@ func TestRedirectUriApp(t *testing.T) {
 
 	t.Run("single-page application", func(t *testing.T) {
 		app := azureAdApp()
-		app.Spec.SinglePageApplication = ptr.Bool(true)
+		app.Spec.SinglePageApplication = new(true)
 
 		a := redirecturi.App(app)
 		expected := `
@@ -70,7 +69,7 @@ func TestRedirectUriApp(t *testing.T) {
 
 	t.Run("single-page application, empty urls", func(t *testing.T) {
 		app := azureAdApp()
-		app.Spec.SinglePageApplication = ptr.Bool(true)
+		app.Spec.SinglePageApplication = new(true)
 		app.Spec.ReplyUrls = make([]v1.AzureAdReplyUrl, 0)
 
 		a := redirecturi.App(app)

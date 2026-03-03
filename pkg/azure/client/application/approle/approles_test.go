@@ -24,7 +24,7 @@ func TestAppRoles_DescribeCreate(t *testing.T) {
 	t.Run("disabled default role in desired should not actually disable", func(t *testing.T) {
 		desired := make(permissions.Permissions)
 		defaultRole := approle.DefaultRole()
-		defaultRole.IsEnabled = ptr.Bool(false)
+		defaultRole.IsEnabled = new(false)
 		desired.Add(permissions.FromAppRole(defaultRole))
 
 		roles := approle.NewAppRoles().DescribeCreate(desired).GetResult()
@@ -77,10 +77,10 @@ func TestAppRoles_DescribeUpdate(t *testing.T) {
 		existing = []msgraph.AppRole{
 			{
 				AllowedMemberTypes: []string{"Application"},
-				Description:        ptr.String("Description"),
-				DisplayName:        ptr.String("DisplayName"),
+				Description:        new("Description"),
+				DisplayName:        new("DisplayName"),
 				ID:                 &id,
-				IsEnabled:          ptr.Bool(false),
+				IsEnabled:          new(false),
 				Value:              ptr.String(permissions.DefaultAppRoleValue),
 			},
 		}

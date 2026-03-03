@@ -8,7 +8,6 @@ import (
 	cache "github.com/Code-Hex/go-generics-cache"
 	"github.com/nais/azureator/pkg/azure/client/application/groupmembershipclaim"
 	"github.com/nais/azureator/pkg/azure/client/application/owners"
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -275,20 +274,20 @@ func (a application) getAll(ctx context.Context, filters ...azure.Filter) ([]msg
 
 func (a application) defaultTemplate(tx transaction.Transaction) *msgraph.Application {
 	return &msgraph.Application{
-		DisplayName:    ptr.String(tx.UniformResourceName),
-		SignInAudience: ptr.String("AzureADMyOrg"),
+		DisplayName:    new(tx.UniformResourceName),
+		SignInAudience: new("AzureADMyOrg"),
 		Tags: []string{
 			IaCAppTag,
 			IntegratedAppTag,
 		},
 		API: &msgraph.APIApplication{
-			RequestedAccessTokenVersion: ptr.Int(2),
+			RequestedAccessTokenVersion: new(2),
 		},
 		Web: &msgraph.WebApplication{
-			LogoutURL: ptr.String(tx.Instance.Spec.LogoutUrl),
+			LogoutURL: new(tx.Instance.Spec.LogoutUrl),
 			ImplicitGrantSettings: &msgraph.ImplicitGrantSettings{
-				EnableIDTokenIssuance:     ptr.Bool(false),
-				EnableAccessTokenIssuance: ptr.Bool(false),
+				EnableIDTokenIssuance:     new(false),
+				EnableAccessTokenIssuance: new(false),
 			},
 		},
 	}

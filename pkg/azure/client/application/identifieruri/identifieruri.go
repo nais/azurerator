@@ -3,6 +3,7 @@ package identifieruri
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 
@@ -48,14 +49,7 @@ func DescribeUpdate(instance *v1.AzureAdApplication, existing azure.IdentifierUr
 	copy(result, existing)
 
 	for _, uri := range defaultUris(instance, clusterName) {
-		seen := false
-
-		for _, existingUri := range existing {
-			if uri == existingUri {
-				seen = true
-				break
-			}
-		}
+		seen := slices.Contains(existing, uri)
 
 		if !seen {
 			result = append(result, uri)

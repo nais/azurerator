@@ -2,7 +2,6 @@ package util
 
 import (
 	naisiov1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -42,7 +41,7 @@ func (a ApplicationBuilder) ResourceAccess(access []msgraph.RequiredResourceAcce
 }
 
 func (a ApplicationBuilder) GroupMembershipClaims(groupMembershipClaim groupmembershipclaim.GroupMembershipClaim) ApplicationBuilder {
-	a.Application.GroupMembershipClaims = ptr.String(groupMembershipClaim)
+	a.Application.GroupMembershipClaims = new(groupMembershipClaim)
 	return a
 }
 

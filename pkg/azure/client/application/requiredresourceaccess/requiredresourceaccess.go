@@ -1,7 +1,6 @@
 package requiredresourceaccess
 
 import (
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
@@ -21,19 +20,19 @@ func (r requiredResourceAccess) MicrosoftGraph() msgraph.RequiredResourceAccess 
 	openidScopeId := msgraph.UUID("37f7f235-527c-4136-accd-4a02d197296e")      // openid
 	groupMemberReadAll := msgraph.UUID("bc024368-1153-4739-b217-4326f2e966d0") // GroupMember.Read.All
 	return msgraph.RequiredResourceAccess{
-		ResourceAppID: ptr.String("00000003-0000-0000-c000-000000000000"),
+		ResourceAppID: new("00000003-0000-0000-c000-000000000000"),
 		ResourceAccess: []msgraph.ResourceAccess{
 			{
 				ID:   &userReadScopeId,
-				Type: ptr.String("Scope"),
+				Type: new("Scope"),
 			},
 			{
 				ID:   &openidScopeId,
-				Type: ptr.String("Scope"),
+				Type: new("Scope"),
 			},
 			{
 				ID:   &groupMemberReadAll,
-				Type: ptr.String("Scope"),
+				Type: new("Scope"),
 			},
 		},
 	}

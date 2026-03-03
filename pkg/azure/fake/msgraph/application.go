@@ -1,7 +1,6 @@
 package msgraph
 
 import (
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure/fake"
@@ -14,9 +13,9 @@ func Application(tx transaction.Transaction) msgraph.Application {
 
 	return msgraph.Application{
 		DirectoryObject: msgraph.DirectoryObject{
-			Entity: msgraph.Entity{ID: ptr.String(objectId)},
+			Entity: msgraph.Entity{ID: new(objectId)},
 		},
-		DisplayName: ptr.String(tx.UniformResourceName),
-		AppID:       ptr.String(clientId),
+		DisplayName: new(tx.UniformResourceName),
+		AppID:       new(clientId),
 	}
 }

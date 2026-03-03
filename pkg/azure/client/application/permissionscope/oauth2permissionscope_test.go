@@ -24,7 +24,7 @@ func TestPermissionScopes_DescribeCreate(t *testing.T) {
 	t.Run("disabled default scope in desired should not actually disable", func(t *testing.T) {
 		desired := make(permissions.Permissions)
 		defaultScope := permissionscope.DefaultScope()
-		defaultScope.IsEnabled = ptr.Bool(false)
+		defaultScope.IsEnabled = new(false)
 		desired.Add(permissions.FromPermissionScope(defaultScope))
 
 		scopes := permissionscope.NewOAuth2PermissionScopes().DescribeCreate(desired).GetResult()
@@ -76,11 +76,11 @@ func TestPermissionScopes_DescribeUpdate(t *testing.T) {
 		id := msgraph.UUID(uuid.New().String())
 		existing = []msgraph.PermissionScope{
 			{
-				Type:                    ptr.String("User"),
-				AdminConsentDescription: ptr.String("Description"),
-				AdminConsentDisplayName: ptr.String("DisplayName"),
+				Type:                    new("User"),
+				AdminConsentDescription: new("Description"),
+				AdminConsentDisplayName: new("DisplayName"),
 				ID:                      &id,
-				IsEnabled:               ptr.Bool(false),
+				IsEnabled:               new(false),
 				Value:                   ptr.String(permissions.DefaultPermissionScopeValue),
 			},
 		}

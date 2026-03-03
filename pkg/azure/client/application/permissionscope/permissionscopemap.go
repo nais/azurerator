@@ -1,7 +1,6 @@
 package permissionscope
 
 import (
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure/permissions"
@@ -67,7 +66,7 @@ func (m Map) ToDisable(desired permissions.Permissions) Map {
 		name := *scope.Value
 		if _, found := desired[name]; !found {
 			disabledScope := scope
-			disabledScope.IsEnabled = ptr.Bool(false)
+			disabledScope.IsEnabled = new(false)
 			toDisable[name] = disabledScope
 		}
 	}

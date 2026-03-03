@@ -3,7 +3,6 @@ package preauthorizedapp
 import (
 	"testing"
 
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
 
@@ -14,7 +13,7 @@ import (
 func TestList_HasResource(t *testing.T) {
 	preAuthApps := List([]msgraph.PreAuthorizedApplication{
 		{
-			AppID: ptr.String("app-1"),
+			AppID: new("app-1"),
 			DelegatedPermissionIDs: []string{
 				permissions.DefaultPermissionScopeId,
 			},

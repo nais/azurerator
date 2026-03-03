@@ -1,7 +1,6 @@
 package optionalclaims
 
 import (
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 )
 
@@ -33,14 +32,14 @@ func defaultClaims() *msgraph.OptionalClaims {
 	return &msgraph.OptionalClaims{
 		AccessToken: []msgraph.OptionalClaim{
 			{
-				Essential: ptr.Bool(true),
-				Name:      ptr.String("idtyp"),
+				Essential: new(true),
+				Name:      new("idtyp"),
 			},
 		},
 		IDToken: []msgraph.OptionalClaim{
 			{
-				Essential: ptr.Bool(true),
-				Name:      ptr.String("sid"),
+				Essential: new(true),
+				Name:      new("sid"),
 			},
 		},
 	}

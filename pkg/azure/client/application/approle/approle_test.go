@@ -19,11 +19,11 @@ func TestNew(t *testing.T) {
 
 	expected := msgraph.AppRole{
 		AllowedMemberTypes: []string{"Application"},
-		Description:        ptr.String(name),
-		DisplayName:        ptr.String(name),
+		Description:        new(name),
+		DisplayName:        new(name),
 		ID:                 &id,
-		IsEnabled:          ptr.Bool(true),
-		Value:              ptr.String(name),
+		IsEnabled:          new(true),
+		Value:              new(name),
 	}
 	actual := approle.New(id, name)
 
@@ -37,11 +37,11 @@ func TestNewGenerateId(t *testing.T) {
 
 	expected := msgraph.AppRole{
 		AllowedMemberTypes: []string{"Application"},
-		Description:        ptr.String(name),
-		DisplayName:        ptr.String(name),
+		Description:        new(name),
+		DisplayName:        new(name),
 		ID:                 id,
-		IsEnabled:          ptr.Bool(true),
-		Value:              ptr.String(name),
+		IsEnabled:          new(true),
+		Value:              new(name),
 	}
 
 	assert.Equal(t, expected, actual)
@@ -54,7 +54,7 @@ func TestDefaultRole(t *testing.T) {
 		Description:        ptr.String(permissions.DefaultAppRoleValue),
 		DisplayName:        ptr.String(permissions.DefaultAppRoleValue),
 		ID:                 &id,
-		IsEnabled:          ptr.Bool(true),
+		IsEnabled:          new(true),
 		Value:              ptr.String(permissions.DefaultAppRoleValue),
 	}
 	actual := approle.DefaultRole()
@@ -69,7 +69,7 @@ func TestDefaultGroupRole(t *testing.T) {
 		Description:        ptr.String(permissions.DefaultGroupRoleValue),
 		DisplayName:        ptr.String(permissions.DefaultGroupRoleValue),
 		ID:                 &id,
-		IsEnabled:          ptr.Bool(true),
+		IsEnabled:          new(true),
 		Value:              ptr.String(permissions.DefaultGroupRoleValue),
 	}
 	actual := approle.DefaultGroupRole()
@@ -79,7 +79,7 @@ func TestDefaultGroupRole(t *testing.T) {
 
 func TestEnsureDefaultAppRoleIsEnabled(t *testing.T) {
 	defaultRole := approle.DefaultRole()
-	defaultRole.IsEnabled = ptr.Bool(false)
+	defaultRole.IsEnabled = new(false)
 
 	roles := []msgraph.AppRole{defaultRole}
 	for _, role := range roles {
@@ -106,7 +106,7 @@ func TestRemoveDisabled(t *testing.T) {
 	enabledRole := approle.NewGenerateId("enabled-role")
 	enabledRole2 := approle.NewGenerateId("enabled-role-2")
 	disabledRole := approle.NewGenerateId("disabled-role")
-	disabledRole.IsEnabled = ptr.Bool(false)
+	disabledRole.IsEnabled = new(false)
 
 	roles := []msgraph.AppRole{
 		enabledRole,

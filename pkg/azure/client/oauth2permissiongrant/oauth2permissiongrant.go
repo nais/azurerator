@@ -3,7 +3,6 @@ package oauth2permissiongrant
 import (
 	"fmt"
 
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -59,9 +58,9 @@ func (o oAuth2PermissionGrant) exists(tx transaction.Transaction) (bool, error) 
 // an OIDC login flow.
 func (o oAuth2PermissionGrant) toGrant(servicePrincipalId azure.ServicePrincipalId) *msgraph.OAuth2PermissionGrant {
 	return &msgraph.OAuth2PermissionGrant{
-		ClientID:    ptr.String(servicePrincipalId),
-		ConsentType: ptr.String("AllPrincipals"),
-		ResourceID:  ptr.String(o.Config().PermissionGrantResourceId),
-		Scope:       ptr.String("openid User.Read GroupMember.Read.All"),
+		ClientID:    new(servicePrincipalId),
+		ConsentType: new("AllPrincipals"),
+		ResourceID:  new(o.Config().PermissionGrantResourceId),
+		Scope:       new("openid User.Read GroupMember.Read.All"),
 	}
 }

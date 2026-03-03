@@ -2,11 +2,11 @@ package passwordcredential
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -187,7 +187,7 @@ func (p passwordCredential) toAddRequest(tx transaction.Transaction) *msgraph.Ap
 			StartDateTime: &startDateTime,
 			EndDateTime:   &endDateTime,
 			KeyID:         &keyId,
-			DisplayName:   ptr.String(util.DisplayName(time.Now())),
+			DisplayName:   new(util.DisplayName(time.Now())),
 		},
 	}
 }
@@ -248,10 +248,5 @@ func (p passwordCredential) revocationCandidates(tx transaction.Transaction, app
 func hasMatchingKeyID(ids []string, cred msgraph.PasswordCredential) bool {
 	keyId := string(*cred.KeyID)
 
-	for _, idInUse := range ids {
-		if keyId == idInUse {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ids, keyId)
 }

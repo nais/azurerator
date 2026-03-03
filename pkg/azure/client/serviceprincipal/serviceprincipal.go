@@ -7,7 +7,6 @@ import (
 
 	cache "github.com/Code-Hex/go-generics-cache"
 	"github.com/nais/liberator/pkg/strings"
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -93,7 +92,7 @@ func (s servicePrincipal) Register(tx transaction.Transaction) (msgraph.ServiceP
 	clientId := tx.Instance.GetClientId()
 	request := &msgraph.ServicePrincipal{
 		AppID:                     &clientId,
-		AppRoleAssignmentRequired: ptr.Bool(s.Config().Features.AppRoleAssignmentRequired.Enabled),
+		AppRoleAssignmentRequired: new(s.Config().Features.AppRoleAssignmentRequired.Enabled),
 		Tags:                      []string{TagHideApp},
 	}
 	servicePrincipal, err := s.GraphClient().ServicePrincipals().Request().Add(tx.Ctx, request)
@@ -187,7 +186,7 @@ func (s servicePrincipal) setAppRoleAssignment(tx transaction.Transaction, requi
 	}
 
 	request := &msgraph.ServicePrincipal{
-		AppRoleAssignmentRequired: ptr.Bool(required),
+		AppRoleAssignmentRequired: new(required),
 		Tags:                      []string{TagHideApp},
 	}
 

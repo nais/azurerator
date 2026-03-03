@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 	"sync"
@@ -348,9 +349,7 @@ func (r *Reconciler) updateAnnotations(tx transaction.Transaction) error {
 		}
 
 		merged := existing.GetAnnotations()
-		for k, v := range tx.Instance.GetAnnotations() {
-			merged[k] = v
-		}
+		maps.Copy(merged, tx.Instance.GetAnnotations())
 
 		existing.SetAnnotations(merged)
 		return r.Update(tx.Ctx, existing)

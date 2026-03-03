@@ -33,7 +33,7 @@ func TestResource_ToPreAuthorizedApp(t *testing.T) {
 
 	preAuthorizedApp := app.ToPreAuthorizedApp(existingPermissions)
 	expected := msgraph.PreAuthorizedApplication{
-		AppID: ptr.String("app-1"),
+		AppID: new("app-1"),
 		DelegatedPermissionIDs: []string{
 			permissions.DefaultPermissionScopeId,
 			string(existingPermissions["scope-1"].ID),
@@ -56,10 +56,10 @@ func TestResource_ToAppRoleAssignment(t *testing.T) {
 	appRoleAssignment := app.ToAppRoleAssignment(target, permission)
 	expected := msgraph.AppRoleAssignment{
 		AppRoleID:            &permission.ID,
-		PrincipalID:          (*msgraph.UUID)(ptr.String(app.ObjectId)),
-		PrincipalDisplayName: ptr.String("app-1"),
+		PrincipalID:          (*msgraph.UUID)(new(app.ObjectId)),
+		PrincipalDisplayName: new("app-1"),
 		PrincipalType:        ptr.String(string(resource.PrincipalTypeServicePrincipal)),
-		ResourceID:           (*msgraph.UUID)(ptr.String(target)),
+		ResourceID:           (*msgraph.UUID)(new(target)),
 	}
 
 	assert.Equal(t, expected, appRoleAssignment)

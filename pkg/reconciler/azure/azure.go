@@ -6,7 +6,6 @@ import (
 	"time"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	"github.com/nais/msgraph.go/ptr"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
@@ -347,8 +346,8 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction.Tra
 
 	tx.Instance.Status.PreAuthorizedApps = &v1.AzureAdPreAuthorizedAppsStatus{
 		Assigned:        assigned,
-		AssignedCount:   ptr.Int(len(assigned)),
+		AssignedCount:   new(len(assigned)),
 		Unassigned:      unassigned,
-		UnassignedCount: ptr.Int(len(unassigned)),
+		UnassignedCount: new(len(unassigned)),
 	}
 }

@@ -18,12 +18,12 @@ func TestNew(t *testing.T) {
 	id := msgraph.UUID(uuid.New().String())
 
 	expected := msgraph.PermissionScope{
-		AdminConsentDescription: ptr.String(name),
-		AdminConsentDisplayName: ptr.String(name),
+		AdminConsentDescription: new(name),
+		AdminConsentDisplayName: new(name),
 		ID:                      &id,
-		IsEnabled:               ptr.Bool(true),
+		IsEnabled:               new(true),
 		Type:                    ptr.String(permissions.DefaultScopeType),
-		Value:                   ptr.String(name),
+		Value:                   new(name),
 	}
 	actual := permissionscope.New(id, name)
 
@@ -37,12 +37,12 @@ func TestNewGenerateId(t *testing.T) {
 	id := actual.ID
 
 	expected := msgraph.PermissionScope{
-		AdminConsentDescription: ptr.String(name),
-		AdminConsentDisplayName: ptr.String(name),
+		AdminConsentDescription: new(name),
+		AdminConsentDisplayName: new(name),
 		ID:                      id,
-		IsEnabled:               ptr.Bool(true),
+		IsEnabled:               new(true),
 		Type:                    ptr.String(permissions.DefaultScopeType),
-		Value:                   ptr.String(name),
+		Value:                   new(name),
 	}
 
 	assert.Equal(t, expected, actual)
@@ -54,7 +54,7 @@ func TestDefaultScope(t *testing.T) {
 		AdminConsentDescription: ptr.String(permissions.DefaultPermissionScopeValue),
 		AdminConsentDisplayName: ptr.String(permissions.DefaultPermissionScopeValue),
 		ID:                      &id,
-		IsEnabled:               ptr.Bool(true),
+		IsEnabled:               new(true),
 		Type:                    ptr.String(permissions.DefaultScopeType),
 		Value:                   ptr.String(permissions.DefaultPermissionScopeValue),
 	}
@@ -65,9 +65,9 @@ func TestDefaultScope(t *testing.T) {
 
 func TestEnsureScopesRequireAdminConsent(t *testing.T) {
 	scope1 := permissionscope.NewGenerateId("scope-1")
-	scope1.Type = ptr.String("User")
+	scope1.Type = new("User")
 	scope2 := permissionscope.NewGenerateId("scope-2")
-	scope2.Type = ptr.String("User")
+	scope2.Type = new("User")
 
 	scopes := []msgraph.PermissionScope{scope1, scope2}
 	for _, scope := range scopes {
@@ -82,7 +82,7 @@ func TestEnsureScopesRequireAdminConsent(t *testing.T) {
 
 func TestEnsureDefaultAppRoleIsEnabled(t *testing.T) {
 	defaultScope := permissionscope.DefaultScope()
-	defaultScope.IsEnabled = ptr.Bool(false)
+	defaultScope.IsEnabled = new(false)
 
 	scopes := []msgraph.PermissionScope{defaultScope}
 	for _, scope := range scopes {
@@ -97,7 +97,7 @@ func TestEnsureDefaultAppRoleIsEnabled(t *testing.T) {
 
 func TestEnsureDefaultScopeIsEnabled(t *testing.T) {
 	defaultScope := permissionscope.DefaultScope()
-	defaultScope.IsEnabled = ptr.Bool(false)
+	defaultScope.IsEnabled = new(false)
 
 	scopes := []msgraph.PermissionScope{defaultScope}
 	for _, scope := range scopes {
@@ -124,7 +124,7 @@ func TestRemoveDisabled(t *testing.T) {
 	enabledScope := permissionscope.NewGenerateId("enabled-scope")
 	enabledScope2 := permissionscope.NewGenerateId("enabled-scope-2")
 	disabledScope := permissionscope.NewGenerateId("disabled-scope")
-	disabledScope.IsEnabled = ptr.Bool(false)
+	disabledScope.IsEnabled = new(false)
 
 	scopes := []msgraph.PermissionScope{
 		enabledScope,

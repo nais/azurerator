@@ -2,11 +2,11 @@ package keycredential
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -241,19 +241,14 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.Jwk) msgraph.KeyCredential
 	keyBase64 := msgraph.Binary(jwkPair.PublicPem)
 	return msgraph.KeyCredential{
 		KeyID:       &keyId,
-		DisplayName: ptr.String(util.DisplayName(time.Now())),
-		Type:        ptr.String("AsymmetricX509Cert"),
-		Usage:       ptr.String("Verify"),
+		DisplayName: new(util.DisplayName(time.Now())),
+		Type:        new("AsymmetricX509Cert"),
+		Usage:       new("Verify"),
 		Key:         &keyBase64,
 	}
 }
 
 func hasMatchingKeyID(ids []string, cred msgraph.KeyCredential) bool {
 	keyId := string(*cred.KeyID)
-	for _, id := range ids {
-		if keyId == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ids, keyId)
 }

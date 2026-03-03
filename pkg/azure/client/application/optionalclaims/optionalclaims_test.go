@@ -3,7 +3,6 @@ package optionalclaims_test
 import (
 	"testing"
 
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
 
@@ -15,14 +14,14 @@ func TestOptionalClaims_DescribeCreate(t *testing.T) {
 	desired := msgraph.OptionalClaims{
 		AccessToken: []msgraph.OptionalClaim{
 			{
-				Essential: ptr.Bool(true),
-				Name:      ptr.String("idtyp"),
+				Essential: new(true),
+				Name:      new("idtyp"),
 			},
 		},
 		IDToken: []msgraph.OptionalClaim{
 			{
-				Essential: ptr.Bool(true),
-				Name:      ptr.String("sid"),
+				Essential: new(true),
+				Name:      new("sid"),
 			},
 		},
 	}
@@ -43,14 +42,14 @@ func TestOptionalClaims_DescribeUpdate(t *testing.T) {
 			want: msgraph.OptionalClaims{
 				AccessToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(true),
-						Name:      ptr.String("idtyp"),
+						Essential: new(true),
+						Name:      new("idtyp"),
 					},
 				},
 				IDToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(true),
-						Name:      ptr.String("sid"),
+						Essential: new(true),
+						Name:      new("sid"),
 					},
 				},
 			},
@@ -60,36 +59,36 @@ func TestOptionalClaims_DescribeUpdate(t *testing.T) {
 			existing: msgraph.OptionalClaims{
 				AccessToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(true),
-						Name:      ptr.String("upn"),
+						Essential: new(true),
+						Name:      new("upn"),
 					},
 				},
 				IDToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(false),
-						Name:      ptr.String("upn"),
+						Essential: new(false),
+						Name:      new("upn"),
 					},
 				},
 			},
 			want: msgraph.OptionalClaims{
 				AccessToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(true),
-						Name:      ptr.String("upn"),
+						Essential: new(true),
+						Name:      new("upn"),
 					},
 					{
-						Essential: ptr.Bool(true),
-						Name:      ptr.String("idtyp"),
+						Essential: new(true),
+						Name:      new("idtyp"),
 					},
 				},
 				IDToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(false),
-						Name:      ptr.String("upn"),
+						Essential: new(false),
+						Name:      new("upn"),
 					},
 					{
-						Essential: ptr.Bool(true),
-						Name:      ptr.String("sid"),
+						Essential: new(true),
+						Name:      new("sid"),
 					},
 				},
 			},
@@ -99,28 +98,28 @@ func TestOptionalClaims_DescribeUpdate(t *testing.T) {
 			existing: msgraph.OptionalClaims{
 				AccessToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(true),
-						Name:      ptr.String("idtyp"),
+						Essential: new(true),
+						Name:      new("idtyp"),
 					},
 				},
 				IDToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(false),
-						Name:      ptr.String("sid"),
+						Essential: new(false),
+						Name:      new("sid"),
 					},
 				},
 			},
 			want: msgraph.OptionalClaims{
 				AccessToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(true),
-						Name:      ptr.String("idtyp"),
+						Essential: new(true),
+						Name:      new("idtyp"),
 					},
 				},
 				IDToken: []msgraph.OptionalClaim{
 					{
-						Essential: ptr.Bool(true),
-						Name:      ptr.String("sid"),
+						Essential: new(true),
+						Name:      new("sid"),
 					},
 				},
 			},

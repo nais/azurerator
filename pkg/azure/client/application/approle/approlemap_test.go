@@ -3,7 +3,6 @@ package approle_test
 import (
 	"testing"
 
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
 
@@ -123,7 +122,7 @@ func TestMap_ToDisable(t *testing.T) {
 
 	// should contain non-desired roles which should be disabled
 	nonDesired := existing["existing-role-2"]
-	nonDesired.IsEnabled = ptr.Bool(false)
+	nonDesired.IsEnabled = new(false)
 
 	assert.Equal(t, nonDesired, toDisable["existing-role-2"])
 
@@ -135,10 +134,10 @@ func TestMap_Unmodified(t *testing.T) {
 	existing := make(approle.Map)
 	existingRole1 := approle.NewGenerateId("existing-role-1")
 	existingRole1.AllowedMemberTypes = []string{"Application", "User"}
-	existingRole1.Description = ptr.String("non standard description")
-	existingRole1.DisplayName = ptr.String("non standard display name")
-	existingRole1.IsEnabled = ptr.Bool(false)
-	existingRole1.Origin = ptr.String("some origin")
+	existingRole1.Description = new("non standard description")
+	existingRole1.DisplayName = new("non standard display name")
+	existingRole1.IsEnabled = new(false)
+	existingRole1.Origin = new("some origin")
 	existing.Add(existingRole1)
 	existing.Add(approle.NewGenerateId("existing-role-2"))
 

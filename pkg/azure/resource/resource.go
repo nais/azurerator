@@ -2,7 +2,6 @@ package resource
 
 import (
 	naisiov1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure/permissions"
@@ -42,11 +41,11 @@ func (r Resource) ToPreAuthorizedApp(actualPermissions permissions.Permissions) 
 
 func (r Resource) ToAppRoleAssignment(target string, permission permissions.Permission) msgraph.AppRoleAssignment {
 	return msgraph.AppRoleAssignment{
-		AppRoleID:            &permission.ID,                          // The ID of the AppRole belonging to the target resource to be assigned
-		PrincipalDisplayName: ptr.String(r.Name),                      // Name of the assignee
-		PrincipalID:          (*msgraph.UUID)(ptr.String(r.ObjectId)), // Service Principal ID for the assignee, i.e. the principal that should be assigned to the app role
-		PrincipalType:        ptr.String(string(r.PrincipalType)),     // The Principal type of the assignee, e.g. ServicePrincipal or Group
-		ResourceID:           (*msgraph.UUID)(ptr.String(target)),     // Service Principal ID for the target resource, i.e. the application/service principal that owns the app role
+		AppRoleID:            &permission.ID,                   // The ID of the AppRole belonging to the target resource to be assigned
+		PrincipalDisplayName: new(r.Name),                      // Name of the assignee
+		PrincipalID:          (*msgraph.UUID)(new(r.ObjectId)), // Service Principal ID for the assignee, i.e. the principal that should be assigned to the app role
+		PrincipalType:        new(string(r.PrincipalType)),     // The Principal type of the assignee, e.g. ServicePrincipal or Group
+		ResourceID:           (*msgraph.UUID)(new(target)),     // Service Principal ID for the target resource, i.e. the application/service principal that owns the app role
 	}
 }
 

@@ -20,7 +20,7 @@ func EnsureScopesRequireAdminConsent(scopes []msgraph.PermissionScope) []msgraph
 func EnsureDefaultScopeIsEnabled(scopes []msgraph.PermissionScope) []msgraph.PermissionScope {
 	for i := range scopes {
 		if *scopes[i].Value == permissions.DefaultPermissionScopeValue && !*scopes[i].IsEnabled {
-			scopes[i].IsEnabled = ptr.Bool(true)
+			scopes[i].IsEnabled = new(true)
 		}
 	}
 	return scopes
@@ -33,12 +33,12 @@ func NewGenerateId(name string) msgraph.PermissionScope {
 
 func New(id msgraph.UUID, name string) msgraph.PermissionScope {
 	return msgraph.PermissionScope{
-		AdminConsentDescription: ptr.String(name),
-		AdminConsentDisplayName: ptr.String(name),
+		AdminConsentDescription: new(name),
+		AdminConsentDisplayName: new(name),
 		ID:                      &id,
-		IsEnabled:               ptr.Bool(true),
+		IsEnabled:               new(true),
 		Type:                    ptr.String(permissions.DefaultScopeType),
-		Value:                   ptr.String(name),
+		Value:                   new(name),
 	}
 }
 

@@ -2,7 +2,6 @@ package approle
 
 import (
 	"github.com/google/uuid"
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure/permissions"
@@ -11,11 +10,11 @@ import (
 func New(id msgraph.UUID, name string) msgraph.AppRole {
 	return msgraph.AppRole{
 		AllowedMemberTypes: []string{"Application"},
-		Description:        ptr.String(name),
-		DisplayName:        ptr.String(name),
+		Description:        new(name),
+		DisplayName:        new(name),
 		ID:                 &id,
-		IsEnabled:          ptr.Bool(true),
-		Value:              ptr.String(name),
+		IsEnabled:          new(true),
+		Value:              new(name),
 	}
 }
 
@@ -35,7 +34,7 @@ func DefaultGroupRole() msgraph.AppRole {
 func EnsureDefaultAppRoleIsEnabled(scopes []msgraph.AppRole) []msgraph.AppRole {
 	for i := range scopes {
 		if *scopes[i].Value == permissions.DefaultAppRoleValue && !*scopes[i].IsEnabled {
-			scopes[i].IsEnabled = ptr.Bool(true)
+			scopes[i].IsEnabled = new(true)
 		}
 	}
 	return scopes

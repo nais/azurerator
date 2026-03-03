@@ -3,7 +3,6 @@ package permissionscope_test
 import (
 	"testing"
 
-	"github.com/nais/msgraph.go/ptr"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"github.com/stretchr/testify/assert"
 
@@ -122,7 +121,7 @@ func TestMap_ToDisable(t *testing.T) {
 
 	// should contain non-desired scopes which should be disabled
 	nonDesired := existing["existing-scope-2"]
-	nonDesired.IsEnabled = ptr.Bool(false)
+	nonDesired.IsEnabled = new(false)
 
 	assert.Equal(t, nonDesired, toDisable["existing-scope-2"])
 
@@ -133,13 +132,13 @@ func TestMap_ToDisable(t *testing.T) {
 func TestMap_Unmodified(t *testing.T) {
 	existing := make(permissionscope.Map)
 	existingScope1 := permissionscope.NewGenerateId("existing-scope-1")
-	existingScope1.AdminConsentDescription = ptr.String("non standard description")
-	existingScope1.UserConsentDescription = ptr.String("non standard description")
-	existingScope1.AdminConsentDisplayName = ptr.String("non standard display name")
-	existingScope1.UserConsentDisplayName = ptr.String("non standard display name")
-	existingScope1.IsEnabled = ptr.Bool(false)
-	existingScope1.Origin = ptr.String("some origin")
-	existingScope1.Type = ptr.String("User")
+	existingScope1.AdminConsentDescription = new("non standard description")
+	existingScope1.UserConsentDescription = new("non standard description")
+	existingScope1.AdminConsentDisplayName = new("non standard display name")
+	existingScope1.UserConsentDisplayName = new("non standard display name")
+	existingScope1.IsEnabled = new(false)
+	existingScope1.Origin = new("some origin")
+	existingScope1.Type = new("User")
 	existing.Add(existingScope1)
 	existing.Add(permissionscope.NewGenerateId("existing-scope-2"))
 
