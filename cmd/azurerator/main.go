@@ -131,7 +131,7 @@ func run() error {
 		Scheme:            mgr.GetScheme(),
 		AzureClient:       azureClient,
 		Config:            cfg,
-		Recorder:          mgr.GetEventRecorderFor("azurerator"),
+		Recorder:          mgr.GetEventRecorder("azurerator"),
 		AzureOpenIDConfig: *azureOpenIDConfig,
 		KafkaProducer:     kafkaProducer,
 		Synchronizer:      syncer,

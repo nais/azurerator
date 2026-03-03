@@ -672,7 +672,7 @@ func setup() (*envtest.Environment, error) {
 		Reader:            mgr.GetAPIReader(),
 		Scheme:            mgr.GetScheme(),
 		AzureClient:       azureClient,
-		Recorder:          mgr.GetEventRecorderFor("azurerator"),
+		Recorder:          mgr.GetEventRecorder("azurerator"),
 		Config:            azureratorCfg,
 		AzureOpenIDConfig: azureOpenIDConfig,
 		Synchronizer:      synchronizer.New(azureratorCfg.ClusterName, mgr.GetClient(), mgr.GetAPIReader()),

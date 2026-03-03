@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/credentials"
@@ -29,7 +29,7 @@ type azureReconciler struct {
 	azureClient   azure.Client
 	config        config.Config
 	kafkaProducer *kafka.Producer
-	recorder      record.EventRecorder
+	recorder      events.EventRecorder
 	synchronizer  *synchronizer.Synchronizer
 }
 
@@ -37,7 +37,7 @@ func NewAzureReconciler(
 	reconciler reconciler.AzureAdApplication,
 	azureClient azure.Client,
 	config config.Config,
-	recorder record.EventRecorder,
+	recorder events.EventRecorder,
 	kafkaProducer *kafka.Producer,
 	synchronizer *synchronizer.Synchronizer,
 ) reconciler.Azure {
@@ -320,7 +320,7 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction.Tra
 	for _, app := range preAuthApps.Valid {
 		message := fmt.Sprintf("assigned '%s'", app.Name)
 		tx.Logger.WithField("event_type", "access_policy_assigned").Debug(message)
-		a.recorder.Event(tx.Instance, corev1.EventTypeNormal, "AccessPolicyAssigned", message)
+		a.recorder.Eventf(tx.Instance, nil, corev1.EventTypeNormal, "AccessPolicyAssigned", "AccessPolicyAssigned", message)
 
 		rule := app.AccessPolicyRule
 		assigned = append(assigned, v1.AzureAdPreAuthorizedApp{
@@ -333,7 +333,7 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction.Tra
 	for _, app := range preAuthApps.Invalid {
 		message := fmt.Sprintf("skipped '%s'; not found in tenant (%s)", app.Name, a.config.Azure.Tenant.String())
 		tx.Logger.WithField("event_type", "access_policy_skipped").Warn(message)
-		a.recorder.Event(tx.Instance, corev1.EventTypeNormal, "AccessPolicySkipped", message)
+		a.recorder.Eventf(tx.Instance, nil, corev1.EventTypeNormal, "AccessPolicySkipped", "AccessPolicySkipped", message)
 
 		rule := app.AccessPolicyRule
 		unassigned = append(unassigned, v1.AzureAdPreAuthorizedApp{

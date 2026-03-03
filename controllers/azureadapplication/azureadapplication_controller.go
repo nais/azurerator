@@ -19,7 +19,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	kevents "k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,7 +57,7 @@ type Reconciler struct {
 	Reader            client.Reader
 	Scheme            *runtime.Scheme
 	AzureClient       azure.Client
-	Recorder          record.EventRecorder
+	Recorder          kevents.EventRecorder
 	Config            *config.Config
 	AzureOpenIDConfig config.AzureOpenIdConfig
 	KafkaProducer     *kafka.Producer
@@ -321,7 +321,7 @@ func (r *Reconciler) UpdateApplication(ctx context.Context, app *v1.AzureAdAppli
 
 func (r *Reconciler) ReportEvent(tx transaction.Transaction, eventType, event, message string) {
 	tx.Instance.Status.SynchronizationState = event
-	r.Recorder.Event(tx.Instance, eventType, event, message)
+	r.Recorder.Eventf(tx.Instance, nil, eventType, event, event, message)
 }
 
 func (r *Reconciler) Azure() reconciler.Azure {
