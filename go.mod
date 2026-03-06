@@ -1,6 +1,6 @@
 module github.com/nais/azureator
 
-go 1.26.0
+go 1.26.1
 
 tool (
 	github.com/sethvargo/ratchet
