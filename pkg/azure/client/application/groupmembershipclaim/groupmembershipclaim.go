@@ -24,14 +24,14 @@ const (
 	None GroupMembershipClaim = "None"
 )
 
-func FromAzureAdApplication(app *naisiov1.AzureAdApplication) (GroupMembershipClaim, error) {
+func FromSpec(app *naisiov1.AzureAdApplication) (GroupMembershipClaim, error) {
 	if app.Spec.GroupMembershipClaims == nil {
 		return "", nil
 	}
 	return Normalize(*app.Spec.GroupMembershipClaims)
 }
 
-func FromAzureAdApplicationOrDefault(app *naisiov1.AzureAdApplication, defaultValue GroupMembershipClaim) (GroupMembershipClaim, error) {
+func FromSpecOrDefault(app *naisiov1.AzureAdApplication, defaultValue GroupMembershipClaim) (GroupMembershipClaim, error) {
 	claims := defaultValue
 	if app.Spec.GroupMembershipClaims != nil {
 		claims = *app.Spec.GroupMembershipClaims

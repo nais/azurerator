@@ -114,7 +114,7 @@ func (a application) Register(tx transaction.Transaction) (*msgraph.Application,
 
 	optionalClaims := a.OptionalClaims().DescribeCreate()
 
-	groupMembershipClaims, err := groupmembershipclaim.FromAzureAdApplicationOrDefault(tx.Instance, a.Config().Features.GroupMembershipClaim.Default)
+	groupMembershipClaims, err := groupmembershipclaim.FromSpecOrDefault(tx.Instance, a.Config().Features.GroupMembershipClaim.Default)
 	if err != nil {
 		return nil, err
 	}
@@ -163,12 +163,23 @@ func (a application) Update(tx transaction.Transaction) (*msgraph.Application, e
 		OptionalClaims(optionalClaims).
 		PermissionScopes(scopes.GetResult())
 
-	groupMembershipClaims, err := groupmembershipclaim.FromAzureAdApplication(tx.Instance)
-	if err != nil {
-		return nil, err
-	}
-	if groupMembershipClaims != "" {
+	if actualApp.GroupMembershipClaims == nil {
+		// Ensure that GroupMembershipClaims is always set
+		groupMembershipClaims, err := groupmembershipclaim.FromSpecOrDefault(tx.Instance, a.Config().Features.GroupMembershipClaim.Default)
+		if err != nil {
+			return nil, err
+		}
+
 		builder.GroupMembershipClaims(groupMembershipClaims)
+	} else {
+		// Already set, only override if specified in spec
+		groupMembershipClaims, err := groupmembershipclaim.FromSpec(tx.Instance)
+		if err != nil {
+			return nil, err
+		}
+		if groupMembershipClaims != "" {
+			builder.GroupMembershipClaims(groupMembershipClaims)
+		}
 	}
 
 	app := builder.Build()
