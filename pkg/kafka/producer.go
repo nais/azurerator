@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"crypto/tls"
-	"fmt"
 	"os"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/event"
 )
 
 type Producer struct {
@@ -39,12 +37,7 @@ func NewProducer(config config.Config, tlsConfig *tls.Config, logger *log.Logger
 	}, nil
 }
 
-func (p *Producer) Send(e event.Event) (int64, error) {
-	message, err := e.Marshal()
-	if err != nil {
-		return -1, fmt.Errorf("marshalling event: %w", err)
-	}
-
+func (p *Producer) Send(message []byte) (int64, error) {
 	producerMessage := &sarama.ProducerMessage{
 		Topic:     p.topic,
 		Value:     sarama.ByteEncoder(message),

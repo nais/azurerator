@@ -1,4 +1,4 @@
-package event
+package synchronizer
 
 import (
 	"encoding/json"
@@ -17,26 +17,37 @@ type Name string
 
 const (
 	Created Name = "Created"
+	Updated Name = "Updated"
 )
 
 type Application struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
 	Cluster   string `json:"cluster"`
+	ClientID  string `json:"clientId"`
 }
 
 func (a Application) String() string {
 	return fmt.Sprintf("%s:%s:%s", a.Cluster, a.Namespace, a.Name)
 }
 
-func New(ID string, eventName Name, app metav1.Object, clusterName string) Event {
+func NewEvent(ID string, eventName Name, app metav1.Object, clusterName, clientID string) Event {
 	application := Application{
 		Name:      app.GetName(),
 		Namespace: app.GetNamespace(),
 		Cluster:   clusterName,
+		ClientID:  clientID,
 	}
 
 	return Event{ID: ID, Name: eventName, Application: application}
+}
+
+func NewCreatedEvent(ID string, app metav1.Object, clusterName, clientID string) Event {
+	return NewEvent(ID, Created, app, clusterName, clientID)
+}
+
+func NewUpdatedEvent(ID string, app metav1.Object, clusterName, clientID string) Event {
+	return NewEvent(ID, Updated, app, clusterName, clientID)
 }
 
 func (e Event) Marshal() ([]byte, error) {
@@ -45,6 +56,10 @@ func (e Event) Marshal() ([]byte, error) {
 
 func (e Event) IsCreated() bool {
 	return e.Name == Created
+}
+
+func (e Event) IsUpdated() bool {
+	return e.Name == Updated
 }
 
 func (e Event) String() string {

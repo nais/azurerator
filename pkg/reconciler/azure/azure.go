@@ -15,7 +15,6 @@ import (
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/event"
 	"github.com/nais/azureator/pkg/kafka"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/reconciler"
@@ -123,11 +122,16 @@ func (a azureReconciler) notModified(tx transaction.Transaction) (*result.Applic
 }
 
 func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result.Application) {
-	if !result.IsCreated() {
+	var e synchronizer.Event
+	switch {
+	case result.IsCreated():
+		e = synchronizer.NewCreatedEvent(tx.ID, tx.Instance, tx.ClusterName, result.ClientId)
+	case result.IsUpdated():
+		e = synchronizer.NewUpdatedEvent(tx.ID, tx.Instance, tx.ClusterName, result.ClientId)
+	default:
 		return
 	}
 
-	e := event.New(tx.ID, event.Created, tx.Instance, tx.ClusterName)
 	g, ctx := errgroup.WithContext(context.Background())
 	g.Go(func() error {
 		retryable := func(ctx context.Context) error {
@@ -150,8 +154,12 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 		if !a.config.Kafka.Enabled {
 			return nil
 		}
+		message, err := e.Marshal()
+		if err != nil {
+			return fmt.Errorf("marshalling event: %w", err)
+		}
 		retryable := func(ctx context.Context) error {
-			_, err := a.kafkaProducer.Send(e)
+			_, err := a.kafkaProducer.Send(message)
 			if err != nil {
 				tx.Logger.Warnf("producing kafka event: %+v; retrying...", err)
 				return retry.RetryableError(err)
@@ -159,7 +167,7 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 
 			return nil
 		}
-		err := retry.Fibonacci(1*time.Second).
+		err = retry.Fibonacci(1*time.Second).
 			WithMaxDuration(5*time.Minute).
 			Do(ctx, retryable)
 		if err != nil {

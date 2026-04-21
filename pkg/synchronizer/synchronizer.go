@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	"github.com/IBM/sarama"
+	nais_io "github.com/nais/liberator/pkg/apis/nais.io"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/nais/azureator/pkg/annotations"
-	"github.com/nais/azureator/pkg/event"
 	"github.com/nais/azureator/pkg/kafka"
 )
 
@@ -37,7 +37,7 @@ func (s Synchronizer) Kafka() kafka.Callback {
 	return func(msg *sarama.ConsumerMessage, logger *log.Entry) (bool, error) {
 		logger.Debugf("incoming message from Kafka")
 
-		e := &event.Event{}
+		e := &Event{}
 		if err := json.Unmarshal(msg.Value, &e); err != nil {
 			return false, fmt.Errorf("unmarshalling message to event; ignoring: %w", err)
 		}
@@ -64,12 +64,12 @@ func (s Synchronizer) Kafka() kafka.Callback {
 	}
 }
 
-func (s Synchronizer) Local(ctx context.Context, e event.Event, logger *log.Entry) error {
+func (s Synchronizer) Local(ctx context.Context, e Event, logger *log.Entry) error {
 	return s.process(ctx, e, logger)
 }
 
-func (s Synchronizer) process(ctx context.Context, e event.Event, logger *log.Entry) error {
-	if !e.IsCreated() {
+func (s Synchronizer) process(ctx context.Context, e Event, logger *log.Entry) error {
+	if !e.IsCreated() && !e.IsUpdated() {
 		logger.Debugf("ignoring event '%s'", e)
 		return nil
 	}
@@ -84,7 +84,7 @@ func (s Synchronizer) process(ctx context.Context, e event.Event, logger *log.En
 
 	candidateCount := 0
 	for _, app := range apps.Items {
-		if hasMatchingPreAuthorizedApp(app, s.clusterName, e) {
+		if needsResync(app, s.clusterName, e) {
 			candidateID := kubernetes.UniformResourceName(&app, s.clusterName)
 			candidateCount += 1
 
@@ -104,7 +104,7 @@ func (s Synchronizer) process(ctx context.Context, e event.Event, logger *log.En
 	return nil
 }
 
-func (s Synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, e event.Event) error {
+func (s Synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, e Event) error {
 	existing := &v1.AzureAdApplication{}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
 
@@ -113,7 +113,7 @@ func (s Synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, e e
 	}
 
 	annotations.AddToAnnotation(existing, annotations.ResynchronizeKey, e.Application.String())
-	annotations.AddToAnnotation(existing, v1.DeploymentCorrelationIDAnnotation, e.ID)
+	annotations.AddToAnnotation(existing, nais_io.DeploymentCorrelationIDAnnotation, e.ID)
 
 	if err := s.client.Update(ctx, existing); err != nil {
 		return fmt.Errorf("setting resync annotation: %w", err)
@@ -122,22 +122,39 @@ func (s Synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, e e
 	return nil
 }
 
-func hasMatchingPreAuthorizedApp(in v1.AzureAdApplication, clusterName string, e event.Event) bool {
+func needsResync(in v1.AzureAdApplication, clusterName string, e Event) bool {
+	matches := func(rule v1.AccessPolicyRule) bool {
+		return rule.Application == e.Application.Name &&
+			rule.Namespace == e.Application.Namespace &&
+			rule.Cluster == e.Application.Cluster
+	}
+
 	for _, preAuthApp := range in.Spec.PreAuthorizedApplications {
-		if len(preAuthApp.Namespace) == 0 {
-			preAuthApp.Namespace = in.GetNamespace()
+		if len(preAuthApp.AccessPolicyRule.Namespace) == 0 {
+			preAuthApp.AccessPolicyRule.Namespace = in.GetNamespace()
 		}
-		if len(preAuthApp.Cluster) == 0 {
-			preAuthApp.Cluster = clusterName
+		if len(preAuthApp.AccessPolicyRule.Cluster) == 0 {
+			preAuthApp.AccessPolicyRule.Cluster = clusterName
 		}
 
-		nameMatches := preAuthApp.Application == e.Application.Name
-		namespaceMatches := preAuthApp.Namespace == e.Application.Namespace
-		clusterMatches := preAuthApp.Cluster == e.Application.Cluster
-
-		if nameMatches && namespaceMatches && clusterMatches {
-			return true
+		if !matches(preAuthApp.AccessPolicyRule) {
+			continue
 		}
+
+		// Skip resync if the app is already assigned with the current ClientID.
+		// A differing ClientID indicates that the upstream app's identity has changed
+		// (e.g. recreated) and we must resync to pick up the new ClientID.
+		if in.Status.PreAuthorizedApps != nil {
+			for _, assigned := range in.Status.PreAuthorizedApps.Assigned {
+				if assigned.AccessPolicyRule == nil {
+					continue
+				}
+				if matches(*assigned.AccessPolicyRule) && assigned.ClientID == e.Application.ClientID {
+					return false
+				}
+			}
+		}
+		return true
 	}
 
 	return false
