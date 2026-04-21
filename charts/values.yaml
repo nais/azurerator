@@ -80,3 +80,10 @@ networkPolicy:
   enabled: false
   apiServerCIDR:
 webproxy: false
+
+# injected by fasit at deploy-time; stubbed here for `helm lint`
+fasit:
+  tenant:
+    name:
+  env:
+    name:

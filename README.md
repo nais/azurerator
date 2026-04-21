@@ -33,8 +33,8 @@ See [lifecycle](./docs/lifecycle.md) for details.
 
 ### Installation
 
-```shell script
-make install
+```shell
+mise run install
 ```
 
 ### Azure AD Setup
@@ -133,18 +133,28 @@ cluster-name: minikube
 
 ## Development
 
+### Requirements
+
+- [mise](https://mise.jdx.dev/) - tool version manager and task runner
+
+### Getting started
+
 After configuration, assuming you have a Kubernetes cluster running locally (e.g.
 using [minikube](https://github.com/kubernetes/minikube)):
 
-```shell script
+```shell
 ulimit -n 4096  # for controller-gen
-make run # starts the controller
+mise run local # starts the controller
 
 # in another terminal, apply an AzureAdApplication resource
-make sample
+mise run install:sample
 ```
 
-Kubebuilder is required for running the tests. Install with `make setup-envtest`.
+Run tests with:
+
+```shell
+mise run test
+```
 
 ## Verifying the Azurerator image and its contents
 

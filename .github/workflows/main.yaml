@@ -21,15 +21,11 @@ jobs:
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # ratchet:actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
-      - name: Setup Test
-        run: |
-          make setup-envtest
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # ratchet:jdx/mise-action@v4
       - name: Check for vulnerable dependencies and static code
-        run: |
-          make check
+        run: mise run check
       - name: Test Go
-        run: |
-          make test
+        run: mise run test
   build_and_push:
     needs: test
     name: Publish to Google and GitHub registries

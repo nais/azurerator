@@ -1,11 +1,100 @@
+[settings]
+pin = true
+
 [tools]
 go = "1.26.3"
 helm = "3.16.2"
+kubectl = "1.31.0"
 
-[tasks.actions-update]
+[tasks."build"]
+description = "Build the manager binary"
+run = "go build -o bin/manager cmd/azurerator/main.go"
+depends = ['fmt', 'check:vet']
+
+[tasks."local"]
+description = "Run the controller locally from your host"
+run = "go run cmd/azurerator/main.go"
+depends = ['fmt']
+
+[tasks."check"]
+description = "Run all static analysis tools"
+depends = [
+    'fmt',
+    'check:staticcheck',
+    'check:vulncheck',
+    'check:deadcode',
+    'check:vet',
+    'check:helm-lint',
+    'check:actions-lint',
+]
+
+[tasks."check:deadcode"]
+description = "Run deadcode"
+run = "go tool golang.org/x/tools/cmd/deadcode -test ./..."
+
+[tasks."check:staticcheck"]
+description = "Run staticcheck"
+run = "go tool honnef.co/go/tools/cmd/staticcheck ./..."
+
+[tasks."check:vulncheck"]
+description = "Run vulncheck"
+run = "go tool golang.org/x/vuln/cmd/govulncheck ./..."
+
+[tasks."check:vet"]
+description = "Run go vet"
+wait_for = ['fmt']
+run = "go vet ./..."
+
+[tasks."check:helm-lint"]
+description = "Lint helm chart"
+run = "helm lint --strict ./charts"
+
+[tasks."check:actions-lint"]
+description = "Check for unpinned actions"
+run = "go tool ratchet lint .github/workflows/*.yaml"
+
+[tasks."fmt"]
+description = "Format all code"
+depends = ['fmt:go', 'fmt:gofix']
+
+[tasks."fmt:go"]
+description = "Format go code using gofumpt"
+run = "go tool mvdan.cc/gofumpt -w ./"
+
+[tasks."fmt:gofix"]
+description = "Run the Go fix tool (cmd/fix) on all packages and apply suggested fixes"
+run = "go fix ./..."
+
+[tasks."test"]
+description = "Run tests"
+depends = ['fmt']
+env = { ENVTEST_K8S_VERSION = "1.31.0" } # see "envtest:versions" task for available versions
+run = 'KUBEBUILDER_ASSETS="$(pwd)/$(go tool setup-envtest use $ENVTEST_K8S_VERSION --bin-dir bin -p path)" go test ./... -coverprofile cover.out -short'
+
+[tasks."envtest:versions"]
+description = "List available Kubernetes versions for envtest"
+run = "go tool setup-envtest list"
+
+[tasks."actions:update"]
 description = "Upgrade all github actions to latest version satisfying their version tag"
 run = "go tool ratchet update .github/workflows/*.yaml"
 
-[tasks.actions-upgrade]
+[tasks."actions:upgrade"]
 description = "Upgrade all github actions to latest"
 run = "go tool ratchet upgrade .github/workflows/*.yaml"
+
+[tasks."install"]
+description = "Install the AzureAdApplication CRD and supporting resources into the cluster"
+depends = ['install:crd', 'install:resources']
+
+[tasks."install:crd"]
+description = "Install the AzureAdApplication CRD into the cluster"
+run = "kubectl apply -f https://raw.githubusercontent.com/nais/liberator/main/config/crd/bases/nais.io_azureadapplications.yaml"
+
+[tasks."install:resources"]
+description = "Apply supporting resources (namespace, service account, RBAC, deployment)"
+run = "kubectl apply -f ./hack/resources/"
+
+[tasks."install:sample"]
+description = "Apply the sample AzureAdApplication resource"
+run = "kubectl apply -f ./config/samples/azureadapplication.yaml"
