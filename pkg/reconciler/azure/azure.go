@@ -132,6 +132,12 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 		return
 	}
 
+	if err := e.Validate(); err != nil {
+		tx.Logger.Warnf("refusing to emit event for %s/%s: %v; skipping",
+			tx.Instance.Namespace, tx.Instance.Name, err)
+		return
+	}
+
 	g, ctx := errgroup.WithContext(context.Background())
 	g.Go(func() error {
 		retryable := func(ctx context.Context) error {

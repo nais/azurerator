@@ -10,6 +10,7 @@ import (
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/nais/azureator/pkg/annotations"
@@ -69,8 +70,15 @@ func (s Synchronizer) Local(ctx context.Context, e Event, logger *log.Entry) err
 }
 
 func (s Synchronizer) process(ctx context.Context, e Event, logger *log.Entry) error {
+	// Delete events are not propagated: producers do not emit them, and consumers
+	// converge their preauth status against spec on their own reconcile loop.
 	if !e.IsCreated() && !e.IsUpdated() {
 		logger.Debugf("ignoring event '%s'", e)
+		return nil
+	}
+
+	if err := e.Validate(); err != nil {
+		logger.Warnf("ignoring event '%s' for '%s': %v", e, e.Application, err)
 		return nil
 	}
 
@@ -105,57 +113,65 @@ func (s Synchronizer) process(ctx context.Context, e Event, logger *log.Entry) e
 }
 
 func (s Synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, e Event) error {
-	existing := &v1.AzureAdApplication{}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
 
-	if err := s.reader.Get(ctx, key, existing); err != nil {
-		return fmt.Errorf("getting newest version from cluster: %s", err)
-	}
+	// Retry on conflict: concurrent events (e.g. Kafka and Local) may race on the same
+	// consumer, and we'd rather retry than silently drop a resync request.
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		existing := &v1.AzureAdApplication{}
+		if err := s.reader.Get(ctx, key, existing); err != nil {
+			return fmt.Errorf("getting newest version from cluster: %s", err)
+		}
 
-	annotations.AddToAnnotation(existing, annotations.ResynchronizeKey, e.Application.String())
-	annotations.AddToAnnotation(existing, nais_io.DeploymentCorrelationIDAnnotation, e.ID)
+		annotations.AddToAnnotation(existing, annotations.ResynchronizeKey, e.Application.String())
+		// Correlation ID is a single value, not a queue: overwrite to avoid unbounded growth
+		// (annotations are capped at 256 KiB by Kubernetes).
+		annotations.SetAnnotation(existing, nais_io.DeploymentCorrelationIDAnnotation, e.ID)
 
-	if err := s.client.Update(ctx, existing); err != nil {
-		return fmt.Errorf("setting resync annotation: %w", err)
-	}
-
-	return nil
+		if err := s.client.Update(ctx, existing); err != nil {
+			return fmt.Errorf("setting resync annotation: %w", err)
+		}
+		return nil
+	})
 }
 
 func needsResync(in v1.AzureAdApplication, clusterName string, e Event) bool {
+	normalize := func(rule v1.AccessPolicyRule) v1.AccessPolicyRule {
+		if len(rule.Namespace) == 0 {
+			rule.Namespace = in.GetNamespace()
+		}
+		if len(rule.Cluster) == 0 {
+			rule.Cluster = clusterName
+		}
+		return rule
+	}
+
 	matches := func(rule v1.AccessPolicyRule) bool {
+		rule = normalize(rule)
 		return rule.Application == e.Application.Name &&
 			rule.Namespace == e.Application.Namespace &&
 			rule.Cluster == e.Application.Cluster
 	}
 
-	for _, preAuthApp := range in.Spec.PreAuthorizedApplications {
-		if len(preAuthApp.AccessPolicyRule.Namespace) == 0 {
-			preAuthApp.AccessPolicyRule.Namespace = in.GetNamespace()
+	alreadyAssignedWithCurrentClientID := func() bool {
+		if e.Application.ClientID == "" || in.Status.PreAuthorizedApps == nil {
+			return false
 		}
-		if len(preAuthApp.AccessPolicyRule.Cluster) == 0 {
-			preAuthApp.AccessPolicyRule.Cluster = clusterName
-		}
-
-		if !matches(preAuthApp.AccessPolicyRule) {
-			continue
-		}
-
-		// Skip resync if the app is already assigned with the current ClientID.
-		// A differing ClientID indicates that the upstream app's identity has changed
-		// (e.g. recreated) and we must resync to pick up the new ClientID.
-		if in.Status.PreAuthorizedApps != nil {
-			for _, assigned := range in.Status.PreAuthorizedApps.Assigned {
-				if assigned.AccessPolicyRule == nil {
-					continue
-				}
-				if matches(*assigned.AccessPolicyRule) && assigned.ClientID == e.Application.ClientID {
-					return false
-				}
+		for _, assigned := range in.Status.PreAuthorizedApps.Assigned {
+			if assigned.AccessPolicyRule == nil {
+				continue
+			}
+			if matches(*assigned.AccessPolicyRule) && assigned.ClientID == e.Application.ClientID {
+				return true
 			}
 		}
-		return true
+		return false
 	}
 
+	for _, preAuthApp := range in.Spec.PreAuthorizedApplications {
+		if matches(preAuthApp.AccessPolicyRule) {
+			return !alreadyAssignedWithCurrentClientID()
+		}
+	}
 	return false
 }

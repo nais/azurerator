@@ -203,6 +203,39 @@ func TestNeedsResync_AssignedStatus(t *testing.T) {
 			event:    newEvent(NewCreatedEvent, "some-client-id"),
 			expected: true,
 		},
+		{
+			// Symmetry: spec rules get cluster/namespace defaulted; status rules must too,
+			// otherwise a same-cluster/same-namespace producer with short-form status would
+			// be treated as not-yet-assigned and trigger needless resyncs.
+			name: "spec rule fully qualified, status rule short-form, same ClientID",
+			app: func() *nais_io_v1.AzureAdApplication {
+				app := fixtures.MinimalApplication()
+				app.Spec.PreAuthorizedApplications = []nais_io_v1.AccessPolicyInboundRule{{AccessPolicyRule: matchingRule}}
+				app.Status.PreAuthorizedApps = &nais_io_v1.AzureAdPreAuthorizedAppsStatus{
+					Assigned: []nais_io_v1.AzureAdPreAuthorizedApp{{
+						AccessPolicyRule: &nais_io_v1.AccessPolicyRule{Application: "some-app"}, // omitted ns + cluster
+						ClientID:         "some-client-id",
+					}},
+				}
+				return app
+			}(),
+			event:    newEvent(NewCreatedEvent, "some-client-id"),
+			expected: false,
+		},
+		{
+			// Empty ClientID on the event must never match an empty ClientID on a status
+			// assignment — that would skip resync on a false equality.
+			name:     "empty ClientID on event, empty ClientID assigned -> resync",
+			app:      withAssigned("", &matchingRule),
+			event:    newEvent(NewUpdatedEvent, ""),
+			expected: true,
+		},
+		{
+			name:     "empty ClientID on event, valid ClientID assigned -> resync",
+			app:      withAssigned("some-client-id", &matchingRule),
+			event:    newEvent(NewUpdatedEvent, ""),
+			expected: true,
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			actual := needsResync(*test.app, clusterName, test.event)

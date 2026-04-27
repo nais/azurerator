@@ -63,6 +63,41 @@ func TestAddToAnnotation(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, "new-value", val)
 	})
+
+	t.Run("dedup: skip append when last entry equals new value", func(t *testing.T) {
+		for _, tt := range []struct {
+			name     string
+			existing string
+			expected string
+		}{
+			{
+				name:     "single existing value equals new value",
+				existing: "new-value",
+				expected: "new-value",
+			},
+			{
+				name:     "last of multiple existing values equals new value",
+				existing: "some-value,new-value",
+				expected: "some-value,new-value",
+			},
+			{
+				name:     "earlier (not last) value equals new value -> still appends",
+				existing: "new-value,some-value",
+				expected: "new-value,some-value,new-value",
+			},
+		} {
+			t.Run(tt.name, func(t *testing.T) {
+				app := fixtures.MinimalApplication()
+				annotations.SetAnnotation(app, "some-key", tt.existing)
+
+				annotations.AddToAnnotation(app, "some-key", newValue)
+
+				val, ok := annotations.HasAnnotation(app, "some-key")
+				assert.True(t, ok)
+				assert.Equal(t, tt.expected, val)
+			})
+		}
+	})
 }
 
 func TestHasAnnotation(t *testing.T) {

@@ -24,6 +24,8 @@ func SetAnnotation(resource client.Object, key, value string) {
 
 // AddToAnnotation appends the value to the existing list of values for the given key, separated by commas.
 // If there are no existing values, value itself is used.
+// If the last existing value equals the new value, the annotation is left unchanged
+// (avoids redundant duplicates from rapid repeated events).
 func AddToAnnotation(resource client.Object, key, value string) {
 	a := resource.GetAnnotations()
 	if a == nil {
@@ -32,13 +34,26 @@ func AddToAnnotation(resource client.Object, key, value string) {
 	}
 
 	existingValue, ok := a[key]
-	if ok {
-		a[key] = strings.Join([]string{existingValue, value}, ",")
-	} else {
+	if !ok {
 		a[key] = value
+		resource.SetAnnotations(a)
+		return
 	}
 
+	if lastEntry(existingValue) == value {
+		return
+	}
+
+	a[key] = strings.Join([]string{existingValue, value}, ",")
 	resource.SetAnnotations(a)
+}
+
+// lastEntry returns the last comma-separated segment of s.
+func lastEntry(s string) string {
+	if i := strings.LastIndex(s, ","); i >= 0 {
+		return s[i+1:]
+	}
+	return s
 }
 
 func HasAnnotation(resource client.Object, key string) (string, bool) {

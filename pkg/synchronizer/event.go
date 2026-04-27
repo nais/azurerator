@@ -42,6 +42,29 @@ func NewEvent(ID string, eventName Name, app metav1.Object, clusterName, clientI
 	return Event{ID: ID, Name: eventName, Application: application}
 }
 
+// Validate reports whether the event has the minimum data needed for consumers to act on it.
+// An empty ClientID is invalid because consumers rely on it to detect upstream identity changes.
+// Returns nil if the event is valid, or an error describing the missing field(s).
+func (e Event) Validate() error {
+	var missing []string
+	if e.Application.Name == "" {
+		missing = append(missing, "name")
+	}
+	if e.Application.Namespace == "" {
+		missing = append(missing, "namespace")
+	}
+	if e.Application.Cluster == "" {
+		missing = append(missing, "cluster")
+	}
+	if e.Application.ClientID == "" {
+		missing = append(missing, "clientID")
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	return fmt.Errorf("invalid event: missing field(s): %v", missing)
+}
+
 func NewCreatedEvent(ID string, app metav1.Object, clusterName, clientID string) Event {
 	return NewEvent(ID, Created, app, clusterName, clientID)
 }
