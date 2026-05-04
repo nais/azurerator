@@ -15,6 +15,18 @@ import (
 
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/kafka"
+	"github.com/nais/azureator/pkg/metrics"
+)
+
+const (
+	sourceLocal = "local"
+	sourceKafka = "kafka"
+
+	resultProcessed    = "processed"
+	resultIgnored      = "ignored"
+	resultInvalid      = "invalid"
+	resultCrossCluster = "cross_cluster"
+	resultUnmarshal    = "unmarshal_error"
 )
 
 // Synchronizer ensures that the Azure AD applications are resynchronized on relevant events,
@@ -40,6 +52,7 @@ func (s Synchronizer) Kafka() kafka.Callback {
 
 		e := &Event{}
 		if err := json.Unmarshal(msg.Value, &e); err != nil {
+			metrics.ResyncEventsTotal.WithLabelValues(sourceKafka, "", resultUnmarshal).Inc()
 			return false, fmt.Errorf("unmarshalling message to event; ignoring: %w", err)
 		}
 
@@ -53,11 +66,12 @@ func (s Synchronizer) Kafka() kafka.Callback {
 
 		if e.Application.Cluster == s.clusterName {
 			// events targeting this cluster is handled by [Synchronizer.Local]
+			metrics.ResyncEventsTotal.WithLabelValues(sourceKafka, string(e.Name), resultCrossCluster).Inc()
 			logger.Debugf("ignoring kafka event in same cluster '%s'", s.clusterName)
 			return false, nil
 		}
 
-		if err := s.process(context.Background(), *e, logger); err != nil {
+		if err := s.process(context.Background(), sourceKafka, *e, logger); err != nil {
 			return true, fmt.Errorf("processing event: %w", err)
 		}
 
@@ -66,22 +80,25 @@ func (s Synchronizer) Kafka() kafka.Callback {
 }
 
 func (s Synchronizer) Local(ctx context.Context, e Event, logger *log.Entry) error {
-	return s.process(ctx, e, logger)
+	return s.process(ctx, sourceLocal, e, logger)
 }
 
-func (s Synchronizer) process(ctx context.Context, e Event, logger *log.Entry) error {
+func (s Synchronizer) process(ctx context.Context, source string, e Event, logger *log.Entry) error {
 	// Delete events are not propagated: producers do not emit them, and consumers
 	// converge their preauth status against spec on their own reconcile loop.
 	if !e.IsCreated() && !e.IsUpdated() {
+		metrics.ResyncEventsTotal.WithLabelValues(source, string(e.Name), resultIgnored).Inc()
 		logger.Debugf("ignoring event '%s'", e)
 		return nil
 	}
 
 	if err := e.Validate(); err != nil {
+		metrics.ResyncEventsTotal.WithLabelValues(source, string(e.Name), resultInvalid).Inc()
 		logger.Warnf("ignoring event '%s' for '%s': %v", e, e.Application, err)
 		return nil
 	}
 
+	metrics.ResyncEventsTotal.WithLabelValues(source, string(e.Name), resultProcessed).Inc()
 	logger.Infof("processing event '%s' for '%s'...", e, e.Application)
 
 	var apps v1.AzureAdApplicationList
@@ -94,15 +111,20 @@ func (s Synchronizer) process(ctx context.Context, e Event, logger *log.Entry) e
 	for _, app := range apps.Items {
 		if needsResync(app, s.clusterName, e) {
 			candidateID := kubernetes.UniformResourceName(&app, s.clusterName)
-			candidateCount += 1
 
 			if err := s.resync(ctx, app, e); err != nil {
+				metrics.ResyncFailedTotal.WithLabelValues(app.Namespace, string(e.Name)).Inc()
 				return fmt.Errorf("resyncing %s: %w", candidateID, err)
 			}
+
+			metrics.ResyncCandidatesTotal.WithLabelValues(app.Namespace, string(e.Name)).Inc()
+			candidateCount += 1
 
 			logger.Infof("marked '%s' for resync", candidateID)
 		}
 	}
+
+	metrics.ResyncFanout.WithLabelValues(string(e.Name)).Observe(float64(candidateCount))
 
 	if candidateCount > 0 {
 		logger.Infof("found and marked %d candidates for resync", candidateCount)

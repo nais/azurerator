@@ -36,7 +36,14 @@ var (
 			Name: "azureadapp_orphaned_total",
 			Help: "Number of orphaned azuread apps (exists in Azure AD without matching k8s resource)",
 		},
-		[]string{labelNamespace},
+		[]string{labelNamespace, "tenant"},
+	)
+	AzureAppOrphanedCleanedTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_orphaned_cleaned_total",
+			Help: "Number of orphaned azuread apps successfully deleted from Azure AD.",
+		},
+		[]string{labelNamespace, "tenant"},
 	)
 	AzureAppsCreatedCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -87,12 +94,42 @@ var (
 		},
 		[]string{labelNamespace},
 	)
+	ResyncEventsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_resync_events_total",
+			Help: "Number of resync events received by the synchronizer, by source/event/result.",
+		},
+		[]string{"source", "event", "result"},
+	)
+	ResyncCandidatesTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_resync_candidates_total",
+			Help: "Number of dependent AzureAdApplications marked for resync.",
+		},
+		[]string{labelNamespace, "event"},
+	)
+	ResyncFailedTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "azureadapp_resync_failed_total",
+			Help: "Number of resync attempts that failed to update the dependent AzureAdApplication.",
+		},
+		[]string{labelNamespace, "event"},
+	)
+	ResyncFanout = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "azureadapp_resync_fanout",
+			Help:    "Number of dependent apps marked for resync per inbound event.",
+			Buckets: []float64{0, 1, 2, 5, 10, 25, 50, 100},
+		},
+		[]string{"event"},
+	)
 )
 
 var AllMetrics = []prometheus.Collector{
 	AzureAppsTotal,
 	AzureAppSecretsTotal,
 	AzureAppOrphanedTotal,
+	AzureAppOrphanedCleanedTotal,
 	AzureAppsProcessedCount,
 	AzureAppsFailedProcessingCount,
 	AzureAppsCreatedCount,
@@ -100,6 +137,10 @@ var AllMetrics = []prometheus.Collector{
 	AzureAppsRotatedCount,
 	AzureAppsDeletedCount,
 	AzureAppsSkippedCount,
+	ResyncEventsTotal,
+	ResyncCandidatesTotal,
+	ResyncFailedTotal,
+	ResyncFanout,
 }
 
 var AllCounters = []*prometheus.CounterVec{
@@ -110,6 +151,8 @@ var AllCounters = []*prometheus.CounterVec{
 	AzureAppsRotatedCount,
 	AzureAppsDeletedCount,
 	AzureAppsSkippedCount,
+	ResyncCandidatesTotal,
+	ResyncFailedTotal,
 }
 
 func IncWithNamespaceLabel(metric *prometheus.CounterVec, namespace string) {

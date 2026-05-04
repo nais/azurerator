@@ -315,14 +315,18 @@ func (a azureReconciler) ProcessOrphaned(tx transaction.Transaction) error {
 		return nil
 	}
 
+	tenant := a.config.Azure.Tenant.Name
+	namespace := tx.Instance.GetNamespace()
+
 	tx.Logger.Warnf("orphaned resource '%s' found in tenant %s", tx.UniformResourceName, a.config.Azure.Tenant)
-	metrics.IncWithNamespaceLabel(metrics.AzureAppOrphanedTotal, tx.Instance.GetNamespace())
+	metrics.AzureAppOrphanedTotal.WithLabelValues(namespace, tenant).Inc()
 
 	if tx.Options.Process.Azure.CleanupOrphans {
 		err := a.Delete(tx)
 		if err != nil {
 			return err
 		}
+		metrics.AzureAppOrphanedCleanedTotal.WithLabelValues(namespace, tenant).Inc()
 	}
 	return nil
 }
