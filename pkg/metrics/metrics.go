@@ -143,7 +143,7 @@ var AllMetrics = []prometheus.Collector{
 	ResyncFanout,
 }
 
-var AllCounters = []*prometheus.CounterVec{
+var AllLabeledCounters = []*prometheus.CounterVec{
 	AzureAppsProcessedCount,
 	AzureAppsFailedProcessingCount,
 	AzureAppsCreatedCount,
@@ -151,8 +151,6 @@ var AllCounters = []*prometheus.CounterVec{
 	AzureAppsRotatedCount,
 	AzureAppsDeletedCount,
 	AzureAppsSkippedCount,
-	ResyncCandidatesTotal,
-	ResyncFailedTotal,
 }
 
 func IncWithNamespaceLabel(metric *prometheus.CounterVec, namespace string) {
@@ -193,7 +191,7 @@ func (m metrics) InitWithNamespaceLabels() {
 	}
 
 	for _, n := range ns.Items {
-		for _, c := range AllCounters {
+		for _, c := range AllLabeledCounters {
 			c.WithLabelValues(n.Name).Add(0)
 		}
 	}
