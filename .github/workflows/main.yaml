@@ -102,5 +102,5 @@ jobs:
           targets: |
             [
               { "target": { "kind": "tenant", "tenant": "ci-nais" }, "wait": true },
-              { "target": { "kind": "tenant", "tenant": "ldir" } }
+              { "target": { "kind": "tenant", "tenant": "atil" } }
             ]
