@@ -88,7 +88,8 @@ jobs:
       chart_name: ${{ steps.package_chart.outputs.name }}
       chart_version: ${{ steps.package_chart.outputs.version }}
       chart_archive: ${{ steps.package_chart.outputs.archive }}
-  rollout:
+  deploy:
+    name: Deploy
     runs-on: fasit-deploy
     if: github.ref == 'refs/heads/master'
     permissions:
@@ -96,7 +97,12 @@ jobs:
     needs:
       - build_and_push
     steps:
-      - uses: nais/fasit-deploy@8727ed1c7a5a465e837873e6016a9a692a6b874a # ratchet:nais/fasit-deploy@v2
+      - uses: nais/fasit-deploy@58a70a338b16dc646373c91724fc7e7522d085a4 # ratchet:nais/fasit-deploy@v4.0.1
         with:
           chart: oci://${{ env.GOOGLE_REGISTRY }}/nais-io/nais/feature/${{ needs.build_and_push.outputs.chart_name }}
           version: ${{ needs.build_and_push.outputs.chart_version }}
+          targets: |
+            [
+              { "target": { "kind": "tenant", "tenant": "ci-nais" }, "wait": true },
+              { "target": { "kind": "tenant", "tenant": "ldir" } }
+            ]
