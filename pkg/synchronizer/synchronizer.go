@@ -158,6 +158,13 @@ func (s Synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, e E
 }
 
 func needsResync(in v1.AzureAdApplication, clusterName string, e Event) bool {
+	// An application must never resync itself (e.g. when it lists itself in its own preAuthorizedApps).
+	if in.GetName() == e.Application.Name &&
+		in.GetNamespace() == e.Application.Namespace &&
+		clusterName == e.Application.Cluster {
+		return false
+	}
+
 	normalize := func(rule v1.AccessPolicyRule) v1.AccessPolicyRule {
 		if len(rule.Namespace) == 0 {
 			rule.Namespace = in.GetNamespace()

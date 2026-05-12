@@ -115,6 +115,28 @@ func TestNeedsResync(t *testing.T) {
 	}
 }
 
+func TestNeedsResync_SelfReference(t *testing.T) {
+	clusterName := "test-cluster"
+	clientID := "some-client-id"
+
+	// Event comes from the same app as the one being evaluated (test-app in test-namespace)
+	e := NewCreatedEvent("1", &metav1.ObjectMeta{
+		Name:      "test-app",
+		Namespace: "test-namespace",
+	}, clusterName, clientID)
+
+	app := fixtures.MinimalApplication()
+	app.Spec.PreAuthorizedApplications = []nais_io_v1.AccessPolicyInboundRule{{
+		AccessPolicyRule: nais_io_v1.AccessPolicyRule{
+			Application: "test-app",
+			Namespace:   "test-namespace",
+			Cluster:     clusterName,
+		},
+	}}
+
+	assert.False(t, needsResync(*app, clusterName, e), "app should not resync itself")
+}
+
 func TestNeedsResync_AssignedStatus(t *testing.T) {
 	clusterName := "test-cluster"
 	matchingRule := nais_io_v1.AccessPolicyRule{
