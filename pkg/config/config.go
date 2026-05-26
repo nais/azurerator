@@ -100,6 +100,7 @@ type GoogleAuth struct {
 type Controller struct {
 	ContextTimeout          time.Duration `json:"context-timeout"`
 	MaxConcurrentReconciles int           `json:"max-concurrent-reconciles"`
+	SweepInterval           time.Duration `json:"sweep-interval"`
 }
 
 type KafkaConfig struct {
@@ -158,6 +159,7 @@ const (
 
 	ControllerContextTimeout          = "controller.context-timeout"
 	ControllerMaxConcurrentReconciles = "controller.max-concurrent-reconciles"
+	ControllerSweepInterval           = "controller.sweep-interval"
 
 	KafkaEnabled           = "kafka.enabled"
 	KafkaBrokers           = "kafka.brokers"
@@ -225,6 +227,7 @@ func init() {
 
 	flag.Duration(ControllerContextTimeout, 5*time.Minute, "Context timeout for the reconciliation loop in the controller.")
 	flag.Int(ControllerMaxConcurrentReconciles, 10, "Max concurrent reconciles.")
+	flag.Duration(ControllerSweepInterval, 5*time.Minute, "Interval between periodic sweeps for apps with unassigned preAuthorizedApps.")
 
 	flag.Bool(KafkaEnabled, false, "Toggle for enabling Kafka to allow synchronization of events between Azurerator instances.")
 	flag.String(KafkaTopic, "azurerator-events", "Name of the Kafka topic that Azurerator should use.")

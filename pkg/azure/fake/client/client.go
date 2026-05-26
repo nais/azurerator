@@ -1,6 +1,10 @@
 package client
 
 import (
+	"context"
+	"strings"
+
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraphlib "github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -8,6 +12,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/fake"
 	fakemsgraph "github.com/nais/azureator/pkg/azure/fake/msgraph"
 	"github.com/nais/azureator/pkg/azure/result"
+	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/transaction"
 )
 
@@ -84,6 +89,16 @@ func (a fakeAzureCredentialsClient) Validate(tx transaction.Transaction, existin
 func (a fakeAzureClient) Update(tx transaction.Transaction) (*result.Application, error) {
 	internalApp := fake.AzureApplicationResult(tx.Instance, result.OperationUpdated)
 	return &internalApp, nil
+}
+
+func (a fakeAzureClient) PreAuthorizedAppCanBeAssigned(_ context.Context, rule v1.AccessPolicyRule) (bool, error) {
+	name := customresources.GetUniqueName(rule)
+	// Names containing "resync" simulate apps that have since appeared in Azure,
+	// even though they were initially unresolvable during preauth resolution.
+	if strings.Contains(name, "resync") {
+		return true, nil
+	}
+	return !strings.Contains(name, "invalid"), nil
 }
 
 func NewFakeAzureClient() azure.Client {

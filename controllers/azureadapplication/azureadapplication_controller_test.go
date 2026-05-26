@@ -164,6 +164,49 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotR
 	updateApplication(t, updatedInstance, eventuallyHashUpdated(updatedInstance))
 }
 
+func TestReconciler_PeriodicResync_UnassignedPreAuthorizedApps(t *testing.T) {
+	instance := assertApplicationExists(t, az.ApplicationExists)
+
+	// Add a preAuthorizedApp with "invalid" (fake treats it as unresolvable) and "resync"
+	// (fake's PreAuthorizedAppCanBeAssigned returns true, simulating the app appeared in Azure later).
+	previousPreAuthorizedApps := instance.Spec.PreAuthorizedApplications
+	invalidPreAuthorizedApp := v1.AccessPolicyInboundRule{AccessPolicyRule: v1.AccessPolicyRule{
+		Application: "invalid-periodic-resync-app",
+		Namespace:   "some-namespace",
+		Cluster:     "some-cluster",
+	}}
+	instance.Spec.PreAuthorizedApplications = append(previousPreAuthorizedApps, invalidPreAuthorizedApp)
+
+	// Wait for the initial sync to complete (hash changes due to spec change)
+	updatedInstance := updateApplication(t, instance, eventuallyHashUpdated(instance))
+	assert.NotEmpty(t, updatedInstance.Status.PreAuthorizedApps)
+	assert.NotEmpty(t, updatedInstance.Status.PreAuthorizedApps.Unassigned, "should have unassigned preAuthorizedApps")
+
+	previousSyncTime := updatedInstance.Status.SynchronizationTime
+
+	// The sweep goroutine (running with SweepInterval=3s) will detect the unassigned
+	// preAuthorizedApp, verify it can be assigned (fake returns true for
+	// names containing "resync"), and write the resync annotation — triggering reconcile.
+	key := client.ObjectKey{Name: updatedInstance.GetName(), Namespace: updatedInstance.GetNamespace()}
+	resyncedInstance := &v1.AzureAdApplication{}
+	assert.Eventually(t, func() bool {
+		err := cli.Get(context.Background(), key, resyncedInstance)
+		assert.NoError(t, err)
+		return resyncedInstance.Status.SynchronizationTime.After(previousSyncTime.Time) &&
+			resyncedInstance.Status.SynchronizationState == events.Synchronized
+	}, timeout, interval, "sweep-triggered resync should update SynchronizationTime")
+
+	assert.Equal(t, resyncedInstance.Status.SynchronizationHash, updatedInstance.Status.SynchronizationHash,
+		"Hash should be unchanged — this was a periodic resync, not a spec change")
+	assert.NotContains(t, resyncedInstance.Annotations, annotations.ResynchronizeKey)
+	assert.NotEmpty(t, resyncedInstance.Status.PreAuthorizedApps)
+	assert.NotEmpty(t, resyncedInstance.Status.PreAuthorizedApps.Unassigned, "should have unassigned preAuthorizedApps")
+
+	// Clean up: reset preAuthorizedApplications
+	resyncedInstance.Spec.PreAuthorizedApplications = previousPreAuthorizedApps
+	updateApplication(t, resyncedInstance, eventuallyHashUpdated(resyncedInstance))
+}
+
 func TestReconciler_UpdateAzureAdApplication_ResyncAnnotation_ShouldResyncAndNotModifySecrets(t *testing.T) {
 	instance := assertApplicationExists(t, az.ApplicationExists)
 
@@ -664,8 +707,10 @@ func setup() (*envtest.Environment, error) {
 	azureratorCfg.SecretRotation.MaxAge = maxSecretAge
 	azureratorCfg.Azure.Tenant.Id = "some-id"
 	azureratorCfg.ClusterName = "test-cluster"
+	azureratorCfg.Controller.SweepInterval = 3 * time.Second
 
 	azureOpenIDConfig := fake.AzureOpenIdConfig()
+	syncer := synchronizer.New(azureratorCfg.ClusterName, mgr.GetClient(), mgr.GetAPIReader())
 
 	err = (&controller.Reconciler{
 		Client:            cli,
@@ -675,9 +720,19 @@ func setup() (*envtest.Environment, error) {
 		Recorder:          mgr.GetEventRecorder("azurerator"),
 		Config:            azureratorCfg,
 		AzureOpenIDConfig: azureOpenIDConfig,
-		Synchronizer:      synchronizer.New(azureratorCfg.ClusterName, mgr.GetClient(), mgr.GetAPIReader()),
+		Synchronizer:      syncer,
 	}).SetupWithManager(mgr)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := mgr.Add(synchronizer.NewSweeper(
+		azureratorCfg.ClusterName,
+		mgr.GetClient(),
+		mgr.GetAPIReader(),
+		azureClient,
+		azureratorCfg.Controller.SweepInterval,
+	)); err != nil {
 		return nil, err
 	}
 

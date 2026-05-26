@@ -68,9 +68,6 @@ func run() error {
 		return err
 	}
 
-	leaseDuration := 25 * time.Second
-	renewDeadline := 20 * time.Second
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
@@ -80,8 +77,8 @@ func run() error {
 		LeaderElectionID:           fmt.Sprintf("azurerator.nais.io-%s", cfg.Azure.Tenant.Id),
 		LeaderElectionNamespace:    cfg.LeaderElection.Namespace,
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
-		LeaseDuration:              &leaseDuration,
-		RenewDeadline:              &renewDeadline,
+		LeaseDuration:              new(25 * time.Second),
+		RenewDeadline:              new(20 * time.Second),
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
@@ -144,6 +141,17 @@ func run() error {
 	setupLog.Info("starting metrics refresh goroutine")
 	clusterMetrics := azureMetrics.New(mgr.GetClient())
 	go clusterMetrics.Refresh(ctx)
+
+	setupLog.Info("registering synchronizer periodic sweep runnable")
+	if err := mgr.Add(synchronizer.NewSweeper(
+		cfg.ClusterName,
+		mgr.GetClient(),
+		mgr.GetAPIReader(),
+		azureClient,
+		cfg.Controller.SweepInterval,
+	)); err != nil {
+		return fmt.Errorf("registering synchronizer periodic sweep runnable: %w", err)
+	}
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

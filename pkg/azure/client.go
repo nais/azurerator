@@ -1,6 +1,9 @@
 package azure
 
 import (
+	"context"
+
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/msgraph.go/v1.0"
 
 	"github.com/nais/azureator/pkg/azure/credentials"
@@ -19,6 +22,8 @@ type Client interface {
 
 	GetPreAuthorizedApps(tx transaction.Transaction) (*result.PreAuthorizedApps, error)
 	GetServicePrincipal(tx transaction.Transaction) (msgraph.ServicePrincipal, error)
+
+	PreAuthorizedAppCanBeAssigned(ctx context.Context, rule v1.AccessPolicyRule) (bool, error)
 }
 
 type Credentials interface {

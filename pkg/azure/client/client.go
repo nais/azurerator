@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 	"golang.org/x/oauth2"
 
@@ -18,7 +19,9 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/serviceprincipal"
 	"github.com/nais/azureator/pkg/azure/permissions"
 	"github.com/nais/azureator/pkg/azure/result"
+	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/retry"
 	"github.com/nais/azureator/pkg/transaction"
 )
@@ -198,6 +201,22 @@ func (c Client) GetServicePrincipal(tx transaction.Transaction) (msgraph.Service
 // Azure applications, where the validity indicates whether a desired application is pre-authorized or not.
 func (c Client) GetPreAuthorizedApps(tx transaction.Transaction) (*result.PreAuthorizedApps, error) {
 	return c.PreAuthApps().Get(tx)
+}
+
+// PreAuthorizedAppCanBeAssigned checks whether a pre-authorized app has both an
+// Azure AD application and service principal, and can therefore be assigned.
+func (c Client) PreAuthorizedAppCanBeAssigned(ctx context.Context, rule v1.AccessPolicyRule) (bool, error) {
+	name := customresources.GetUniqueName(rule)
+	app, exists, err := c.Application().ExistsByFilter(ctx, util.FilterByName(name))
+	if err != nil || !exists {
+		return false, err
+	}
+	if app.AppID == nil || len(*app.AppID) == 0 {
+		return false, nil
+	}
+
+	exists, _, err = c.ServicePrincipal().Exists(ctx, *app.AppID)
+	return exists, err
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation

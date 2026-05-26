@@ -3,123 +3,179 @@ package customresources_test
 import (
 	"strconv"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	nais_io_v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 
 	"github.com/nais/azureator/pkg/annotations"
 	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/fixtures"
 )
 
-func TestAzureAdApplication_IsHashChanged(t *testing.T) {
-	t.Run("Application with unchanged spec should be synchronized", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-		actual, err := customresources.IsHashChanged(app)
-		assert.NoError(t, err)
-		assert.False(t, actual)
-	})
-	t.Run("Application with changed spec should not be synchronized", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-		app.Spec.LogoutUrl = "yolo"
-		actual, err := customresources.IsHashChanged(app)
-		assert.NoError(t, err)
-		assert.True(t, actual)
-	})
+func TestIsHashChanged(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*nais_io_v1.AzureAdApplication)
+		want   bool
+	}{
+		{
+			name:   "unchanged spec",
+			mutate: func(_ *nais_io_v1.AzureAdApplication) {},
+			want:   false,
+		},
+		{
+			name: "changed spec",
+			mutate: func(app *nais_io_v1.AzureAdApplication) {
+				app.Spec.LogoutUrl = "yolo"
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := fixtures.MinimalApplication()
+			tt.mutate(app)
+			actual, err := customresources.IsHashChanged(app)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, actual)
+		})
+	}
 }
 
 func TestIsSecretNameChanged(t *testing.T) {
-	t.Run("Application with unchanged secret name", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-		shouldUpdate := customresources.SecretNameChanged(app)
-		assert.False(t, shouldUpdate)
-	})
-
-	t.Run("Application with changed secret name", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-		app.Spec.SecretName = "some-secret"
-		shouldUpdate := customresources.SecretNameChanged(app)
-		assert.True(t, shouldUpdate)
-	})
-
-	t.Run("Application with not set synchronized secret name in status", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-		app.Status.SynchronizationSecretName = ""
-		shouldUpdate := customresources.SecretNameChanged(app)
-		assert.True(t, shouldUpdate)
-	})
+	tests := []struct {
+		name   string
+		mutate func(*nais_io_v1.AzureAdApplication)
+		want   bool
+	}{
+		{
+			name:   "unchanged secret name",
+			mutate: func(_ *nais_io_v1.AzureAdApplication) {},
+			want:   false,
+		},
+		{
+			name: "changed secret name",
+			mutate: func(app *nais_io_v1.AzureAdApplication) {
+				app.Spec.SecretName = "some-secret"
+			},
+			want: true,
+		},
+		{
+			name: "empty synchronized secret name in status",
+			mutate: func(app *nais_io_v1.AzureAdApplication) {
+				app.Status.SynchronizationSecretName = ""
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := fixtures.MinimalApplication()
+			tt.mutate(app)
+			assert.Equal(t, tt.want, customresources.SecretNameChanged(app))
+		})
+	}
 }
 
 func TestHasExpiredSecrets(t *testing.T) {
-	t.Run("not set rotation time should return not expired", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-		app.Status.SynchronizationSecretRotationTime = nil
+	maxAge := 10 * time.Minute
 
-		shouldUpdate := customresources.HasExpiredSecrets(app, time.Minute)
-		assert.False(t, shouldUpdate)
-	})
-
-	t.Run("valid secret should return not expired", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-		shouldUpdate := customresources.HasExpiredSecrets(app, time.Minute)
-
-		assert.False(t, shouldUpdate)
-	})
-
-	t.Run("expired secret should return expired", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-
-		expiredTime := metav1.NewTime(metav1.Now().Add(-1 * time.Minute))
-		app.Status.SynchronizationSecretRotationTime = &expiredTime
-
-		shouldUpdate := customresources.HasExpiredSecrets(app, time.Minute)
-		assert.True(t, shouldUpdate)
-	})
+	tests := []struct {
+		name   string
+		mutate func(*nais_io_v1.AzureAdApplication)
+		sleep  time.Duration
+		want   bool
+	}{
+		{
+			name: "nil rotation time returns false",
+			mutate: func(app *nais_io_v1.AzureAdApplication) {
+				app.Status.SynchronizationSecretRotationTime = nil
+			},
+			want: false,
+		},
+		{
+			name: "just rotated returns false",
+			mutate: func(app *nais_io_v1.AzureAdApplication) {
+				app.Status.SynchronizationSecretRotationTime = new(metav1.NewTime(time.Now()))
+			},
+			want: false,
+		},
+		{
+			name: "before expiry returns false",
+			mutate: func(app *nais_io_v1.AzureAdApplication) {
+				app.Status.SynchronizationSecretRotationTime = new(metav1.NewTime(time.Now()))
+			},
+			sleep: maxAge - 1*time.Second,
+			want:  false,
+		},
+		{
+			name: "at expiry returns true",
+			mutate: func(app *nais_io_v1.AzureAdApplication) {
+				app.Status.SynchronizationSecretRotationTime = new(metav1.NewTime(time.Now()))
+			},
+			sleep: maxAge,
+			want:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				app := fixtures.MinimalApplication()
+				tt.mutate(app)
+				time.Sleep(tt.sleep)
+				assert.Equal(t, tt.want, customresources.HasExpiredSecrets(app, maxAge))
+			})
+		})
+	}
 }
 
-func TestHasResynchronizeAnnotation(t *testing.T) {
-	t.Run("not set annotation should not resynchronize", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-
-		hasAnnotation := customresources.HasResynchronizeAnnotation(app)
-		assert.False(t, hasAnnotation)
-	})
-
-	t.Run("set annotation should synchronize regardless of value", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-		annotations.SetAnnotation(app, annotations.ResynchronizeKey, strconv.FormatBool(false))
-
-		hasAnnotation := customresources.HasResynchronizeAnnotation(app)
-		assert.True(t, hasAnnotation)
-
-		app = fixtures.MinimalApplication()
-		annotations.SetAnnotation(app, annotations.ResynchronizeKey, strconv.FormatBool(true))
-
-		hasAnnotation = customresources.HasResynchronizeAnnotation(app)
-		assert.True(t, hasAnnotation)
-	})
-}
-
-func TestHasRotateAnnotation(t *testing.T) {
-	t.Run("not set annotation should not rotate", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-
-		hasAnnotation := customresources.HasRotateAnnotation(app)
-		assert.False(t, hasAnnotation)
-	})
-
-	t.Run("set annotation should rotate regardless of value", func(t *testing.T) {
-		app := fixtures.MinimalApplication()
-		annotations.SetAnnotation(app, annotations.RotateKey, strconv.FormatBool(false))
-
-		hasAnnotation := customresources.HasRotateAnnotation(app)
-		assert.True(t, hasAnnotation)
-
-		app = fixtures.MinimalApplication()
-		annotations.SetAnnotation(app, annotations.RotateKey, strconv.FormatBool(true))
-
-		hasAnnotation = customresources.HasRotateAnnotation(app)
-		assert.True(t, hasAnnotation)
-	})
+func TestAnnotationChecks(t *testing.T) {
+	checks := []struct {
+		name  string
+		key   string
+		check func(*nais_io_v1.AzureAdApplication) bool
+	}{
+		{"HasResynchronizeAnnotation", annotations.ResynchronizeKey, customresources.HasResynchronizeAnnotation},
+		{"HasRotateAnnotation", annotations.RotateKey, customresources.HasRotateAnnotation},
+	}
+	for _, c := range checks {
+		t.Run(c.name, func(t *testing.T) {
+			tests := []struct {
+				name   string
+				mutate func(*nais_io_v1.AzureAdApplication)
+				want   bool
+			}{
+				{
+					name:   "not set",
+					mutate: func(_ *nais_io_v1.AzureAdApplication) {},
+					want:   false,
+				},
+				{
+					name: "set to false",
+					mutate: func(app *nais_io_v1.AzureAdApplication) {
+						annotations.SetAnnotation(app, c.key, strconv.FormatBool(false))
+					},
+					want: true,
+				},
+				{
+					name: "set to true",
+					mutate: func(app *nais_io_v1.AzureAdApplication) {
+						annotations.SetAnnotation(app, c.key, strconv.FormatBool(true))
+					},
+					want: true,
+				},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					app := fixtures.MinimalApplication()
+					tt.mutate(app)
+					assert.Equal(t, tt.want, c.check(app))
+				})
+			}
+		})
+	}
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	naisio "github.com/nais/liberator/pkg/apis/nais.io"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/events"
 	"github.com/nais/liberator/pkg/kubernetes"
@@ -374,7 +375,7 @@ func (r *Reconciler) updateStatus(tx transaction.Transaction) error {
 }
 
 func (r *Reconciler) getOrGenerateCorrelationId(instance *v1.AzureAdApplication) string {
-	value, found := annotations.HasAnnotation(instance, v1.DeploymentCorrelationIDAnnotation)
+	value, found := annotations.HasAnnotation(instance, naisio.DeploymentCorrelationIDAnnotation)
 	if !found {
 		return uuid.New().String()
 	}

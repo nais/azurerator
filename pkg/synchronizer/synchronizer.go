@@ -39,15 +39,16 @@ type Synchronizer struct {
 
 func New(clusterName string, client client.Client, reader client.Reader) *Synchronizer {
 	return &Synchronizer{
-		clusterName,
-		client,
-		reader,
+		clusterName: clusterName,
+		client:      client,
+		reader:      reader,
 	}
 }
 
 // Kafka processes incoming Kafka messages and triggers resynchronization of Azure AD applications as needed.
 func (s Synchronizer) Kafka() kafka.Callback {
 	return func(msg *sarama.ConsumerMessage, logger *log.Entry) (bool, error) {
+		logger = logger.WithField("subsystem", "synchronizer/kafka")
 		logger.Debugf("incoming message from Kafka")
 
 		e := &Event{}
@@ -71,7 +72,7 @@ func (s Synchronizer) Kafka() kafka.Callback {
 			return false, nil
 		}
 
-		if err := s.process(context.Background(), sourceKafka, *e, logger); err != nil {
+		if err := s.processEvent(context.Background(), sourceKafka, *e, logger); err != nil {
 			return true, fmt.Errorf("processing event: %w", err)
 		}
 
@@ -80,10 +81,11 @@ func (s Synchronizer) Kafka() kafka.Callback {
 }
 
 func (s Synchronizer) Local(ctx context.Context, e Event, logger *log.Entry) error {
-	return s.process(ctx, sourceLocal, e, logger)
+	logger = logger.WithField("subsystem", "synchronizer/local")
+	return s.processEvent(ctx, sourceLocal, e, logger)
 }
 
-func (s Synchronizer) process(ctx context.Context, source string, e Event, logger *log.Entry) error {
+func (s Synchronizer) processEvent(ctx context.Context, source string, e Event, logger *log.Entry) error {
 	// Delete events are not propagated: producers do not emit them, and consumers
 	// converge their preauth status against spec on their own reconcile loop.
 	if !e.IsCreated() && !e.IsUpdated() {
@@ -118,7 +120,7 @@ func (s Synchronizer) process(ctx context.Context, source string, e Event, logge
 			}
 
 			metrics.ResyncCandidatesTotal.WithLabelValues(app.Namespace, string(e.Name)).Inc()
-			candidateCount += 1
+			candidateCount++
 
 			logger.Infof("marked '%s' for resync", candidateID)
 		}
@@ -137,17 +139,13 @@ func (s Synchronizer) process(ctx context.Context, source string, e Event, logge
 func (s Synchronizer) resync(ctx context.Context, app v1.AzureAdApplication, e Event) error {
 	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
 
-	// Retry on conflict: concurrent events (e.g. Kafka and Local) may race on the same
-	// consumer, and we'd rather retry than silently drop a resync request.
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		existing := &v1.AzureAdApplication{}
 		if err := s.reader.Get(ctx, key, existing); err != nil {
-			return fmt.Errorf("getting newest version from cluster: %s", err)
+			return fmt.Errorf("getting newest version from cluster: %w", err)
 		}
 
 		annotations.AddToAnnotation(existing, annotations.ResynchronizeKey, e.Application.String())
-		// Correlation ID is a single value, not a queue: overwrite to avoid unbounded growth
-		// (annotations are capped at 256 KiB by Kubernetes).
 		annotations.SetAnnotation(existing, nais_io.DeploymentCorrelationIDAnnotation, e.ID)
 
 		if err := s.client.Update(ctx, existing); err != nil {
