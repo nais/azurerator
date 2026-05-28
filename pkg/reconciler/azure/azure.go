@@ -350,7 +350,7 @@ func (a azureReconciler) reportPreAuthorizedApplicationStatus(tx transaction.Tra
 
 	for _, app := range preAuthApps.Invalid {
 		message := fmt.Sprintf("skipped '%s'; not found in tenant (%s)", app.Name, a.config.Azure.Tenant.String())
-		tx.Logger.WithField("event_type", "access_policy_skipped").Warn(message)
+		tx.Logger.WithField("event_type", "access_policy_skipped").Info(message)
 		a.recorder.Eventf(tx.Instance, nil, corev1.EventTypeNormal, "AccessPolicySkipped", "AccessPolicySkipped", message)
 
 		rule := app.AccessPolicyRule
