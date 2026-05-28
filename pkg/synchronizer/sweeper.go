@@ -91,6 +91,8 @@ func (s *Sweeper) sweep(ctx context.Context) {
 		}
 
 		candidateID := kubernetes.UniformResourceName(&app, s.clusterName)
+		metrics.ResyncEventsTotal.WithLabelValues(sourceSweep, candidateID, resultProcessed).Inc()
+
 		marked, err := s.resync(ctx, app)
 		if err != nil {
 			metrics.ResyncFailedTotal.WithLabelValues(app.Namespace, sourceSweep).Inc()
