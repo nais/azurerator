@@ -10,9 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/crd"
 	"github.com/nais/liberator/pkg/events"
+	"github.com/nais/liberator/pkg/logrus2logr"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -23,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	controller "github.com/nais/azureator/controllers/azureadapplication"
@@ -662,9 +663,8 @@ func containsOwnerRef(refs []metav1.OwnerReference, owner v1.AzureAdApplication)
 }
 
 func setup() (*envtest.Environment, error) {
-	logger := zap.New(zap.UseDevMode(true))
-	ctrl.SetLogger(logger)
 	log.SetLevel(log.DebugLevel)
+	ctrl.SetLogger(logr.New(&logrus2logr.Logrus2Logr{Logger: log.StandardLogger()}))
 
 	crdPath := crd.YamlDirectory()
 	testEnv := &envtest.Environment{

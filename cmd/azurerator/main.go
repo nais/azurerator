@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"log"
 	"time"
 
-	"github.com/go-logr/zapr"
+	"github.com/IBM/sarama"
+	"github.com/go-logr/logr"
+	"github.com/nais/liberator/pkg/logrus2logr"
 	"github.com/nais/liberator/pkg/tlsutil"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -22,7 +23,6 @@ import (
 	"github.com/nais/azureator/pkg/azure/client"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/kafka"
-	"github.com/nais/azureator/pkg/logger"
 	azureMetrics "github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/synchronizer"
 
@@ -30,14 +30,21 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
-var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
-)
+var scheme = runtime.NewScheme()
 
 func init() {
 	metrics.Registry.MustRegister(azureMetrics.AllMetrics...)
-	logger.SetupLogrus()
+
+	formatter := &log.JSONFormatter{
+		TimestampFormat: time.RFC3339Nano,
+	}
+	log.SetFormatter(formatter)
+	log.SetLevel(log.DebugLevel)
+
+	ctrllog := log.New()
+	ctrllog.Formatter = formatter
+	ctrllog.Level = log.InfoLevel
+	ctrl.SetLogger(logr.New(&logrus2logr.Logrus2Logr{Logger: ctrllog}))
 
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = naisiov1.AddToScheme(scheme)
@@ -49,19 +56,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Run loop errored: %+v", err)
 	}
-
-	setupLog.Info("Manager shutting down")
 }
 
 func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	zapLogger, err := logger.ZapLogger()
-	if err != nil {
-		return err
-	}
-	ctrl.SetLogger(zapr.NewLogger(zapLogger))
+	setupLog := ctrl.Log.WithName("setup")
 
 	cfg, err := config.DefaultConfig()
 	if err != nil {
@@ -101,7 +102,8 @@ func run() error {
 
 	var kafkaProducer *kafka.Producer
 	if cfg.Kafka.Enabled {
-		kafkaLogger := logrus.StandardLogger()
+		sarama.Logger = log.StandardLogger().WithField("subsystem", "kafka")
+
 		var tlsConfig *tls.Config
 
 		if cfg.Kafka.TLS.Enabled {
@@ -111,12 +113,12 @@ func run() error {
 			}
 		}
 
-		kafkaProducer, err = kafka.NewProducer(*cfg, tlsConfig, kafkaLogger)
+		kafkaProducer, err = kafka.NewProducer(*cfg, tlsConfig)
 		if err != nil {
 			return fmt.Errorf("setting up kafka producer: %w", err)
 		}
 
-		_, err = kafka.NewConsumer(ctx, *cfg, tlsConfig, kafkaLogger, syncer.Kafka())
+		_, err = kafka.NewConsumer(ctx, *cfg, tlsConfig, syncer.Kafka())
 		if err != nil {
 			return fmt.Errorf("setting up kafka consumer: %w", err)
 		}
@@ -158,5 +160,6 @@ func run() error {
 		return fmt.Errorf("problem running manager: %w", err)
 	}
 
+	setupLog.Info("Manager shutting down")
 	return nil
 }

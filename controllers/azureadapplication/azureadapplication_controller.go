@@ -165,7 +165,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return r.HandleError(*tx, err)
 	}
 
-	tx.Logger.Debug("successfully synchronized AzureAdApplication with Azure")
+	tx.Logger.Info("successfully synchronized")
 	return r.Complete(*tx)
 }
 

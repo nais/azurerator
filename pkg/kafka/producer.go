@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/nais/azureator/pkg/config"
 )
@@ -16,7 +15,7 @@ type Producer struct {
 	topic    string
 }
 
-func NewProducer(config config.Config, tlsConfig *tls.Config, logger *log.Logger) (*Producer, error) {
+func NewProducer(config config.Config, tlsConfig *tls.Config) (*Producer, error) {
 	cfg := sarama.NewConfig()
 	cfg.Net.TLS.Enable = true
 	cfg.Net.TLS.Config = tlsConfig
@@ -24,7 +23,6 @@ func NewProducer(config config.Config, tlsConfig *tls.Config, logger *log.Logger
 	cfg.Producer.Return.Errors = true
 	cfg.Producer.Return.Successes = true
 	cfg.ClientID, _ = os.Hostname()
-	sarama.Logger = logger
 
 	syncProducer, err := sarama.NewSyncProducer(config.Kafka.Brokers, cfg)
 	if err != nil {

@@ -298,7 +298,7 @@ func DefaultConfig() (*Config, error) {
 		AzureClientSecret,
 	}
 	for _, line := range conftools.Format(maskedConfig) {
-		log.WithField("logger", "config").Info(line)
+		log.WithField("logger_name", "config").Info(line)
 	}
 
 	required := []string{

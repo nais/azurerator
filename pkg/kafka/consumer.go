@@ -60,7 +60,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	return nil
 }
 
-func NewConsumer(ctx context.Context, cfg config.Config, tlsConfig *tls.Config, logger *log.Logger, callback Callback) (*Consumer, error) {
+func NewConsumer(ctx context.Context, cfg config.Config, tlsConfig *tls.Config, callback Callback) (*Consumer, error) {
 	consumerCfg := sarama.NewConfig()
 	consumerCfg.Net.TLS.Enable = cfg.Kafka.TLS.Enabled
 	consumerCfg.Net.TLS.Config = tlsConfig
@@ -68,7 +68,6 @@ func NewConsumer(ctx context.Context, cfg config.Config, tlsConfig *tls.Config, 
 	consumerCfg.Consumer.Offsets.Initial = sarama.OffsetNewest
 	consumerCfg.Consumer.MaxProcessingTime = cfg.Kafka.MaxProcessingTime
 	consumerCfg.ClientID, _ = os.Hostname()
-	sarama.Logger = logger
 
 	groupID := fmt.Sprintf("azurerator-%s-%s-v1", cfg.ClusterName, cfg.Azure.Tenant.Id)
 
@@ -79,7 +78,7 @@ func NewConsumer(ctx context.Context, cfg config.Config, tlsConfig *tls.Config, 
 
 	c := &Consumer{
 		callback:      callback,
-		logger:        logger,
+		logger:        log.StandardLogger(),
 		retryInterval: cfg.Kafka.RetryInterval,
 	}
 
