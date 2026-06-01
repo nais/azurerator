@@ -246,9 +246,6 @@ If added, the existing Kubernetes Secret will be updated in-place - which means 
 
 The previous set of credentials are also revoked in Azure AD about 5 minutes later. This can be disabled by setting the `secret-rotation.cleanup` flag to `false`.
 
-If your use case involves usage of these credentials outside the context of Kubernetes (e.g. for legacy infrastructure) - i.e. you have no matching pods that mounts or refers to the secret -
-you should specify `.spec.secretProtected=true` to ensure that Azurerator does not revoke credentials that it would otherwise deem to be unused.
-
 ## 3 Cluster Resources
 
 The successful registration of the application in Azure AD will also produce cluster resources for the credentials and

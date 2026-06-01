@@ -22,7 +22,7 @@ func SecretNameChanged(in *nais_io_v1.AzureAdApplication) bool {
 }
 
 func HasExpiredSecrets(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Duration) bool {
-	if in.Status.SynchronizationSecretRotationTime == nil || in.Spec.SecretProtected {
+	if in.Status.SynchronizationSecretRotationTime == nil {
 		return false
 	}
 

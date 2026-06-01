@@ -28,12 +28,7 @@ func GenerateCertificate(template *x509.Certificate, keyPair KeyPair) (*x509.Cer
 func CertificateTemplate(application *v1.AzureAdApplication, clusterName string) *x509.Certificate {
 	notBefore := time.Now()
 
-	var notAfter time.Time
-	if application.Spec.SecretProtected {
-		notAfter = notBefore.AddDate(99, 0, 0)
-	} else {
-		notAfter = notBefore.AddDate(1, 0, 0)
-	}
+	notAfter := notBefore.AddDate(1, 0, 0)
 
 	return &x509.Certificate{
 		SerialNumber: big.NewInt(1),

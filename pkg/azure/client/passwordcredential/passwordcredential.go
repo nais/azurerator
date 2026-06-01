@@ -173,12 +173,7 @@ func (p passwordCredential) remove(tx transaction.Transaction, id azure.ClientId
 func (p passwordCredential) toAddRequest(tx transaction.Transaction) *msgraph.ApplicationAddPasswordRequestParameter {
 	startDateTime := time.Now()
 
-	var endDateTime time.Time
-	if tx.Instance.Spec.SecretProtected {
-		endDateTime = startDateTime.AddDate(99, 0, 0)
-	} else {
-		endDateTime = startDateTime.AddDate(1, 0, 0)
-	}
+	endDateTime := startDateTime.AddDate(1, 0, 0)
 
 	keyId := msgraph.UUID(uuid.New().String())
 
