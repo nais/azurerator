@@ -10,9 +10,11 @@ spec:
   image: "{{ .Values.global.image.repository | default .Values.image.repository }}:{{ .Values.global.image.tag | default .Values.image.tag }}"
   port: 8080
   liveness:
-    path: /metrics
+    path: /healthz
+    port: 8081
   readiness:
-    path: /metrics
+    path: /readyz
+    port: 8081
   resources:
     limits:
       memory: 2Gi

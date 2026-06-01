@@ -98,6 +98,7 @@ The following flags are available:
 --leader-election.enabled                                           Leader election toggle.
 --leader-election.namespace string                                  Leader election namespace.
 --metrics-address string                                            The address the metric endpoint binds to. (default ":8080")
+--probes-address string                                             The address the health probe listener binds to. (default ":8081")
 --secret-rotation.cleanup                                           Clean up unused credentials in Azure AD after rotation. (default true)
 --secret-rotation.max-age duration                                  Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed. (default 2880h0m0s)
 --validations.tenant.required                                       If true, will only process resources that have a tenant defined in the spec

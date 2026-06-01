@@ -16,6 +16,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -74,6 +75,9 @@ func run() error {
 		Metrics: metricsserver.Options{
 			BindAddress: cfg.MetricsAddr,
 		},
+		HealthProbeBindAddress:     cfg.ProbesAddr,
+		LivenessEndpointName:       "/healthz",
+		ReadinessEndpointName:      "/readyz",
 		LeaderElection:             cfg.LeaderElection.Enabled,
 		LeaderElectionID:           fmt.Sprintf("azurerator.nais.io-%s", cfg.Azure.Tenant.Id),
 		LeaderElectionNamespace:    cfg.LeaderElection.Namespace,
@@ -83,6 +87,14 @@ func run() error {
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
+	}
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		return fmt.Errorf("unable to set up health check: %w", err)
+	}
+
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		return fmt.Errorf("unable to set up ready check: %w", err)
 	}
 
 	azureClient, err := client.New(ctx, &cfg.Azure)

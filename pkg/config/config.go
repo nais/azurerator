@@ -21,6 +21,7 @@ type Config struct {
 	Kafka          KafkaConfig    `json:"kafka"`
 	LeaderElection LeaderElection `json:"leader-election"`
 	MetricsAddr    string         `json:"metrics-address"`
+	ProbesAddr     string         `json:"probes-address"`
 	SecretRotation SecretRotation `json:"secret-rotation"`
 	Validations    Validations    `json:"validations"`
 }
@@ -177,6 +178,7 @@ const (
 
 	ClusterName    = "cluster-name"
 	MetricsAddress = "metrics-address"
+	ProbesAddress  = "probes-address"
 
 	ValidationsTenantRequired = "validations.tenant.required"
 	SecretRotationMaxAge      = "secret-rotation.max-age"
@@ -222,6 +224,7 @@ func init() {
 	flag.Int(AzurePaginationMaxPages, 1000, "Max number of pages to fetch when fetching paginated resources from the Graph API.")
 
 	flag.String(MetricsAddress, ":8080", "The address the metric endpoint binds to.")
+	flag.String(ProbesAddress, ":8081", "The address the health probe listener binds to.")
 	flag.String(ClusterName, "", "The cluster in which this application should run")
 	flag.Bool(ValidationsTenantRequired, false, "If true, will only process resources that have a tenant defined in the spec")
 
