@@ -12,6 +12,7 @@ global:
     maxConcurrentReconciles:
     secretRotation:
     secretRotationMaxAge:
+    sweepInterval:
   features:
     appRoleAssignmentRequired:
     claimsMappingPolicies:
@@ -53,6 +54,7 @@ controller:
   maxConcurrentReconciles: 10
   secretRotation: true
   secretRotationMaxAge: 168h # 7 days
+  sweepInterval: 5m
   tenantNameStrictMatching: false
 features:
   appRoleAssignmentRequired: true
