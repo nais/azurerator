@@ -162,6 +162,7 @@ func run() error {
 		mgr.GetClient(),
 		mgr.GetAPIReader(),
 		azureClient,
+		cfg.Azure.Tenant.Id,
 		cfg.Controller.SweepInterval,
 	)); err != nil {
 		return fmt.Errorf("registering synchronizer periodic sweep runnable: %w", err)

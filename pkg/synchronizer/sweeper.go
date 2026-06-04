@@ -33,13 +33,21 @@ type Sweeper struct {
 	kubeClient      client.Client
 	reader          client.Reader
 	azureClient     azure.Client
+	azureTenantID   string
 	interval        time.Duration
 	cacheTTL        time.Duration
 	assignableCache *cache.Cache[string, bool]
 	logger          *log.Entry
 }
 
-func NewSweeper(clusterName string, kubeClient client.Client, reader client.Reader, azureClient azure.Client, interval time.Duration) *Sweeper {
+func NewSweeper(
+	clusterName string,
+	kubeClient client.Client,
+	reader client.Reader,
+	azureClient azure.Client,
+	azureTenantID string,
+	interval time.Duration,
+) *Sweeper {
 	const minSweepInterval = time.Second
 	interval = max(interval, minSweepInterval)
 	cacheTTL := interval / 2
@@ -49,6 +57,7 @@ func NewSweeper(clusterName string, kubeClient client.Client, reader client.Read
 		kubeClient:      kubeClient,
 		reader:          reader,
 		azureClient:     azureClient,
+		azureTenantID:   azureTenantID,
 		interval:        interval,
 		cacheTTL:        cacheTTL,
 		assignableCache: cache.New[string, bool](),
@@ -120,6 +129,10 @@ func (s *Sweeper) sweep(ctx context.Context) {
 
 func (s *Sweeper) shouldResync(ctx context.Context, app v1.AzureAdApplication) bool {
 	if app.Status.PreAuthorizedApps == nil || len(app.Status.PreAuthorizedApps.Unassigned) == 0 {
+		return false
+	}
+
+	if app.Status.SynchronizationTenant != s.azureTenantID {
 		return false
 	}
 

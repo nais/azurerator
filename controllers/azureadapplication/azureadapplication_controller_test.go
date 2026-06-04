@@ -731,6 +731,7 @@ func setup() (*envtest.Environment, error) {
 		mgr.GetClient(),
 		mgr.GetAPIReader(),
 		azureClient,
+		azureratorCfg.Azure.Tenant.Id,
 		azureratorCfg.Controller.SweepInterval,
 	)); err != nil {
 		return nil, err
