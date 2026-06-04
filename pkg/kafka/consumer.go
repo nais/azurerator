@@ -64,7 +64,7 @@ func NewConsumer(ctx context.Context, cfg config.Config, tlsConfig *tls.Config, 
 	consumerCfg := sarama.NewConfig()
 	consumerCfg.Net.TLS.Enable = cfg.Kafka.TLS.Enabled
 	consumerCfg.Net.TLS.Config = tlsConfig
-	consumerCfg.Version = sarama.V3_1_0_0
+	consumerCfg.Version = sarama.V3_8_1_0
 	consumerCfg.Consumer.Offsets.Initial = sarama.OffsetNewest
 	consumerCfg.Consumer.MaxProcessingTime = cfg.Kafka.MaxProcessingTime
 	consumerCfg.ClientID, _ = os.Hostname()
