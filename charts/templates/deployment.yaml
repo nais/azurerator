@@ -3,8 +3,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "azurerator.fullname" . }}
-  annotations:
-    reloader.stakater.com/search: "true"
   labels:
     {{- include "azurerator.labels" . | nindent 4 }}
 spec:
@@ -19,6 +17,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         prometheus.io/path: /metrics
         prometheus.io/port: "8080"
         prometheus.io/scrape: "true"
