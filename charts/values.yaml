@@ -76,6 +76,8 @@ resources:
   requests:
     cpu: 50m
     memory: 512Mi
+labels:
+  team: nais
 
 # injected by fasit at deploy-time; stubbed here for `helm lint`
 fasit:

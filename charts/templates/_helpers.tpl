@@ -35,6 +35,7 @@ Common labels
 */}}
 {{- define "azurerator.labels" -}}
 app: {{ include "azurerator.name" . }}
+team: {{ .Values.labels.team }}
 helm.sh/chart: {{ include "azurerator.chart" . }}
 {{ include "azurerator.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
