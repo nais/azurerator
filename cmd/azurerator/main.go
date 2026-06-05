@@ -2,14 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"time"
 
-	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
 	"github.com/nais/liberator/pkg/logrus2logr"
-	"github.com/nais/liberator/pkg/tlsutil"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -23,7 +20,6 @@ import (
 	"github.com/nais/azureator/controllers/azureadapplication"
 	"github.com/nais/azureator/pkg/azure/client"
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/kafka"
 	azureMetrics "github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/synchronizer"
 
@@ -111,31 +107,6 @@ func run() error {
 	}
 
 	syncer := synchronizer.New(cfg.ClusterName, mgr.GetClient(), mgr.GetAPIReader())
-
-	var kafkaProducer *kafka.Producer
-	if cfg.Kafka.Enabled {
-		sarama.Logger = log.StandardLogger().WithField("subsystem", "kafka")
-
-		var tlsConfig *tls.Config
-
-		if cfg.Kafka.TLS.Enabled {
-			tlsConfig, err = tlsutil.TLSConfigFromFiles(cfg.Kafka.TLS.CertificatePath, cfg.Kafka.TLS.PrivateKeyPath, cfg.Kafka.TLS.CAPath)
-			if err != nil {
-				return fmt.Errorf("loading Kafka TLS credentials: %w", err)
-			}
-		}
-
-		kafkaProducer, err = kafka.NewProducer(*cfg, tlsConfig)
-		if err != nil {
-			return fmt.Errorf("setting up kafka producer: %w", err)
-		}
-
-		_, err = kafka.NewConsumer(ctx, *cfg, tlsConfig, syncer.Kafka())
-		if err != nil {
-			return fmt.Errorf("setting up kafka consumer: %w", err)
-		}
-	}
-
 	if err = (&azureadapplication.Reconciler{
 		Client:            mgr.GetClient(),
 		Reader:            mgr.GetAPIReader(),
@@ -144,7 +115,6 @@ func run() error {
 		Config:            cfg,
 		Recorder:          mgr.GetEventRecorder("azurerator"),
 		AzureOpenIDConfig: *azureOpenIDConfig,
-		KafkaProducer:     kafkaProducer,
 		Synchronizer:      syncer,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller: %w", err)

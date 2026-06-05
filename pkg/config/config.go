@@ -18,7 +18,6 @@ type Config struct {
 	Azure          AzureConfig    `json:"azure"`
 	ClusterName    string         `json:"cluster-name"`
 	Controller     Controller     `json:"controller"`
-	Kafka          KafkaConfig    `json:"kafka"`
 	LeaderElection LeaderElection `json:"leader-election"`
 	MetricsAddr    string         `json:"metrics-address"`
 	ProbesAddr     string         `json:"probes-address"`
@@ -104,22 +103,6 @@ type Controller struct {
 	SweepInterval           time.Duration `json:"sweep-interval"`
 }
 
-type KafkaConfig struct {
-	Enabled           bool          `json:"enabled"`
-	Brokers           []string      `json:"brokers"`
-	Topic             string        `json:"topic"`
-	TLS               KafkaTLS      `json:"tls"`
-	RetryInterval     time.Duration `json:"retry-interval"`
-	MaxProcessingTime time.Duration `json:"max-processing-time"`
-}
-
-type KafkaTLS struct {
-	Enabled         bool   `json:"enabled"`
-	CAPath          string `json:"ca-path"`
-	CertificatePath string `json:"certificate-path"`
-	PrivateKeyPath  string `json:"private-key-path"`
-}
-
 type LeaderElection struct {
 	Enabled   bool   `json:"enabled"`
 	Namespace string `json:"namespace"`
@@ -162,17 +145,6 @@ const (
 	ControllerMaxConcurrentReconciles = "controller.max-concurrent-reconciles"
 	ControllerSweepInterval           = "controller.sweep-interval"
 
-	KafkaEnabled           = "kafka.enabled"
-	KafkaBrokers           = "kafka.brokers"
-	KafkaTopic             = "kafka.topic"
-	KafkaRetryInterval     = "kafka.retry-interval"
-	KafkaMaxProcessingTime = "kafka.max-processing-time"
-
-	KafkaTLSEnabled         = "kafka.tls.enabled"
-	KafkaTLSCAPath          = "kafka.tls.ca-path"
-	KafkaTLSCertificatePath = "kafka.tls.certificate-path"
-	KafkaTLSPrivateKeyPath  = "kafka.tls.private-key-path"
-
 	LeaderElectionEnabled   = "leader-election.enabled"
 	LeaderElectionNamespace = "leader-election.namespace"
 
@@ -185,19 +157,9 @@ const (
 	SecretRotationCleanup     = "secret-rotation.cleanup"
 )
 
-func bindNAIS() {
-	viper.BindEnv(KafkaBrokers, "KAFKA_BROKERS")
-	viper.BindEnv(KafkaTLSCAPath, "KAFKA_CA_PATH")
-	viper.BindEnv(KafkaTLSCertificatePath, "KAFKA_CERTIFICATE_PATH")
-	viper.BindEnv(KafkaTLSPrivateKeyPath, "KAFKA_PRIVATE_KEY_PATH")
-}
-
 func init() {
 	conftools.Initialize("azurerator")
 	viper.AddConfigPath("/etc/azurerator")
-
-	// Ensure NAIS Kafka variables are used
-	bindNAIS()
 
 	flag.String(AzureClientId, "", "Client ID for Azure AD authentication")
 	flag.String(AzureClientSecret, "", "Client secret for Azure AD authentication")
@@ -231,16 +193,6 @@ func init() {
 	flag.Duration(ControllerContextTimeout, 5*time.Minute, "Context timeout for the reconciliation loop in the controller.")
 	flag.Int(ControllerMaxConcurrentReconciles, 10, "Max concurrent reconciles.")
 	flag.Duration(ControllerSweepInterval, 5*time.Minute, "Interval between periodic sweeps for apps with unassigned preAuthorizedApps.")
-
-	flag.Bool(KafkaEnabled, false, "Toggle for enabling Kafka to allow synchronization of events between Azurerator instances.")
-	flag.String(KafkaTopic, "azurerator-events", "Name of the Kafka topic that Azurerator should use.")
-	flag.StringSlice(KafkaBrokers, []string{"localhost:9092"}, "Comma-separated list of Kafka brokers, HOST:PORT.")
-	flag.Duration(KafkaRetryInterval, 5*time.Second, "Retry interval for Kafka operations.")
-	flag.Duration(KafkaMaxProcessingTime, 10*time.Second, "Maximum processing time of Kafka messages.")
-	flag.Bool(KafkaTLSEnabled, false, "Use TLS for connecting to Kafka.")
-	flag.String(KafkaTLSCAPath, "", "Path to Kafka TLS CA certificate.")
-	flag.String(KafkaTLSCertificatePath, "", "Path to Kafka TLS certificate.")
-	flag.String(KafkaTLSPrivateKeyPath, "", "Path to Kafka TLS private key.")
 
 	flag.Bool(LeaderElectionEnabled, false, "Leader election toggle.")
 	flag.String(LeaderElectionNamespace, "", "Leader election namespace.")

@@ -7,7 +7,6 @@ import (
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/events"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/config"
-	"github.com/nais/azureator/pkg/kafka"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/reconciler"
 	"github.com/nais/azureator/pkg/retry"
@@ -25,11 +23,10 @@ import (
 
 type azureReconciler struct {
 	reconciler.AzureAdApplication
-	azureClient   azure.Client
-	config        config.Config
-	kafkaProducer *kafka.Producer
-	recorder      events.EventRecorder
-	synchronizer  *synchronizer.Synchronizer
+	azureClient  azure.Client
+	config       config.Config
+	recorder     events.EventRecorder
+	synchronizer *synchronizer.Synchronizer
 }
 
 func NewAzureReconciler(
@@ -37,7 +34,6 @@ func NewAzureReconciler(
 	azureClient azure.Client,
 	config config.Config,
 	recorder events.EventRecorder,
-	kafkaProducer *kafka.Producer,
 	synchronizer *synchronizer.Synchronizer,
 ) reconciler.Azure {
 	return azureReconciler{
@@ -45,7 +41,6 @@ func NewAzureReconciler(
 		azureClient:        azureClient,
 		config:             config,
 		recorder:           recorder,
-		kafkaProducer:      kafkaProducer,
 		synchronizer:       synchronizer,
 	}
 }
@@ -138,50 +133,18 @@ func (a azureReconciler) produceEvent(tx transaction.Transaction, result *result
 		return
 	}
 
-	g, ctx := errgroup.WithContext(context.Background())
-	g.Go(func() error {
-		retryable := func(ctx context.Context) error {
-			err := a.synchronizer.Local(ctx, e, &tx.Logger)
-			if err != nil {
-				tx.Logger.Warnf("synchronizing local event: %+v; retrying...", err)
-				return retry.RetryableError(err)
-			}
-			return nil
-		}
-		err := retry.Fibonacci(1*time.Second).
-			WithMaxDuration(5*time.Minute).
-			Do(ctx, retryable)
+	retryable := func(ctx context.Context) error {
+		err := a.synchronizer.Synchronize(ctx, e, &tx.Logger)
 		if err != nil {
-			return fmt.Errorf("local: %+v", err)
+			tx.Logger.Warnf("synchronizing event: %+v; retrying...", err)
+			return retry.RetryableError(err)
 		}
 		return nil
-	})
-	g.Go(func() error {
-		if !a.config.Kafka.Enabled {
-			return nil
-		}
-		message, err := e.Marshal()
-		if err != nil {
-			return fmt.Errorf("marshalling event: %w", err)
-		}
-		retryable := func(ctx context.Context) error {
-			_, err := a.kafkaProducer.Send(message)
-			if err != nil {
-				tx.Logger.Warnf("producing kafka event: %+v; retrying...", err)
-				return retry.RetryableError(err)
-			}
-
-			return nil
-		}
-		err = retry.Fibonacci(1*time.Second).
-			WithMaxDuration(5*time.Minute).
-			Do(ctx, retryable)
-		if err != nil {
-			return fmt.Errorf("kafka: %+v", err)
-		}
-		return nil
-	})
-	if err := g.Wait(); err != nil {
+	}
+	err := retry.Fibonacci(1*time.Second).
+		WithMaxDuration(5*time.Minute).
+		Do(context.Background(), retryable)
+	if err != nil {
 		tx.Logger.Errorf("producing event: %+v", err)
 	}
 }

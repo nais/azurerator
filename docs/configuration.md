@@ -71,15 +71,6 @@ Additionally, one of the following authentication methods must be configured:
 | `--controller.context-timeout`                          | duration | `5m`                | Context timeout for the reconciliation loop                            |
 | `--controller.max-concurrent-reconciles`                | int      | `10`                | Max concurrent reconciles                                              |
 | `--controller.sweep-interval`                           | duration | `5m`                | Interval between periodic sweeps for unassigned preAuthorizedApps      |
-| `--kafka.brokers`                                       | strings  | `localhost:9092`    | Comma-separated list of Kafka brokers                                  |
-| `--kafka.enabled`                                       | bool     | `false`             | Enable Kafka for event synchronization between instances               |
-| `--kafka.max-processing-time`                           | duration | `10s`               | Maximum processing time of Kafka messages                              |
-| `--kafka.retry-interval`                                | duration | `5s`                | Retry interval for Kafka operations                                    |
-| `--kafka.tls.ca-path`                                   | string   |                     | Path to Kafka TLS CA certificate                                       |
-| `--kafka.tls.certificate-path`                          | string   |                     | Path to Kafka TLS certificate                                          |
-| `--kafka.tls.enabled`                                   | bool     | `false`             | Use TLS for connecting to Kafka                                        |
-| `--kafka.tls.private-key-path`                          | string   |                     | Path to Kafka TLS private key                                          |
-| `--kafka.topic`                                         | string   | `azurerator-events` | Kafka topic name                                                       |
 | `--leader-election.enabled`                             | bool     | `false`             | Leader election toggle                                                 |
 | `--leader-election.namespace`                           | string   |                     | Leader election namespace                                              |
 | `--metrics-address`                                     | string   | `:8080`             | Metrics endpoint bind address                                          |

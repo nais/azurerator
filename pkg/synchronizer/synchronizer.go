@@ -2,10 +2,8 @@ package synchronizer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
-	"github.com/IBM/sarama"
 	nais_io "github.com/nais/liberator/pkg/apis/nais.io"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/liberator/pkg/kubernetes"
@@ -14,19 +12,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/nais/azureator/pkg/annotations"
-	"github.com/nais/azureator/pkg/kafka"
 	"github.com/nais/azureator/pkg/metrics"
 )
 
 const (
-	sourceLocal = "local"
-	sourceKafka = "kafka"
+	sourceSynchronizer = "synchronizer"
 
-	resultProcessed    = "processed"
-	resultIgnored      = "ignored"
-	resultInvalid      = "invalid"
-	resultCrossCluster = "cross_cluster"
-	resultUnmarshal    = "unmarshal_error"
+	resultProcessed = "processed"
+	resultIgnored   = "ignored"
+	resultInvalid   = "invalid"
 )
 
 // Synchronizer ensures that the Azure AD applications are resynchronized on relevant events,
@@ -45,62 +39,24 @@ func New(clusterName string, client client.Client, reader client.Reader) *Synchr
 	}
 }
 
-// Kafka processes incoming Kafka messages and triggers resynchronization of Azure AD applications as needed.
-func (s Synchronizer) Kafka() kafka.Callback {
-	return func(msg *sarama.ConsumerMessage, logger *log.Entry) (bool, error) {
-		logger = logger.WithField("subsystem", "synchronizer/kafka")
-		logger.Debugf("incoming message from Kafka")
+func (s Synchronizer) Synchronize(ctx context.Context, e Event, logger *log.Entry) error {
+	logger = logger.WithField("subsystem", sourceSynchronizer)
 
-		e := &Event{}
-		if err := json.Unmarshal(msg.Value, &e); err != nil {
-			metrics.ResyncEventsTotal.WithLabelValues(sourceKafka, "", resultUnmarshal).Inc()
-			return false, fmt.Errorf("unmarshalling message to event; ignoring: %w", err)
-		}
-
-		logger = logger.WithFields(log.Fields{
-			"CorrelationID":         e.ID,
-			"application_name":      e.Application.Name,
-			"application_namespace": e.Application.Namespace,
-			"application_cluster":   e.Application.Cluster,
-			"event_name":            e.Name,
-		})
-
-		if e.Application.Cluster == s.clusterName {
-			// events targeting this cluster is handled by [Synchronizer.Local]
-			metrics.ResyncEventsTotal.WithLabelValues(sourceKafka, string(e.Name), resultCrossCluster).Inc()
-			logger.Debugf("ignoring kafka event in same cluster '%s'", s.clusterName)
-			return false, nil
-		}
-
-		if err := s.processEvent(context.Background(), sourceKafka, *e, logger); err != nil {
-			return true, fmt.Errorf("processing event: %w", err)
-		}
-
-		return false, nil
-	}
-}
-
-func (s Synchronizer) Local(ctx context.Context, e Event, logger *log.Entry) error {
-	logger = logger.WithField("subsystem", "synchronizer/local")
-	return s.processEvent(ctx, sourceLocal, e, logger)
-}
-
-func (s Synchronizer) processEvent(ctx context.Context, source string, e Event, logger *log.Entry) error {
 	// Delete events are not propagated: producers do not emit them, and consumers
 	// converge their preauth status against spec on their own reconcile loop.
 	if !e.IsCreated() && !e.IsUpdated() {
-		metrics.ResyncEventsTotal.WithLabelValues(source, string(e.Name), resultIgnored).Inc()
+		metrics.ResyncEventsTotal.WithLabelValues(sourceSynchronizer, string(e.Name), resultIgnored).Inc()
 		logger.Debugf("ignoring event '%s'", e)
 		return nil
 	}
 
 	if err := e.Validate(); err != nil {
-		metrics.ResyncEventsTotal.WithLabelValues(source, string(e.Name), resultInvalid).Inc()
+		metrics.ResyncEventsTotal.WithLabelValues(sourceSynchronizer, string(e.Name), resultInvalid).Inc()
 		logger.Warnf("ignoring event '%s' for '%s': %v", e, e.Application, err)
 		return nil
 	}
 
-	metrics.ResyncEventsTotal.WithLabelValues(source, string(e.Name), resultProcessed).Inc()
+	metrics.ResyncEventsTotal.WithLabelValues(sourceSynchronizer, string(e.Name), resultProcessed).Inc()
 	logger.Infof("processing event '%s' for '%s'...", e, e.Application)
 
 	var apps v1.AzureAdApplicationList

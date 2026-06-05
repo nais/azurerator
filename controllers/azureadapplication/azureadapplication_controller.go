@@ -33,7 +33,6 @@ import (
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/config"
 	"github.com/nais/azureator/pkg/customresources"
-	"github.com/nais/azureator/pkg/kafka"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/reconciler"
 	azureReconciler "github.com/nais/azureator/pkg/reconciler/azure"
@@ -61,7 +60,6 @@ type Reconciler struct {
 	Recorder          kevents.EventRecorder
 	Config            *config.Config
 	AzureOpenIDConfig config.AzureOpenIdConfig
-	KafkaProducer     *kafka.Producer
 	Synchronizer      *synchronizer.Synchronizer
 }
 
@@ -326,7 +324,7 @@ func (r *Reconciler) ReportEvent(tx transaction.Transaction, eventType, event, m
 }
 
 func (r *Reconciler) Azure() reconciler.Azure {
-	return azureReconciler.NewAzureReconciler(r, r.AzureClient, *r.Config, r.Recorder, r.KafkaProducer, r.Synchronizer)
+	return azureReconciler.NewAzureReconciler(r, r.AzureClient, *r.Config, r.Recorder, r.Synchronizer)
 }
 
 func (r *Reconciler) Finalizer() reconciler.Finalizer {

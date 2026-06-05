@@ -28,11 +28,6 @@ global:
   image:
     repository:
     tag:
-  kafka:
-    application:
-    pool:
-    tls:
-    topic:
   networkPolicy:
     enabled:
     apiServerCIDR:
@@ -73,11 +68,6 @@ google:
 image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images/azurerator
   tag: latest
-kafka:
-  application: false
-  pool: nav-infrastructure
-  tls: true
-  topic: false
 networkPolicy:
   enabled: false
   apiServerCIDR:
