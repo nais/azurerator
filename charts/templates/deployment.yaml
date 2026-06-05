@@ -1,0 +1,81 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "azurerator.fullname" . }}
+  annotations:
+    reloader.stakater.com/search: "true"
+  labels:
+    {{- include "azurerator.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: 300
+  selector:
+    matchLabels:
+      {{- include "azurerator.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8080"
+        prometheus.io/scrape: "true"
+      labels:
+        {{- include "azurerator.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "azurerator.fullname" . }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: {{ include "azurerator.fullname" . }}
+          image: "{{ .Values.global.image.repository | default .Values.image.repository }}:{{ .Values.global.image.tag | default .Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: metrics
+              protocol: TCP
+            - containerPort: 8081
+              name: probes
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+              scheme: HTTP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+              scheme: HTTP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1069
+            runAsNonRoot: true
+            runAsUser: 1069
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /etc/azurerator
+              name: config
+              readOnly: true
+            - mountPath: /tmp
+              name: writable-tmp
+      securityContext:
+        fsGroup: 1069
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ include "azurerator.fullname" . }}-env
+        - name: writable-tmp
+          emptyDir: {}

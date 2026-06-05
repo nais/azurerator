@@ -31,7 +31,6 @@ global:
   networkPolicy:
     enabled:
     apiServerCIDR:
-  webproxy:
 
 alerts:
   enabled: true
@@ -71,7 +70,12 @@ image:
 networkPolicy:
   enabled: false
   apiServerCIDR:
-webproxy: false
+resources:
+  limits:
+    memory: 2Gi
+  requests:
+    cpu: 50m
+    memory: 512Mi
 
 # injected by fasit at deploy-time; stubbed here for `helm lint`
 fasit:
