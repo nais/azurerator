@@ -169,7 +169,7 @@ func TestReconciler_PeriodicResync_UnassignedPreAuthorizedApps(t *testing.T) {
 	instance := assertApplicationExists(t, az.ApplicationExists)
 
 	// Add a preAuthorizedApp with "invalid" (fake treats it as unresolvable) and "resync"
-	// (fake's PreAuthorizedAppCanBeAssigned returns true, simulating the app appeared in Azure later).
+	// (fake's PreAuthorizedAppClientID returns assignable, simulating the app appeared in Azure later).
 	previousPreAuthorizedApps := instance.Spec.PreAuthorizedApplications
 	invalidPreAuthorizedApp := v1.AccessPolicyInboundRule{AccessPolicyRule: v1.AccessPolicyRule{
 		Application: "invalid-periodic-resync-app",

@@ -91,14 +91,17 @@ func (a fakeAzureClient) Update(tx transaction.Transaction) (*result.Application
 	return &internalApp, nil
 }
 
-func (a fakeAzureClient) PreAuthorizedAppCanBeAssigned(_ context.Context, rule v1.AccessPolicyRule) (bool, error) {
+func (a fakeAzureClient) PreAuthorizedAppClientID(_ context.Context, rule v1.AccessPolicyRule) (string, bool, error) {
 	name := customresources.GetUniqueName(rule)
-	// Names containing "resync" simulate apps that have since appeared in Azure,
-	// even though they were initially unresolvable during preauth resolution.
+	// Names containing "resync" simulate apps that have since appeared in Azure (and are thus
+	// assignable), even though they were initially unresolvable ("invalid") during preauth resolution.
 	if strings.Contains(name, "resync") {
-		return true, nil
+		return fake.ClientIDForRule(rule), true, nil
 	}
-	return !strings.Contains(name, "invalid"), nil
+	if strings.Contains(name, "invalid") {
+		return "", false, nil
+	}
+	return fake.ClientIDForRule(rule), true, nil
 }
 
 func NewFakeAzureClient() azure.Client {

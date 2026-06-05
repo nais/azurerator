@@ -203,20 +203,23 @@ func (c Client) GetPreAuthorizedApps(tx transaction.Transaction) (*result.PreAut
 	return c.PreAuthApps().Get(tx)
 }
 
-// PreAuthorizedAppCanBeAssigned checks whether a pre-authorized app has both an
-// Azure AD application and service principal, and can therefore be assigned.
-func (c Client) PreAuthorizedAppCanBeAssigned(ctx context.Context, rule v1.AccessPolicyRule) (bool, error) {
+// PreAuthorizedAppClientID resolves the live client ID of a pre-authorized app, and
+// whether it is assignable (i.e. both its Azure AD application and service principal exist).
+func (c Client) PreAuthorizedAppClientID(ctx context.Context, rule v1.AccessPolicyRule) (string, bool, error) {
 	name := customresources.GetUniqueName(rule)
 	app, exists, err := c.Application().ExistsByFilter(ctx, util.FilterByName(name))
 	if err != nil || !exists {
-		return false, err
+		return "", false, err
 	}
 	if app.AppID == nil || len(*app.AppID) == 0 {
-		return false, nil
+		return "", false, nil
 	}
 
 	exists, _, err = c.ServicePrincipal().Exists(ctx, *app.AppID)
-	return exists, err
+	if err != nil || !exists {
+		return "", false, err
+	}
+	return *app.AppID, true, nil
 }
 
 // Update updates an existing AAD application. Should be an idempotent operation

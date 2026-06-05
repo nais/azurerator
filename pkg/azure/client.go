@@ -23,7 +23,7 @@ type Client interface {
 	GetPreAuthorizedApps(tx transaction.Transaction) (*result.PreAuthorizedApps, error)
 	GetServicePrincipal(tx transaction.Transaction) (msgraph.ServicePrincipal, error)
 
-	PreAuthorizedAppCanBeAssigned(ctx context.Context, rule v1.AccessPolicyRule) (bool, error)
+	PreAuthorizedAppClientID(ctx context.Context, rule v1.AccessPolicyRule) (clientID string, assignable bool, err error)
 }
 
 type Credentials interface {

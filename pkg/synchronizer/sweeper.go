@@ -19,25 +19,34 @@ import (
 	"github.com/nais/azureator/pkg/metrics"
 )
 
-const sourceSweep = "sweep"
+const sourceSweeper = "sweeper"
 
 var (
 	_ manager.Runnable               = (*Sweeper)(nil)
 	_ manager.LeaderElectionRunnable = (*Sweeper)(nil)
 )
 
-// Sweeper periodically marks AzureAdApplications with unassigned preAuthorizedApps for
-// resync, catching cases missed by the event-driven path in [Synchronizer].
+// resolved is the cached outcome of resolving a pre-authorized app in Azure AD.
+type resolved struct {
+	clientID   string
+	assignable bool
+}
+
+// Sweeper periodically marks AzureAdApplications for resync, catching cases missed by the
+// event-driven path in [Synchronizer]. It handles two cases:
+//   - pre-authorized apps that were unassignable during reconcile but have since appeared, and
+//   - cross-cluster pre-authorized apps that were recreated with a new client ID (same-cluster
+//     client ID changes are handled immediately by [Synchronizer]).
 type Sweeper struct {
-	clusterName     string
-	kubeClient      client.Client
-	reader          client.Reader
-	azureClient     azure.Client
-	azureTenantID   string
-	interval        time.Duration
-	cacheTTL        time.Duration
-	assignableCache *cache.Cache[string, bool]
-	logger          *log.Entry
+	clusterName   string
+	kubeClient    client.Client
+	reader        client.Reader
+	azureClient   azure.Client
+	azureTenantID string
+	interval      time.Duration
+	cacheTTL      time.Duration
+	resolveCache  *cache.Cache[string, resolved]
+	logger        *log.Entry
 }
 
 func NewSweeper(
@@ -53,15 +62,15 @@ func NewSweeper(
 	cacheTTL := interval / 2
 
 	return &Sweeper{
-		clusterName:     clusterName,
-		kubeClient:      kubeClient,
-		reader:          reader,
-		azureClient:     azureClient,
-		azureTenantID:   azureTenantID,
-		interval:        interval,
-		cacheTTL:        cacheTTL,
-		assignableCache: cache.New[string, bool](),
-		logger:          log.WithField("subsystem", "synchronizer/sweeper"),
+		clusterName:   clusterName,
+		kubeClient:    kubeClient,
+		reader:        reader,
+		azureClient:   azureClient,
+		azureTenantID: azureTenantID,
+		interval:      interval,
+		cacheTTL:      cacheTTL,
+		resolveCache:  cache.New[string, resolved](),
+		logger:        log.WithField("subsystem", sourceSweeper),
 	}
 }
 
@@ -100,11 +109,11 @@ func (s *Sweeper) sweep(ctx context.Context) {
 		}
 
 		candidateID := kubernetes.UniformResourceName(&app, s.clusterName)
-		metrics.ResyncEventsTotal.WithLabelValues(sourceSweep, candidateID, resultProcessed).Inc()
+		metrics.ResyncEventsTotal.WithLabelValues(sourceSweeper, candidateID, resultProcessed).Inc()
 
 		marked, err := s.resync(ctx, app)
 		if err != nil {
-			metrics.ResyncFailedTotal.WithLabelValues(app.Namespace, sourceSweep).Inc()
+			metrics.ResyncFailedTotal.WithLabelValues(app.Namespace, sourceSweeper).Inc()
 			s.logger.Errorf("marking %s for resync: %v", candidateID, err)
 			continue
 		}
@@ -112,13 +121,13 @@ func (s *Sweeper) sweep(ctx context.Context) {
 			continue
 		}
 
-		metrics.ResyncCandidatesTotal.WithLabelValues(app.Namespace, sourceSweep).Inc()
+		metrics.ResyncCandidatesTotal.WithLabelValues(app.Namespace, candidateID).Inc()
 		candidateCount++
 
-		s.logger.Debugf("marked '%s' for resync (has %d unassigned preAuthorizedApps)", candidateID, len(app.Status.PreAuthorizedApps.Unassigned))
+		s.logger.Debugf("marked '%s' for resync", candidateID)
 	}
 
-	metrics.ResyncFanout.WithLabelValues(sourceSweep).Observe(float64(candidateCount))
+	metrics.ResyncFanout.WithLabelValues(sourceSweeper).Observe(float64(candidateCount))
 
 	if candidateCount > 0 {
 		s.logger.Infof("sweep found and marked %d candidates for resync", candidateCount)
@@ -128,7 +137,7 @@ func (s *Sweeper) sweep(ctx context.Context) {
 }
 
 func (s *Sweeper) shouldResync(ctx context.Context, app v1.AzureAdApplication) bool {
-	if app.Status.PreAuthorizedApps == nil || len(app.Status.PreAuthorizedApps.Unassigned) == 0 {
+	if app.Status.PreAuthorizedApps == nil {
 		return false
 	}
 
@@ -140,37 +149,60 @@ func (s *Sweeper) shouldResync(ctx context.Context, app v1.AzureAdApplication) b
 		return false
 	}
 
-	return s.hasAssignableUnassignedPreAuthApp(ctx, app)
+	return s.hasResyncablePreAuthApp(ctx, app)
 }
 
-func (s *Sweeper) hasAssignableUnassignedPreAuthApp(ctx context.Context, app v1.AzureAdApplication) bool {
+// hasResyncablePreAuthApp reports whether the app has a pre-authorized app that warrants a resync:
+// an unassigned entry that has since become assignable, or a cross-cluster assigned entry whose
+// app was recreated with a new client ID.
+func (s *Sweeper) hasResyncablePreAuthApp(ctx context.Context, app v1.AzureAdApplication) bool {
 	for _, unassigned := range app.Status.PreAuthorizedApps.Unassigned {
 		if unassigned.AccessPolicyRule == nil {
 			continue
 		}
 
-		name := customresources.GetUniqueName(*unassigned.AccessPolicyRule)
-		exists, cached := s.assignableCache.Get(name)
-		if cached {
-			if exists {
-				return true
-			}
+		r, ok := s.resolve(ctx, *unassigned.AccessPolicyRule)
+		if ok && r.assignable {
+			return true
+		}
+	}
+
+	for _, assigned := range app.Status.PreAuthorizedApps.Assigned {
+		if assigned.AccessPolicyRule == nil {
 			continue
 		}
 
-		exists, err := s.azureClient.PreAuthorizedAppCanBeAssigned(ctx, *unassigned.AccessPolicyRule)
-		if err != nil {
-			s.logger.Debugf("pre-flight check failed for %s: %v", name, err)
+		// same-cluster client ID changes are handled immediately by [Synchronizer].
+		if assigned.AccessPolicyRule.Cluster == s.clusterName {
 			continue
 		}
 
-		s.assignableCache.Set(name, exists, cache.WithExpiration(s.cacheTTL))
-		if exists {
+		r, ok := s.resolve(ctx, *assigned.AccessPolicyRule)
+		if ok && r.assignable && r.clientID != assigned.ClientID {
 			return true
 		}
 	}
 
 	return false
+}
+
+// resolve looks up the live state of a pre-authorized app, caching the outcome for [Sweeper.cacheTTL].
+// The second return value is false when the lookup was inconclusive (e.g. a transient Azure error).
+func (s *Sweeper) resolve(ctx context.Context, rule v1.AccessPolicyRule) (resolved, bool) {
+	name := customresources.GetUniqueName(rule)
+	if r, cached := s.resolveCache.Get(name); cached {
+		return r, true
+	}
+
+	clientID, assignable, err := s.azureClient.PreAuthorizedAppClientID(ctx, rule)
+	if err != nil {
+		s.logger.Debugf("pre-flight check failed for %s: %v", name, err)
+		return resolved{}, false
+	}
+
+	r := resolved{clientID: clientID, assignable: assignable}
+	s.resolveCache.Set(name, r, cache.WithExpiration(s.cacheTTL))
+	return r, true
 }
 
 func (s *Sweeper) resync(ctx context.Context, app v1.AzureAdApplication) (bool, error) {
@@ -186,7 +218,7 @@ func (s *Sweeper) resync(ctx context.Context, app v1.AzureAdApplication) (bool, 
 		if _, hasPending := annotations.HasAnnotation(existing, annotations.ResynchronizeKey); hasPending {
 			return nil
 		}
-		annotations.SetAnnotation(existing, annotations.ResynchronizeKey, sourceSweep)
+		annotations.SetAnnotation(existing, annotations.ResynchronizeKey, sourceSweeper)
 
 		if err := s.kubeClient.Update(ctx, existing); err != nil {
 			return fmt.Errorf("setting resync annotation: %w", err)

@@ -91,7 +91,6 @@ func mapToInternalPreAuthApps(apps []v1.AccessPolicyInboundRule) result.PreAutho
 }
 
 func mapToInternalPreAuthApp(app v1.AccessPolicyInboundRule) resource.Resource {
-	clientId := uuid.New().String()
 	objectId := uuid.New().String()
 	name := GetOrGenerate(kubernetes.UniformResourceName(&metav1.ObjectMeta{
 		Name:      app.Application,
@@ -99,11 +98,18 @@ func mapToInternalPreAuthApp(app v1.AccessPolicyInboundRule) resource.Resource {
 	}, app.Cluster))
 	return resource.Resource{
 		Name:                    name,
-		ClientId:                clientId,
+		ClientId:                ClientIDForRule(app.AccessPolicyRule),
 		ObjectId:                objectId,
 		PrincipalType:           resource.PrincipalTypeServicePrincipal,
 		AccessPolicyInboundRule: app,
 	}
+}
+
+// ClientIDForRule deterministically derives a stable client ID for a pre-authorized app rule, so
+// that the assignment path and [client.PreAuthorizedAppClientID] agree on the same value.
+func ClientIDForRule(rule v1.AccessPolicyRule) string {
+	name := customresources.GetUniqueName(rule)
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(name)).String()
 }
 
 func GetOrGenerate(field string) string {
