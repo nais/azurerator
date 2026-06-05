@@ -1,7 +1,6 @@
 dependencies:
   - allOf:
       - nais-crds
-      - naiserator
       - reloader
 environmentKinds:
   - tenant
