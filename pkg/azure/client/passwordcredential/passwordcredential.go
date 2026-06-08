@@ -162,6 +162,9 @@ func (p passwordCredential) Validate(tx transaction.Transaction, existing creden
 }
 
 func (p passwordCredential) remove(tx transaction.Transaction, id azure.ClientId, keyId *msgraph.UUID) error {
+	// sleep to prevent concurrent modification error from Microsoft when removing credentials in quick succession
+	time.Sleep(p.DelayIntervalBetweenModifications())
+
 	req := p.toRemoveRequest(keyId)
 	if err := p.GraphClient().Applications().ID(id).RemovePassword(req).Request().Post(tx.Ctx); err != nil {
 		// Microsoft returns HTTP 500 sometimes after adding new credentials due to concurrent modifications; we'll ignore this on our end for now
