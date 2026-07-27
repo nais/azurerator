@@ -5,6 +5,12 @@ pin = true
 go = "1.26.5"
 helm = "3.16.2"
 kubectl = "1.31.0"
+"go:github.com/sethvargo/ratchet" = "0.12.0"
+"go:golang.org/x/tools/cmd/deadcode" = "0.48.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.6.0"
+"go:honnef.co/go/tools/cmd/staticcheck" = "0.7.0"
+"go:mvdan.cc/gofumpt" = "0.11.0"
+"go:sigs.k8s.io/controller-runtime/tools/setup-envtest" = "0.24.1"
 
 [tasks."build"]
 description = "Build the manager binary"
@@ -30,15 +36,15 @@ depends = [
 
 [tasks."check:deadcode"]
 description = "Run deadcode"
-run = "go tool golang.org/x/tools/cmd/deadcode -test ./..."
+run = "deadcode -test ./..."
 
 [tasks."check:staticcheck"]
 description = "Run staticcheck"
-run = "go tool honnef.co/go/tools/cmd/staticcheck ./..."
+run = "staticcheck ./..."
 
 [tasks."check:vulncheck"]
 description = "Run vulncheck"
-run = "go tool golang.org/x/vuln/cmd/govulncheck ./..."
+run = "govulncheck ./..."
 
 [tasks."check:vet"]
 description = "Run go vet"
@@ -51,7 +57,7 @@ run = "helm lint --strict ./charts"
 
 [tasks."check:actions-lint"]
 description = "Check for unpinned actions"
-run = "go tool ratchet lint .github/workflows/*.yaml"
+run = "ratchet lint .github/workflows/*.yaml"
 
 [tasks."fmt"]
 description = "Format all code"
@@ -59,7 +65,7 @@ depends = ['fmt:go', 'fmt:gofix']
 
 [tasks."fmt:go"]
 description = "Format go code using gofumpt"
-run = "go tool mvdan.cc/gofumpt -w ./"
+run = "gofumpt -w ./"
 
 [tasks."fmt:gofix"]
 description = "Run the Go fix tool (cmd/fix) on all packages and apply suggested fixes"
@@ -69,19 +75,19 @@ run = "go fix ./..."
 description = "Run tests"
 depends = ['fmt']
 env = { ENVTEST_K8S_VERSION = "1.31.0" } # see "envtest:versions" task for available versions
-run = 'KUBEBUILDER_ASSETS="$(pwd)/$(go tool setup-envtest use $ENVTEST_K8S_VERSION --bin-dir bin -p path)" go test ./... -coverprofile cover.out -short'
+run = 'KUBEBUILDER_ASSETS="$(pwd)/$(setup-envtest use $ENVTEST_K8S_VERSION --bin-dir bin -p path)" go test ./... -coverprofile cover.out -short'
 
 [tasks."envtest:versions"]
 description = "List available Kubernetes versions for envtest"
-run = "go tool setup-envtest list"
+run = "setup-envtest list"
 
 [tasks."actions:update"]
 description = "Upgrade all github actions to latest version satisfying their version tag"
-run = "go tool ratchet update .github/workflows/*.yaml"
+run = "ratchet update .github/workflows/*.yaml"
 
 [tasks."actions:upgrade"]
 description = "Upgrade all github actions to latest"
-run = "go tool ratchet upgrade .github/workflows/*.yaml"
+run = "ratchet upgrade .github/workflows/*.yaml"
 
 [tasks."install"]
 description = "Install the AzureAdApplication CRD and supporting resources into the cluster"
