@@ -62,6 +62,7 @@ type AzureFeatures struct {
 	ClaimsMappingPolicies     ClaimsMappingPolicies     `json:"claims-mapping-policies"`
 	CleanupOrphans            CleanupOrphans            `json:"cleanup-orphans"`
 	CustomSecurityAttributes  CustomSecurityAttributes  `json:"custom-security-attributes"`
+	FederatedCredentials      FederatedCredentials      `json:"federated-credentials"`
 	GroupsAssignment          GroupsAssignment          `json:"groups-assignment"`
 	GroupMembershipClaim      GroupMembershipClaim      `json:"group-membership-claim"`
 }
@@ -80,6 +81,10 @@ type CleanupOrphans struct {
 }
 
 type CustomSecurityAttributes struct {
+	Enabled bool `json:"enabled"`
+}
+
+type FederatedCredentials struct {
 	Enabled bool `json:"enabled"`
 }
 
@@ -133,6 +138,7 @@ const (
 	AzureFeaturesClaimsMappingPoliciesEnabled     = "azure.features.claims-mapping-policies.enabled"
 	AzureFeaturesClaimsMappingPoliciesID          = "azure.features.claims-mapping-policies.id"
 	AzureFeaturesCustomSecurityAttributesEnabled  = "azure.features.custom-security-attributes.enabled"
+	AzureFeaturesFederatedCredentialsEnabled      = "azure.features.federated-credentials.enabled"
 	AzureFeaturesGroupsAssignmentEnabled          = "azure.features.groups-assignment.enabled"
 	AzureFeaturesGroupsAllUsersGroupId            = "azure.features.groups-assignment.all-users-group-id"
 	AzureFeaturesGroupMembershipClaimDefault      = "azure.features.group-membership-claim.default"
@@ -175,6 +181,7 @@ func init() {
 	flag.Bool(AzureFeaturesClaimsMappingPoliciesEnabled, false, "Assign custom claims-mapping policies to a service principal")
 	flag.String(AzureFeaturesClaimsMappingPoliciesID, "", "Claims-mapping policy ID for custom claims mapping")
 	flag.Bool(AzureFeaturesCustomSecurityAttributesEnabled, false, "Set custom security attributes on service principals (attribute set of 'Applications':'ManagedBy':'NAIS')")
+	flag.Bool(AzureFeaturesFederatedCredentialsEnabled, false, "Manage federated identity credentials on applications.")
 	flag.Bool(AzureFeaturesGroupsAssignmentEnabled, false, "Assign groups to applications")
 	flag.StringSlice(AzureFeaturesGroupsAllUsersGroupId, []string{}, "List of Group IDs that contains all users in the tenant. Assigned to all applications by default unless 'allowAllUsers' is set to false in the custom resource.")
 	flag.String(AzureFeaturesGroupMembershipClaimDefault, groupmembershipclaim.ApplicationGroup, "Default group membership claim for Azure AD apps. Only affects new registrations.")

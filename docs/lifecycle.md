@@ -46,7 +46,7 @@ sequenceDiagram
 
 1. Developer applies an `AzureAdApplication` resource to the cluster.
 2. Azurerator detects the change and registers (or updates) the corresponding application in Entra ID.
-3. Credentials, service principal, delegated permissions, and pre-authorized clients are configured.
+3. Federated credentials, credentials, service principal, delegated permissions, and pre-authorized clients are configured.
 4. A Kubernetes `Secret` is created with the credentials and metadata the application needs at runtime.
 5. On deletion of the resource, the Entra ID application is cleaned up (unless `azure.nais.io/preserve=true`).
 
@@ -68,9 +68,10 @@ The following is a detailed overview of operations performed per reconciliation.
     - [1.4 Service Principal](#14-service-principal)
     - [1.5 Delegated Permissions](#15-delegated-permissions)
     - [1.6 Credentials](#16-credentials)
-    - [1.7 Group Assignment](#17-group-assignment)
-    - [1.8 Single-Page Applications](#18-single-page-applications)
-    - [1.9 Principal Assignment Required](#19-principal-assignment-required)
+    - [1.7 Federated Identity Credentials](#17-federated-identity-credentials)
+    - [1.8 Group Assignment](#18-group-assignment)
+    - [1.9 Single-Page Applications](#19-single-page-applications)
+    - [1.10 Principal Assignment Required](#110-principal-assignment-required)
 - [2 Existing applications](#2-existing-applications)
     - [2.1 Credential Rotation](#21-credential-rotation)
 - [3 Cluster Resources](#3-cluster-resources)
@@ -163,7 +164,7 @@ to obtain access tokens intended for the application. This authorization is enfo
 the `on_behalf_of` flow.
 
 It is _not_ enforced for the `client_credentials` flow unless assignment requirement is explicitly enabled for the
-application (see [1.9 Principal Assignment Required](#19-principal-assignment-required)).
+application (see [1.10 Principal Assignment Required](#110-principal-assignment-required)).
 
 These are registered according to the list of applications defined in `spec.preAuthorizedApplications[]` in
 the `AzureAdApplication` resource, with the following caveats:
@@ -220,7 +221,22 @@ These fields thus denote the currently used set of credentials.
 See <https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal#option-2-create-a-new-application-secret>
 for details.
 
-### 1.7 Group Assignment
+### 1.7 Federated Identity Credentials
+
+Federated identity credential reconciliation is disabled unless
+`azure.features.federated-credentials.enabled` is set to `true`.
+Resources must be resynchronized after this feature is enabled because changing the flag does not change their
+synchronization hashes.
+
+`spec.federatedCredentials[]` defines the authoritative set of federated identity credentials. Each combination of
+`issuer` and `subject` must be unique.
+
+Azurerator creates missing credentials, updates changed credentials where possible, and deletes credentials absent from
+the list. This includes credentials created outside Azurerator. Some conflicting changes require deletion and recreation.
+
+See <https://learn.microsoft.com/en-us/graph/api/resources/federatedidentitycredential> for details.
+
+### 1.8 Group Assignment
 
 `spec.claims.groups[]` is a list of Object IDs that reference Entra ID groups to be assigned to the _Service Principal_
 belonging to the `AzureAdApplication`.
@@ -241,13 +257,13 @@ If `spec.allowAllUsers` is set to `true`, the group configured by the
 `azure.features.groups-assignment.all-users-group-id` will be assigned to the application. This group should contain
 all users that should have access to the application by default.
 
-### 1.8 Single-Page Applications
+### 1.9 Single-Page Applications
 
 Entra ID supports the [OAuth 2.0 Auth Code Flow with PKCE](https://learn.microsoft.com/en-us/entra/identity-platform/scenario-spa-overview) for logins from client-side/browser single-page-applications.
 However, the support for this must be explicitly enabled to avoid issues with CORS by setting
 `spec.singlePageApplication` to `true`.
 
-### 1.9 Principal Assignment Required
+### 1.10 Principal Assignment Required
 
 The `AppRoleAssignmentRequired` property denotes whether Entra ID should enforce/require that principals are explicitly
 assigned to the `AzureAdApplication` when using the application in a Web API flow such as the OAuth 2.0 Client Credentials flow.
@@ -256,7 +272,7 @@ assigned to the `AzureAdApplication` when using the application in a Web API flo
 
 Defaults to `false`.
 
-Enabling this will also require the explicit assignment of any end-user that should be able to log in to the application — either directly or through a [group](#17-group-assignment).
+Enabling this will also require the explicit assignment of any end-user that should be able to log in to the application — either directly or through a [group](#18-group-assignment).
 It will consequently also affect any use of the on-behalf-of flow - which involves end-users, and thus follows the same restriction as described for the login usecase.
 
 ## 2 Existing applications

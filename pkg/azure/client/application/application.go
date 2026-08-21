@@ -12,6 +12,7 @@ import (
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application/approle"
+	"github.com/nais/azureator/pkg/azure/client/application/federatedcredential"
 	"github.com/nais/azureator/pkg/azure/client/application/identifieruri"
 	"github.com/nais/azureator/pkg/azure/client/application/optionalclaims"
 	"github.com/nais/azureator/pkg/azure/client/application/permissionscope"
@@ -33,6 +34,7 @@ var IsManagedCache = cache.New[azure.ClientId, bool]()
 
 type Application interface {
 	AppRoles() approle.AppRoles
+	FederatedCredential() federatedcredential.FederatedCredential
 	IdentifierUri() identifieruri.IdentifierUri
 	OAuth2PermissionScopes() permissionscope.OAuth2PermissionScope
 	Owners() owners.Owners
@@ -61,6 +63,10 @@ func NewApplication(runtimeClient azure.RuntimeClient) Application {
 
 func (a application) AppRoles() approle.AppRoles {
 	return approle.NewAppRoles()
+}
+
+func (a application) FederatedCredential() federatedcredential.FederatedCredential {
+	return federatedcredential.NewFederatedCredential(a.RuntimeClient)
 }
 
 func (a application) IdentifierUri() identifieruri.IdentifierUri {

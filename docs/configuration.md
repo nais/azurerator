@@ -60,6 +60,7 @@ Additionally, one of the following authentication methods must be configured:
 | `--azure.features.claims-mapping-policies.id`           | string   |                     | Claims-mapping policy ID                                               |
 | `--azure.features.cleanup-orphans.enabled`              | bool     | `false`             | Enable cleanup of orphaned resources                                   |
 | `--azure.features.custom-security-attributes.enabled`   | bool     | `false`             | Set custom security attributes on service principals                   |
+| `--azure.features.federated-credentials.enabled`        | bool     | `false`             | Manage federated identity credentials on applications                  |
 | `--azure.features.group-membership-claim.default`       | string   | `ApplicationGroup`  | Default group membership claim. Only affects new registrations         |
 | `--azure.features.groups-assignment.all-users-group-id` | strings  |                     | List of Group IDs containing all users in the tenant                   |
 | `--azure.features.groups-assignment.enabled`            | bool     | `false`             | Assign groups to applications                                          |

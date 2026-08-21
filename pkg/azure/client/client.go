@@ -316,6 +316,12 @@ func (c Client) process(tx transaction.Transaction, app *msgraph.Application) (*
 		}
 	}
 
+	if c.config.Features.FederatedCredentials.Enabled {
+		if err := c.Application().FederatedCredential().Process(tx); err != nil {
+			return nil, fmt.Errorf("processing federated identity credentials: %w", err)
+		}
+	}
+
 	return &processResult{
 		preAuthorizedApps: *preAuthApps,
 		permissions:       perms,

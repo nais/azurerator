@@ -20,6 +20,8 @@ global:
     cleanupOrphans:
     customSecurityAttributes:
       enabled:
+    federatedCredentials:
+      enabled:
     groupsAssignment:
       enabled:
   google:
@@ -57,6 +59,8 @@ features:
     id:
   cleanupOrphans: false
   customSecurityAttributes:
+    enabled: false
+  federatedCredentials:
     enabled: false
   groupsAssignment:
     enabled: true
