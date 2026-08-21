@@ -15,6 +15,12 @@ spec:
     groups:
       - id: "00000000-0000-0000-0000-000000000000"
   groupMembershipClaims: "ApplicationGroup"
+  # Requires azure.features.federated-credentials.enabled=true.
+  federatedCredentials:
+    - name: github-actions
+      audience: api://AzureADTokenExchange
+      issuer: https://token.actions.githubusercontent.com
+      subject: repo:nais@29488289/azurerator@252177010:ref:refs/heads/master
   logoutUrl: "https://localhost:3000/oauth2/logout"
   preAuthorizedApplications:
     - application: myapp2
