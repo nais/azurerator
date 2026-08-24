@@ -24,10 +24,10 @@ func NewFederatedCredential(client azure.RuntimeClient) FederatedCredential {
 
 func (f federatedCredential) Process(tx transaction.Transaction) error {
 	objectID := tx.Instance.GetObjectId()
-	collection := f.GraphClient().Applications().ID(objectID).FederatedIdentityCredentials()
 	logger := tx.Logger.WithField("subsystem", "federatedcredential")
+	credentials := f.GraphClient().Applications().ID(objectID).FederatedIdentityCredentials()
 
-	existing, err := collection.Request().GetN(tx.Ctx, f.MaxNumberOfPagesToFetch())
+	existing, err := credentials.Request().GetN(tx.Ctx, f.MaxNumberOfPagesToFetch())
 	if err != nil {
 		return fmt.Errorf("listing federated identity credentials for application: %w", err)
 	}
@@ -37,107 +37,125 @@ func (f federatedCredential) Process(tx transaction.Transaction) error {
 		return err
 	}
 
-	// Deletions free unique issuer-subject pairs before updates and creations claim them.
-	for _, credential := range changes.toDelete {
+	// Delete credentials first to allow transferring ownership of issuer-subject pairs to another credential
+	for _, toDelete := range changes.toDelete {
 		time.Sleep(f.DelayIntervalBetweenModifications())
-		if err := collection.ID(*credential.ID).Request().Delete(tx.Ctx); err != nil {
-			return fmt.Errorf("deleting federated identity credential %q: %w", stringValue(credential.Name), err)
+		if err := credentials.ID(*toDelete.ID).Request().Delete(tx.Ctx); err != nil {
+			return fmt.Errorf("deleting federated identity credential %q: %w", valueOrEmpty(toDelete.Name), err)
 		}
-		logger.Debugf("deleted federated identity credential %q", stringValue(credential.Name))
+		logger.Debugf("deleted federated identity credential %q", valueOrEmpty(toDelete.Name))
 	}
 
-	for _, update := range changes.toUpdate {
+	for _, toUpdate := range changes.toUpdate {
 		time.Sleep(f.DelayIntervalBetweenModifications())
-		credential := fromDesired(update.desired)
+		credential := fromDesired(toUpdate.AzureAdFederatedCredential)
 		// Names are immutable and must not be included in a Graph PATCH request.
 		credential.Name = nil
-		if err := collection.ID(update.id).Request().Update(tx.Ctx, &credential); err != nil {
-			return fmt.Errorf("updating federated identity credential %q: %w", update.desired.Name, err)
+		if err := credentials.ID(toUpdate.id).Request().Update(tx.Ctx, &credential); err != nil {
+			return fmt.Errorf("updating federated identity credential %q: %w", toUpdate.Name, err)
 		}
-		logger.Debugf("updated federated identity credential %q", update.desired.Name)
+		logger.Debugf("updated federated identity credential %q", toUpdate.Name)
 	}
 
-	for _, desired := range changes.toCreate {
-		credential := fromDesired(desired)
+	for _, toCreate := range changes.toCreate {
 		time.Sleep(f.DelayIntervalBetweenModifications())
-		if _, err := collection.Request().Add(tx.Ctx, &credential); err != nil {
-			return fmt.Errorf("creating federated identity credential %q: %w", desired.Name, err)
+		credential := fromDesired(toCreate)
+		if _, err := credentials.Request().Add(tx.Ctx, &credential); err != nil {
+			return fmt.Errorf("creating federated identity credential %q: %w", toCreate.Name, err)
 		}
-		logger.Debugf("created federated identity credential %q", desired.Name)
+		logger.Debugf("created federated identity credential %q", toCreate.Name)
 	}
 
 	return nil
 }
 
 type (
-	changes struct {
+	credentialOperations struct {
 		toCreate []v1.AzureAdFederatedCredential
 		toUpdate []credentialUpdate
 		toDelete []msgraph.FederatedIdentityCredential
 	}
-	credentialUpdate struct {
-		id      string
-		desired v1.AzureAdFederatedCredential
+	credentialDiff struct {
+		existing []msgraph.FederatedIdentityCredential
+		desired  []v1.AzureAdFederatedCredential
 	}
-	issuerSubject struct {
-		issuer  string
-		subject string
+	credentialUpdate struct {
+		id string
+		v1.AzureAdFederatedCredential
 	}
 )
 
-func diff(existing []msgraph.FederatedIdentityCredential, desired []v1.AzureAdFederatedCredential) (changes, error) {
-	desiredByName := make(map[string]v1.AzureAdFederatedCredential, len(desired))
-	for _, credential := range desired {
-		desiredByName[credential.Name] = credential
-	}
+func diff(existing []msgraph.FederatedIdentityCredential, desired []v1.AzureAdFederatedCredential) (credentialOperations, error) {
+	return credentialDiff{existing: existing, desired: desired}.calculate()
+}
 
-	existingByName := make(map[string]msgraph.FederatedIdentityCredential, len(existing))
-	ownerOfPair := make(map[issuerSubject]string, len(existing))
-	for _, credential := range existing {
-		name := stringValue(credential.Name)
-		existingByName[name] = credential
-		ownerOfPair[issuerSubject{issuer: stringValue(credential.Issuer), subject: stringValue(credential.Subject)}] = name
-	}
+func (d credentialDiff) calculate() (credentialOperations, error) {
+	// Graph requires issuer-subject pairs to be unique. Recreate a credential when its
+	// desired pair belongs to another retained name, so deletions break update dependencies.
+	ops := credentialOperations{}
 
-	result := changes{}
-	recreate := make(map[string]struct{})
-	for _, credential := range desired {
-		current, found := existingByName[credential.Name]
+	for _, desired := range d.desired {
+		existing, found := d.findExisting(desired.Name)
 		if !found {
-			result.toCreate = append(result.toCreate, credential)
+			ops.toCreate = append(ops.toCreate, desired)
 			continue
 		}
-		if matches(current, credential) {
+		if matches(existing, desired) {
 			continue
 		}
-		if current.ID == nil {
-			return changes{}, fmt.Errorf("updating federated identity credential %q: missing Graph ID", credential.Name)
-		}
-
-		owner, held := ownerOfPair[issuerSubject{issuer: credential.Issuer, subject: credential.Subject}]
-		_, ownerRemains := desiredByName[owner]
-		if held && owner != credential.Name && ownerRemains {
-			recreate[credential.Name] = struct{}{}
-			result.toCreate = append(result.toCreate, credential)
+		if d.requiresRecreation(desired) {
+			ops.toDelete = append(ops.toDelete, existing)
+			ops.toCreate = append(ops.toCreate, desired)
 			continue
 		}
-		result.toUpdate = append(result.toUpdate, credentialUpdate{id: *current.ID, desired: credential})
+		ops.toUpdate = append(ops.toUpdate, credentialUpdate{id: *existing.ID, AzureAdFederatedCredential: desired})
 	}
 
-	for _, credential := range existing {
-		name := stringValue(credential.Name)
-		_, remains := desiredByName[name]
-		_, replaced := recreate[name]
-		if remains && !replaced {
+	for _, existing := range d.existing {
+		name := valueOrEmpty(existing.Name)
+		_, stillDesired := d.findDesired(name)
+		if stillDesired {
 			continue
 		}
-		if credential.ID == nil {
-			return changes{}, fmt.Errorf("deleting federated identity credential %q: missing Graph ID", name)
-		}
-		result.toDelete = append(result.toDelete, credential)
+		ops.toDelete = append(ops.toDelete, existing)
 	}
 
-	return result, nil
+	return ops, nil
+}
+
+func (d credentialDiff) findDesired(name string) (v1.AzureAdFederatedCredential, bool) {
+	for _, credential := range d.desired {
+		if credential.Name == name {
+			return credential, true
+		}
+	}
+	return v1.AzureAdFederatedCredential{}, false
+}
+
+func (d credentialDiff) findExisting(name string) (msgraph.FederatedIdentityCredential, bool) {
+	for _, credential := range d.existing {
+		if valueOrEmpty(credential.Name) == name {
+			return credential, true
+		}
+	}
+	return msgraph.FederatedIdentityCredential{}, false
+}
+
+func (d credentialDiff) requiresRecreation(credential v1.AzureAdFederatedCredential) bool {
+	ownerOf := func(issuer, subject string) (string, bool) {
+		for _, existing := range d.existing {
+			if valueOrEmpty(existing.Issuer) == issuer && valueOrEmpty(existing.Subject) == subject {
+				return valueOrEmpty(existing.Name), true
+			}
+		}
+		return "", false
+	}
+
+	ownerName, found := ownerOf(credential.Issuer, credential.Subject)
+	ownedByAnotherCredential := found && ownerName != credential.Name
+	_, ownerStillDesired := d.findDesired(ownerName)
+
+	return ownedByAnotherCredential && ownerStillDesired
 }
 
 func fromDesired(desired v1.AzureAdFederatedCredential) msgraph.FederatedIdentityCredential {
@@ -150,12 +168,12 @@ func fromDesired(desired v1.AzureAdFederatedCredential) msgraph.FederatedIdentit
 }
 
 func matches(existing msgraph.FederatedIdentityCredential, desired v1.AzureAdFederatedCredential) bool {
-	return stringValue(existing.Issuer) == desired.Issuer &&
-		stringValue(existing.Subject) == desired.Subject &&
+	return valueOrEmpty(existing.Issuer) == desired.Issuer &&
+		valueOrEmpty(existing.Subject) == desired.Subject &&
 		len(existing.Audiences) == 1 && existing.Audiences[0] == desired.Audience
 }
 
-func stringValue(value *string) string {
+func valueOrEmpty(value *string) string {
 	if value == nil {
 		return ""
 	}

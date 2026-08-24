@@ -49,6 +49,30 @@ func TestProcess(t *testing.T) {
 			}),
 		)
 	})
+
+	t.Run("deletes credentials before recreating swapped issuer and subject pairs", func(t *testing.T) {
+		existing := []msgraph.FederatedIdentityCredential{
+			credential("first", "first-id", "audience", "first-issuer", "first-subject"),
+			credential("second", "second-id", "audience", "second-issuer", "second-subject"),
+		}
+		desired := []v1.AzureAdFederatedCredential{
+			{Name: "first", Audience: "audience", Issuer: "second-issuer", Subject: "second-subject"},
+			{Name: "second", Audience: "audience", Issuer: "first-issuer", Subject: "first-subject"},
+		}
+		requests, err := processRequests(t, existing, desired)
+
+		require.NoError(t, err)
+		assertRequests(t, requests,
+			deleteRequest("first-id"),
+			deleteRequest("second-id"),
+			postRequest(map[string]any{
+				"name": "first", "audiences": []any{"audience"}, "issuer": "second-issuer", "subject": "second-subject",
+			}),
+			postRequest(map[string]any{
+				"name": "second", "audiences": []any{"audience"}, "issuer": "first-issuer", "subject": "first-subject",
+			}),
+		)
+	})
 }
 
 func TestDiff(t *testing.T) {
@@ -64,7 +88,10 @@ func TestDiff(t *testing.T) {
 		actual, err := diff(existing, desired)
 
 		require.NoError(t, err)
-		assert.Equal(t, changes{toDelete: existing, toCreate: desired}, actual)
+		assert.Equal(t, credentialOperations{
+			toDelete: []msgraph.FederatedIdentityCredential{existing[1], existing[0]},
+			toCreate: desired,
+		}, actual)
 	})
 
 	t.Run("deletes an obsolete conflict before updating", func(t *testing.T) {
@@ -78,9 +105,9 @@ func TestDiff(t *testing.T) {
 		actual, err := diff(existing, desired)
 
 		require.NoError(t, err)
-		assert.Equal(t, changes{
+		assert.Equal(t, credentialOperations{
 			toDelete: existing[1:],
-			toUpdate: []credentialUpdate{{id: "kept-id", desired: desired[0]}},
+			toUpdate: []credentialUpdate{{id: "kept-id", AzureAdFederatedCredential: desired[0]}},
 		}, actual)
 	})
 
@@ -96,9 +123,9 @@ func TestDiff(t *testing.T) {
 		actual, err := diff(existing, desired)
 
 		require.NoError(t, err)
-		assert.Equal(t, changes{
+		assert.Equal(t, credentialOperations{
 			toCreate: desired[1:],
-			toUpdate: []credentialUpdate{{id: "first-id", desired: desired[0]}},
+			toUpdate: []credentialUpdate{{id: "first-id", AzureAdFederatedCredential: desired[0]}},
 			toDelete: existing[1:],
 		}, actual)
 	})
@@ -111,7 +138,7 @@ func TestDiff(t *testing.T) {
 		actual, err := diff(existing, nil)
 
 		require.NoError(t, err)
-		assert.Equal(t, changes{toDelete: existing}, actual)
+		assert.Equal(t, credentialOperations{toDelete: existing}, actual)
 	})
 
 	t.Run("updates a credential with incomplete Graph fields", func(t *testing.T) {
@@ -125,7 +152,7 @@ func TestDiff(t *testing.T) {
 		actual, err := diff(existing, desired)
 
 		require.NoError(t, err)
-		assert.Equal(t, changes{toUpdate: []credentialUpdate{{id: "existing-id", desired: desired[0]}}}, actual)
+		assert.Equal(t, credentialOperations{toUpdate: []credentialUpdate{{id: "existing-id", AzureAdFederatedCredential: desired[0]}}}, actual)
 	})
 }
 
