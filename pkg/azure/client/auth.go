@@ -3,7 +3,9 @@ package client
 import (
 	"context"
 	"fmt"
+	"os"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/nais/msgraph.go/msauth"
@@ -42,6 +44,52 @@ func (in *GoogleFederatedCredentialTokenSource) Token() (*oauth2.Token, error) {
 		TokenType:   "bearer",
 		Expiry:      tok.ExpiresOn,
 	}, nil
+}
+
+type azTokenSource struct {
+	cred interface {
+		GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error)
+	}
+	ctx  context.Context
+	opts policy.TokenRequestOptions
+}
+
+func (ts *azTokenSource) Token() (*oauth2.Token, error) {
+	tok, err := ts.cred.GetToken(ts.ctx, ts.opts)
+	if err != nil {
+		return nil, fmt.Errorf("fetching azure token: %w", err)
+	}
+
+	return &oauth2.Token{
+		AccessToken: tok.Token,
+		TokenType:   "bearer",
+		Expiry:      tok.ExpiresOn,
+	}, nil
+}
+
+func NewClientCertificateTokenSource(ctx context.Context, cfg *config.AzureConfig) (oauth2.TokenSource, error) {
+	pemData, err := os.ReadFile(cfg.Auth.ClientCertificate.KeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading client certificate key file: %w", err)
+	}
+
+	certs, privateKey, err := azidentity.ParseCertificates(pemData, nil)
+	if err != nil {
+		return nil, fmt.Errorf("parsing client certificate: %w", err)
+	}
+
+	cred, err := azidentity.NewClientCertificateCredential(cfg.Tenant.Id, cfg.Auth.ClientId, certs, privateKey, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating client certificate credential: %w", err)
+	}
+
+	ts := &azTokenSource{
+		cred: cred,
+		ctx:  ctx,
+		opts: policy.TokenRequestOptions{Scopes: scopes},
+	}
+
+	return oauth2.ReuseTokenSource(nil, ts), nil
 }
 
 func NewGoogleFederatedCredentialsTokenSource(ctx context.Context, cfg *config.AzureConfig) (oauth2.TokenSource, error) {

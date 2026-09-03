@@ -43,7 +43,8 @@ At minimum, the following configuration must be provided:
 
 Additionally, one of the following authentication methods must be configured:
 
-- `azure.auth.client-secret` (default, when Google auth is not enabled)
+- `azure.auth.client-secret` (default, when no other auth method is enabled)
+- `azure.auth.client-certificate.key-path` (when `azure.auth.client-certificate.enabled` is `true`) — path to a PEM file containing both the certificate and the private key for the management App Registration
 - `azure.auth.google.project-id` (when `azure.auth.google.enabled` is `true`)
 
 ## All Flags
@@ -52,6 +53,8 @@ Additionally, one of the following authentication methods must be configured:
 |---------------------------------------------------------|----------|---------------------|------------------------------------------------------------------------|
 | `--azure.auth.client-id`                                | string   |                     | Client ID for authentication                                           |
 | `--azure.auth.client-secret`                            | string   |                     | Client secret for authentication                                       |
+| `--azure.auth.client-certificate.enabled`               | bool     | `false`             | Use a client certificate (private key) for authentication              |
+| `--azure.auth.client-certificate.key-path`              | string   |                     | Path to PEM file (certificate + private key) for certificate auth      |
 | `--azure.auth.google.enabled`                           | bool     | `false`             | Use Google credentials as federated credentials for auth               |
 | `--azure.auth.google.project-id`                        | string   |                     | Google Project ID for Service Account when using federated credentials |
 | `--azure.delay.between-modifications`                   | duration | `5s`                | Delay between modification operations to the Graph API                 |
@@ -82,6 +85,8 @@ Additionally, one of the following authentication methods must be configured:
 
 ## Example Configuration (YAML)
 
+**Client secret (default):**
+
 ```yaml
 # ./azurerator.yaml
 
@@ -95,3 +100,23 @@ azure:
   permissiongrant-resource-id: ""
 cluster-name: minikube
 ```
+
+**Client certificate / private key:**
+
+```yaml
+# ./azurerator.yaml
+
+azure:
+  auth:
+    client-id: ""
+    client-certificate:
+      enabled: true
+      key-path: "/path/to/cert-and-key.pem"  # PEM file with both certificate and private key
+  tenant:
+    id: ""
+    name: "local.test"
+  permissiongrant-resource-id: ""
+cluster-name: minikube
+```
+
+> **Note on the PEM file:** `key-path` must point to a PEM file that contains **both** the X.509 certificate block (`-----BEGIN CERTIFICATE-----`) and the private key block (e.g. `-----BEGIN PRIVATE KEY-----` for PKCS#8 or `-----BEGIN RSA PRIVATE KEY-----` for PKCS#1). The certificate must be uploaded to the App Registration in Entra ID under **Certificates & secrets → Certificates**.

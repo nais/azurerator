@@ -24,12 +24,19 @@ global:
       enabled:
     groupsAssignment:
       enabled:
+  clientCertificate:
+    enabled:
+    pem:
+    existingSecret:
+      name:
+      key:
   google:
     federatedAuth:
     projectID:
   image:
     repository:
     tag:
+    imagePullSecrets: []
   networkPolicy:
     enabled:
     apiServerCIDR:
@@ -39,7 +46,26 @@ alerts:
   failedProcessingThreshold: 50
 azure:
   clientID: # required
-  clientSecret: # required if google.federatedAuth is disabled
+  clientSecret: # required if neither google.federatedAuth nor clientCertificate.enabled is set
+  clientCertificate:
+    enabled: false
+    pem: # PEM content (certificate + private key); required if clientCertificate.enabled is true and existingSecret is not set
+    existingSecret:
+      # Must be an Opaque secret whose keys are exposed as files.
+      # The secret is mounted as a directory at /etc/azurerator-cert, so each
+      # key in the secret becomes a file. No subPath is used, which means secret
+      # updates are reflected automatically.
+      #
+      # The `key` field identifies which filename (key) in the secret holds the
+      # combined PEM content (certificate + private key concatenated).
+      #
+      # A kubernetes.io/tls secret will NOT work as-is (it splits cert and key into
+      # separate tls.crt / tls.key fields and azidentity requires them combined).
+      #
+      # Example: kubectl create secret generic my-cert-secret \
+      #            --from-file=cert-and-key.pem=/path/to/cert-and-key.pem
+      name: # name of the existing Secret
+      key:  # key (filename) within that Secret whose value is the combined PEM content
   permissionGrantResourceID: # required
   tenant:
     name: # required
@@ -71,6 +97,11 @@ google:
 image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images/azurerator
   tag: latest
+  # imagePullSecrets is a list of references to secrets in the same namespace
+  # to use for pulling the image. Example:
+  # imagePullSecrets:
+  #   - name: my-registry-secret
+  imagePullSecrets: []
 networkPolicy:
   enabled: false
   apiServerCIDR:

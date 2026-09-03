@@ -89,9 +89,12 @@ func New(ctx context.Context, cfg *config.AzureConfig) (azure.Client, error) {
 	var ts oauth2.TokenSource
 	var err error
 
-	if cfg.Auth.Google.Enabled {
+	switch {
+	case cfg.Auth.Google.Enabled:
 		ts, err = NewGoogleFederatedCredentialsTokenSource(ctx, cfg)
-	} else {
+	case cfg.Auth.ClientCertificate.Enabled:
+		ts, err = NewClientCertificateTokenSource(ctx, cfg)
+	default:
 		ts, err = NewClientCredentialsTokenSource(ctx, cfg)
 	}
 	if err != nil {
