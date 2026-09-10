@@ -248,10 +248,9 @@ func (r *Reconciler) HandleError(tx transaction.Transaction, err error) (ctrl.Re
 }
 
 func (r *Reconciler) isUnrecoverableError(tx transaction.Transaction, err error) bool {
-	var alreadyOwnedErr *controllerutil.AlreadyOwnedError
 	// this happens only if multiple instances of AzureAdApplication attempt to use the same secret name.
 	// we don't want to retry these.
-	if errors.As(err, &alreadyOwnedErr) {
+	if alreadyOwnedErr, ok := errors.AsType[*controllerutil.AlreadyOwnedError](err); ok {
 		template := "Secret '%s' is already owned by %s '%s', cannot overwrite. If overwriting is intended, delete the secret and resynchronize."
 		msg := fmt.Sprintf(template, alreadyOwnedErr.Object.GetName(), alreadyOwnedErr.Owner.Kind, alreadyOwnedErr.Owner.Name)
 

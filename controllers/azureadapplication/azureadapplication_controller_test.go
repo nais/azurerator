@@ -145,16 +145,16 @@ func TestReconciler_UpdateAzureAdApplication_InvalidPreAuthorizedApps_ShouldNotR
 	instance := assertApplicationExists(t, az.ApplicationExists)
 
 	previousPreAuthorizedApps := instance.Spec.PreAuthorizedApplications
-	invalidPreAuthorizedApp := v1.AccessPolicyInboundRule{AccessPolicyRule: v1.AccessPolicyRule{
+	invalidPreAuthorizedApp := v1.AccessPolicyInboundRule{
 		Application: "invalid-app",
 		Namespace:   "some-namespace",
 		Cluster:     "some-cluster",
-	}}
-	validPreAuthorizedApp := v1.AccessPolicyInboundRule{AccessPolicyRule: v1.AccessPolicyRule{
+	}
+	validPreAuthorizedApp := v1.AccessPolicyInboundRule{
 		Application: "valid-app",
 		Namespace:   "some-namespace",
 		Cluster:     "some-cluster",
-	}}
+	}
 	instance.Spec.PreAuthorizedApplications = append(previousPreAuthorizedApps, invalidPreAuthorizedApp, validPreAuthorizedApp)
 
 	updatedInstance := updateApplication(t, instance, eventuallyHashUpdated(instance))
@@ -171,11 +171,11 @@ func TestReconciler_PeriodicResync_UnassignedPreAuthorizedApps(t *testing.T) {
 	// Add a preAuthorizedApp with "invalid" (fake treats it as unresolvable) and "resync"
 	// (fake's PreAuthorizedAppClientID returns assignable, simulating the app appeared in Azure later).
 	previousPreAuthorizedApps := instance.Spec.PreAuthorizedApplications
-	invalidPreAuthorizedApp := v1.AccessPolicyInboundRule{AccessPolicyRule: v1.AccessPolicyRule{
+	invalidPreAuthorizedApp := v1.AccessPolicyInboundRule{
 		Application: "invalid-periodic-resync-app",
 		Namespace:   "some-namespace",
 		Cluster:     "some-cluster",
-	}}
+	}
 	instance.Spec.PreAuthorizedApplications = append(previousPreAuthorizedApps, invalidPreAuthorizedApp)
 
 	// Wait for the initial sync to complete (hash changes due to spec change)

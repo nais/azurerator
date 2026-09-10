@@ -9,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -54,39 +53,31 @@ func (c ClusterFixtures) WithAzureApp() ClusterFixtures {
 		},
 		PreAuthorizedApplications: []v1.AccessPolicyInboundRule{
 			{
-				AccessPolicyRule: v1.AccessPolicyRule{
-					Application: "some-other-app",
-					Namespace:   key.Namespace,
-					Cluster:     "test-cluster",
-				},
+				Application: "some-other-app",
+				Namespace:   key.Namespace,
+				Cluster:     "test-cluster",
 			},
 		},
 		LogoutUrl:  "",
 		SecretName: c.SecretName,
 	}
 	c.azureAdApplication = &v1.AzureAdApplication{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      key.Name,
-			Namespace: key.Namespace,
-		},
-		Spec: spec,
+		Name:      key.Name,
+		Namespace: key.Namespace,
+		Spec:      spec,
 	}
 	return c
 }
 
 func (c ClusterFixtures) WithUnusedSecret() ClusterFixtures {
 	c.unusedSecret = &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      c.UnusedSecretName,
-			Namespace: c.NamespaceName,
-			Labels: map[string]string{
-				labels.AppLabelKey:  c.AzureAppName,
-				labels.TypeLabelKey: labels.TypeLabelValue,
-			},
+		Kind:       "Secret",
+		APIVersion: "v1",
+		Name:       c.UnusedSecretName,
+		Namespace:  c.NamespaceName,
+		Labels: map[string]string{
+			labels.AppLabelKey:  c.AzureAppName,
+			labels.TypeLabelKey: labels.TypeLabelValue,
 		},
 	}
 	return c
@@ -94,16 +85,12 @@ func (c ClusterFixtures) WithUnusedSecret() ClusterFixtures {
 
 func (c ClusterFixtures) WithPods() ClusterFixtures {
 	c.pod = &corev1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      c.AzureAppName,
-			Namespace: c.NamespaceName,
-			Labels: map[string]string{
-				labels.AppLabelKey: c.AzureAppName,
-			},
+		Kind:       "Pod",
+		APIVersion: "v1",
+		Name:       c.AzureAppName,
+		Namespace:  c.NamespaceName,
+		Labels: map[string]string{
+			labels.AppLabelKey: c.AzureAppName,
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -115,26 +102,20 @@ func (c ClusterFixtures) WithPods() ClusterFixtures {
 			Volumes: []corev1.Volume{
 				{
 					Name: "foo",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: c.SecretName,
-						},
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: c.SecretName,
 					},
 				},
 			},
 		},
 	}
 	c.podEnvFrom = &corev1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-envfrom", c.AzureAppName),
-			Namespace: c.NamespaceName,
-			Labels: map[string]string{
-				labels.AppLabelKey: c.AzureAppName,
-			},
+		Kind:       "Pod",
+		APIVersion: "v1",
+		Name:       fmt.Sprintf("%s-envfrom", c.AzureAppName),
+		Namespace:  c.NamespaceName,
+		Labels: map[string]string{
+			labels.AppLabelKey: c.AzureAppName,
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -144,9 +125,7 @@ func (c ClusterFixtures) WithPods() ClusterFixtures {
 					EnvFrom: []corev1.EnvFromSource{
 						{
 							SecretRef: &corev1.SecretEnvSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: c.SecretName,
-								},
+								Name: c.SecretName,
 							},
 						},
 					},
@@ -185,11 +164,9 @@ func (c ClusterFixtures) Setup() error {
 		}
 
 		resources = append(resources, resource{
-			ObjectKey: client.ObjectKey{
-				Namespace: c.NamespaceName,
-				Name:      c.AzureAppName,
-			},
-			Object: &corev1.Pod{},
+			Namespace: c.NamespaceName,
+			Name:      c.AzureAppName,
+			Object:    &corev1.Pod{},
 		})
 	}
 
@@ -200,11 +177,9 @@ func (c ClusterFixtures) Setup() error {
 		}
 
 		resources = append(resources, resource{
-			ObjectKey: client.ObjectKey{
-				Namespace: c.NamespaceName,
-				Name:      fmt.Sprintf("%s-envfrom", c.AzureAppName),
-			},
-			Object: &corev1.Pod{},
+			Namespace: c.NamespaceName,
+			Name:      fmt.Sprintf("%s-envfrom", c.AzureAppName),
+			Object:    &corev1.Pod{},
 		})
 	}
 
@@ -222,11 +197,9 @@ func (c ClusterFixtures) Setup() error {
 		}
 
 		resources = append(resources, resource{
-			ObjectKey: client.ObjectKey{
-				Namespace: c.NamespaceName,
-				Name:      c.AzureAppName,
-			},
-			Object: &v1.AzureAdApplication{},
+			Namespace: c.NamespaceName,
+			Name:      c.AzureAppName,
+			Object:    &v1.AzureAdApplication{},
 		})
 	}
 
@@ -271,12 +244,8 @@ func allExists(ctx context.Context, cli client.Client, resources []resource) (bo
 
 func namespace(name string) *corev1.Namespace {
 	return &corev1.Namespace{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Namespace",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
+		Kind:       "Namespace",
+		APIVersion: "v1",
+		Name:       name,
 	}
 }

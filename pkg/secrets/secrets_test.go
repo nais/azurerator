@@ -9,7 +9,6 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/nais/azureator/pkg/azure/fake"
 	"github.com/nais/azureator/pkg/azure/resource"
@@ -22,19 +21,15 @@ const (
 
 func TestSecretData(t *testing.T) {
 	app := &v1.AzureAdApplication{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-app",
-			Namespace: "test",
-		},
+		Name:      "test-app",
+		Namespace: "test",
 		Spec: v1.AzureAdApplicationSpec{
 			SecretName: "test-secret",
 			PreAuthorizedApplications: []v1.AccessPolicyInboundRule{
 				{
-					AccessPolicyRule: v1.AccessPolicyRule{
-						Application: "test-app-2",
-						Namespace:   "test",
-						Cluster:     "test-cluster",
-					},
+					Application: "test-app-2",
+					Namespace:   "test",
+					Cluster:     "test-cluster",
 				},
 			},
 		},

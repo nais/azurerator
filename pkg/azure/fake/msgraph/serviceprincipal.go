@@ -10,7 +10,7 @@ import (
 func ServicePrincipal(tx transaction.Transaction) msgraph.ServicePrincipal {
 	id := uuid.New().String()
 	return msgraph.ServicePrincipal{
-		DirectoryObject: msgraph.DirectoryObject{Entity: msgraph.Entity{ID: &id}},
-		DisplayName:     new(tx.UniformResourceName),
+		ID:          &id,
+		DisplayName: new(tx.UniformResourceName),
 	}
 }

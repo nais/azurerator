@@ -17,12 +17,10 @@ import (
 func TestResource_ToPreAuthorizedApp(t *testing.T) {
 	app := resource.Resource{
 		ClientId: "app-1",
-		AccessPolicyInboundRule: naisiov1.AccessPolicyInboundRule{
-			Permissions: &naisiov1.AccessPolicyPermissions{
-				Scopes: []naisiov1.AccessPolicyPermission{
-					"scope-1",
-					"scope-2",
-				},
+		Permissions: &naisiov1.AccessPolicyPermissions{
+			Scopes: []naisiov1.AccessPolicyPermission{
+				"scope-1",
+				"scope-2",
 			},
 		},
 	}
@@ -73,36 +71,28 @@ func TestResources_FilterByRole(t *testing.T) {
 	}
 	resourceWithScopes := resource.Resource{
 		Name: "app-2",
-		AccessPolicyInboundRule: naisiov1.AccessPolicyInboundRule{
-			Permissions: &naisiov1.AccessPolicyPermissions{
-				Scopes: []naisiov1.AccessPolicyPermission{"some-scope", "common"},
-			},
+		Permissions: &naisiov1.AccessPolicyPermissions{
+			Scopes: []naisiov1.AccessPolicyPermission{"some-scope", "common"},
 		},
 	}
 	resourceWithRoles := resource.Resource{
 		Name: "app-3",
-		AccessPolicyInboundRule: naisiov1.AccessPolicyInboundRule{
-			Permissions: &naisiov1.AccessPolicyPermissions{
-				Roles: []naisiov1.AccessPolicyPermission{"some-role", "common"},
-			},
+		Permissions: &naisiov1.AccessPolicyPermissions{
+			Roles: []naisiov1.AccessPolicyPermission{"some-role", "common"},
 		},
 	}
 	resourceWithScopesAndRoles := resource.Resource{
 		Name: "app-4",
-		AccessPolicyInboundRule: naisiov1.AccessPolicyInboundRule{
-			Permissions: &naisiov1.AccessPolicyPermissions{
-				Scopes: []naisiov1.AccessPolicyPermission{"some-scope", "common"},
-				Roles:  []naisiov1.AccessPolicyPermission{"some-role", "common"},
-			},
+		Permissions: &naisiov1.AccessPolicyPermissions{
+			Scopes: []naisiov1.AccessPolicyPermission{"some-scope", "common"},
+			Roles:  []naisiov1.AccessPolicyPermission{"some-role", "common"},
 		},
 	}
 	resourceWithDuplicatePermissions := resource.Resource{
 		Name: "app-5",
-		AccessPolicyInboundRule: naisiov1.AccessPolicyInboundRule{
-			Permissions: &naisiov1.AccessPolicyPermissions{
-				Scopes: []naisiov1.AccessPolicyPermission{"some-scope", "some-scope"},
-				Roles:  []naisiov1.AccessPolicyPermission{"some-role", "some-role"},
-			},
+		Permissions: &naisiov1.AccessPolicyPermissions{
+			Scopes: []naisiov1.AccessPolicyPermission{"some-scope", "some-scope"},
+			Roles:  []naisiov1.AccessPolicyPermission{"some-role", "some-role"},
 		},
 	}
 
@@ -206,19 +196,15 @@ func TestResources_ExtractDesiredAssignees(t *testing.T) {
 	app1 := resource.Resource{
 		Name:          "app-1",
 		PrincipalType: resource.PrincipalTypeServicePrincipal,
-		AccessPolicyInboundRule: naisiov1.AccessPolicyInboundRule{
-			Permissions: &naisiov1.AccessPolicyPermissions{
-				Roles: []naisiov1.AccessPolicyPermission{"some-permission"},
-			},
+		Permissions: &naisiov1.AccessPolicyPermissions{
+			Roles: []naisiov1.AccessPolicyPermission{"some-permission"},
 		},
 	}
 	app2 := resource.Resource{
 		Name:          "app-2",
 		PrincipalType: resource.PrincipalTypeServicePrincipal,
-		AccessPolicyInboundRule: naisiov1.AccessPolicyInboundRule{
-			Permissions: &naisiov1.AccessPolicyPermissions{
-				Roles: []naisiov1.AccessPolicyPermission{"some-other-permission"},
-			},
+		Permissions: &naisiov1.AccessPolicyPermissions{
+			Roles: []naisiov1.AccessPolicyPermission{"some-other-permission"},
 		},
 	}
 	app3 := resource.Resource{
@@ -228,10 +214,8 @@ func TestResources_ExtractDesiredAssignees(t *testing.T) {
 	app4 := resource.Resource{
 		Name:          "app-4",
 		PrincipalType: resource.PrincipalTypeServicePrincipal,
-		AccessPolicyInboundRule: naisiov1.AccessPolicyInboundRule{
-			Permissions: &naisiov1.AccessPolicyPermissions{
-				Roles: []naisiov1.AccessPolicyPermission{"some-permission", "some-permission"},
-			},
+		Permissions: &naisiov1.AccessPolicyPermissions{
+			Roles: []naisiov1.AccessPolicyPermission{"some-permission", "some-permission"},
 		},
 	}
 	group1 := resource.Resource{

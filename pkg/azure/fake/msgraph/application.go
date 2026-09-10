@@ -12,9 +12,7 @@ func Application(tx transaction.Transaction) msgraph.Application {
 	clientId := fake.GetOrGenerate(tx.Instance.GetClientId())
 
 	return msgraph.Application{
-		DirectoryObject: msgraph.DirectoryObject{
-			Entity: msgraph.Entity{ID: new(objectId)},
-		},
+		ID:          new(objectId),
 		DisplayName: new(tx.UniformResourceName),
 		AppID:       new(clientId),
 	}

@@ -143,8 +143,8 @@ func TestDiff(t *testing.T) {
 
 	t.Run("updates a credential with incomplete Graph fields", func(t *testing.T) {
 		existing := []msgraph.FederatedIdentityCredential{{
-			Entity: msgraph.Entity{ID: new("existing-id")},
-			Name:   new("existing"),
+			ID:   new("existing-id"),
+			Name: new("existing"),
 		}}
 		desired := []v1.AzureAdFederatedCredential{
 			{Name: "existing", Audience: "audience", Issuer: "issuer", Subject: "subject"},
@@ -224,7 +224,7 @@ func postRequest(body map[string]any) request {
 }
 
 func credential(name, id, audience, issuer, subject string) msgraph.FederatedIdentityCredential {
-	return msgraph.FederatedIdentityCredential{Entity: msgraph.Entity{ID: new(id)}, Name: new(name), Audiences: []string{audience}, Issuer: new(issuer), Subject: new(subject)}
+	return msgraph.FederatedIdentityCredential{ID: new(id), Name: new(name), Audiences: []string{audience}, Issuer: new(issuer), Subject: new(subject)}
 }
 
 type rewriteTransport struct {

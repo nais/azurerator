@@ -130,11 +130,9 @@ func (s secretsReconciler) createOrUpdate(tx transaction.Transaction, result res
 
 	secret := &corev1.Secret{
 		ObjectMeta: objectMeta,
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		Type: corev1.SecretTypeOpaque,
+		Kind:       "Secret",
+		APIVersion: "v1",
+		Type:       corev1.SecretTypeOpaque,
 	}
 
 	stringData, err := secrets.SecretData(result, set, s.azureOpenIdConfig, tx.Secrets.DataKeys)

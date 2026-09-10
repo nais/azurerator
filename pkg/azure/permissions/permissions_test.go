@@ -23,25 +23,19 @@ func TestGenerateDesiredPermissionSet(t *testing.T) {
 
 	app.Spec.PreAuthorizedApplications = []naisiov1.AccessPolicyInboundRule{
 		{
-			AccessPolicyRule: naisiov1.AccessPolicyRule{
-				Application: "a",
-			},
+			Application: "a",
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"read", "write"},
 				Scopes: []naisiov1.AccessPolicyPermission{"admin"},
 			},
 		}, {
-			AccessPolicyRule: naisiov1.AccessPolicyRule{
-				Application: "b",
-			},
+			Application: "b",
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"read"},
 				Scopes: []naisiov1.AccessPolicyPermission{"write"},
 			},
 		}, {
-			AccessPolicyRule: naisiov1.AccessPolicyRule{
-				Application: "c",
-			},
+			Application: "c",
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"write", "admin"},
 				Scopes: []naisiov1.AccessPolicyPermission{"read"},
@@ -73,17 +67,13 @@ func TestGenerateDesiredPermissionSetPreserveExisting(t *testing.T) {
 	app := fixtures.MinimalApplication()
 	app.Spec.PreAuthorizedApplications = []naisiov1.AccessPolicyInboundRule{
 		{
-			AccessPolicyRule: naisiov1.AccessPolicyRule{
-				Application: "a",
-			},
+			Application: "a",
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"role-1"},
 				Scopes: []naisiov1.AccessPolicyPermission{"scope-1", "common"},
 			},
 		}, {
-			AccessPolicyRule: naisiov1.AccessPolicyRule{
-				Application: "b",
-			},
+			Application: "b",
 			Permissions: &naisiov1.AccessPolicyPermissions{
 				Roles:  []naisiov1.AccessPolicyPermission{"role-3", "common"},
 				Scopes: []naisiov1.AccessPolicyPermission{"scope-2", "scope-3"},

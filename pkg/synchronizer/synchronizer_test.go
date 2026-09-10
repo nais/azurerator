@@ -127,11 +127,9 @@ func TestNeedsResync_SelfReference(t *testing.T) {
 
 	app := fixtures.MinimalApplication()
 	app.Spec.PreAuthorizedApplications = []nais_io_v1.AccessPolicyInboundRule{{
-		AccessPolicyRule: nais_io_v1.AccessPolicyRule{
-			Application: "test-app",
-			Namespace:   "test-namespace",
-			Cluster:     clusterName,
-		},
+		Application: "test-app",
+		Namespace:   "test-namespace",
+		Cluster:     clusterName,
 	}}
 
 	assert.False(t, needsResync(*app, clusterName, e), "app should not resync itself")

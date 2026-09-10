@@ -237,13 +237,9 @@ func toResource(tx transaction.Transaction) resource.Resource {
 		ClientId:      tx.Instance.Status.ClientId,
 		ObjectId:      tx.Instance.Status.ServicePrincipalId,
 		PrincipalType: resource.PrincipalTypeServicePrincipal,
-		AccessPolicyInboundRule: v1.AccessPolicyInboundRule{
-			AccessPolicyRule: v1.AccessPolicyRule{
-				Application: tx.Instance.GetName(),
-				Namespace:   tx.Instance.GetNamespace(),
-				Cluster:     tx.ClusterName,
-			},
-		},
+		Application:   tx.Instance.GetName(),
+		Namespace:     tx.Instance.GetNamespace(),
+		Cluster:       tx.ClusterName,
 	}
 }
 
