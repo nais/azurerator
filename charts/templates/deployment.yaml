@@ -25,6 +25,7 @@ spec:
         {{- include "azurerator.labels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "azurerator.fullname" . }}
+      {{- include "azurerator.imagePullSecrets" . | nindent 6 }}
       terminationGracePeriodSeconds: 30
       containers:
         - name: {{ include "azurerator.fullname" . }}
@@ -67,6 +68,13 @@ spec:
               readOnly: true
             - mountPath: /tmp
               name: writable-tmp
+            {{- $certEnabled      := .Values.global.clientCertificate.enabled | default .Values.azure.clientCertificate.enabled }}
+            {{- $certExistingName := .Values.global.clientCertificate.existingSecret.name | default .Values.azure.clientCertificate.existingSecret.name }}
+            {{- if and $certEnabled $certExistingName }}
+            - mountPath: /etc/azurerator-cert
+              name: client-certificate
+              readOnly: true
+            {{- end }}
       securityContext:
         fsGroup: 1069
         fsGroupChangePolicy: OnRootMismatch
@@ -78,3 +86,9 @@ spec:
             secretName: {{ include "azurerator.fullname" . }}-env
         - name: writable-tmp
           emptyDir: {}
+        {{- if and $certEnabled $certExistingName }}
+        - name: client-certificate
+          secret:
+            secretName: {{ $certExistingName }}
+            defaultMode: 0400
+        {{- end }}

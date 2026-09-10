@@ -44,9 +44,15 @@ func (a AzureTenant) String() string {
 }
 
 type AzureAuth struct {
-	ClientId     string     `json:"client-id"`
-	ClientSecret string     `json:"client-secret"`
-	Google       GoogleAuth `json:"google"`
+	ClientId          string                `json:"client-id"`
+	ClientSecret      string                `json:"client-secret"`
+	ClientCertificate ClientCertificateAuth `json:"client-certificate"`
+	Google            GoogleAuth            `json:"google"`
+}
+
+type ClientCertificateAuth struct {
+	Enabled bool   `json:"enabled"`
+	KeyPath string `json:"key-path"`
 }
 
 type AzureDelay struct {
@@ -130,6 +136,8 @@ type Validation struct {
 const (
 	AzureClientId                                 = "azure.auth.client-id"
 	AzureClientSecret                             = "azure.auth.client-secret"
+	AzureAuthClientCertificateEnabled             = "azure.auth.client-certificate.enabled"
+	AzureAuthClientCertificateKeyPath             = "azure.auth.client-certificate.key-path"
 	AzureAuthGoogleEnabled                        = "azure.auth.google.enabled"
 	AzureAuthGoogleProjectID                      = "azure.auth.google.project-id"
 	AzureTenantId                                 = "azure.tenant.id"
@@ -169,6 +177,8 @@ func init() {
 
 	flag.String(AzureClientId, "", "Client ID for Azure AD authentication")
 	flag.String(AzureClientSecret, "", "Client secret for Azure AD authentication")
+	flag.Bool(AzureAuthClientCertificateEnabled, false, "Use a client certificate (private key) for Azure AD authentication.")
+	flag.String(AzureAuthClientCertificateKeyPath, "", "Path to the PEM-encoded private key file (PKCS#8 or PKCS#1) used for client certificate authentication.")
 	flag.Bool(AzureAuthGoogleEnabled, false, "Use Google credentials with as federated credentials for auth.")
 	flag.String(AzureAuthGoogleProjectID, "", "Google Project ID for Service Account when using federated credentials.")
 
@@ -270,9 +280,12 @@ func DefaultConfig() (*Config, error) {
 		ClusterName,
 	}
 
-	if cfg.Azure.Auth.Google.Enabled {
+	switch {
+	case cfg.Azure.Auth.Google.Enabled:
 		required = append(required, AzureAuthGoogleProjectID)
-	} else {
+	case cfg.Azure.Auth.ClientCertificate.Enabled:
+		required = append(required, AzureAuthClientCertificateKeyPath)
+	default:
 		required = append(required, AzureClientSecret)
 	}
 

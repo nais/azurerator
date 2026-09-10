@@ -53,6 +53,20 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Resolve imagePullSecrets: global.image.imagePullSecrets takes precedence over image.imagePullSecrets.
+*/}}
+{{- define "azurerator.imagePullSecrets" -}}
+{{- $secrets := .Values.image.imagePullSecrets -}}
+{{- if .Values.global.image.imagePullSecrets -}}
+  {{- $secrets = .Values.global.image.imagePullSecrets -}}
+{{- end -}}
+{{- if $secrets -}}
+imagePullSecrets:
+  {{- toYaml $secrets | nindent 2 }}
+{{- end -}}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "azurerator.serviceAccountName" -}}
