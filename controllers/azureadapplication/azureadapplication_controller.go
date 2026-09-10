@@ -237,14 +237,12 @@ func (r *Reconciler) HandleError(tx transaction.Transaction, err error) (ctrl.Re
 	r.ReportEvent(tx, corev1.EventTypeWarning, events.FailedSynchronization, "Failed to synchronize AzureAdApplication")
 	metrics.IncWithNamespaceLabel(metrics.AzureAppsFailedProcessingCount, tx.Instance.Namespace)
 
-	requeue := true
 	if r.isUnrecoverableError(tx, err) {
-		requeue = false
-	} else {
-		r.ReportEvent(tx, corev1.EventTypeNormal, events.Retrying, "Retrying synchronization")
+		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{Requeue: requeue}, nil
+	r.ReportEvent(tx, corev1.EventTypeNormal, events.Retrying, "Retrying synchronization")
+	return ctrl.Result{}, err
 }
 
 func (r *Reconciler) isUnrecoverableError(tx transaction.Transaction, err error) bool {
