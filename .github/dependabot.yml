@@ -8,10 +8,9 @@ updates:
       time: "09:00"
       timezone: "Europe/Oslo"
     groups:
-      k8s-io:
+      go:
         patterns:
-          - 'k8s.io/*'
-          - 'sigs.k8s.io/controller-runtime'
+          - '*'
     cooldown:
       default-days: 7
   - package-ecosystem: "github-actions"
