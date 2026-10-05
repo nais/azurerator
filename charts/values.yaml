@@ -40,6 +40,8 @@ alerts:
 azure:
   clientID: # required
   clientSecret: # required if google.federatedAuth is disabled
+  delay:
+    betweenModifications: 10s
   permissionGrantResourceID: # required
   tenant:
     name: # required
