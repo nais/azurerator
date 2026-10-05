@@ -24,7 +24,6 @@ type PasswordCredential interface {
 	DeleteUnused(tx transaction.Transaction) error
 	Purge(tx transaction.Transaction) error
 	Rotate(tx transaction.Transaction) (*msgraph.PasswordCredential, error)
-	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }
 
 type passwordCredential struct {
@@ -141,31 +140,6 @@ func (p passwordCredential) Purge(tx transaction.Transaction) error {
 	}
 
 	return nil
-}
-
-func (p passwordCredential) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
-	app, err := p.Application().Get(tx)
-	if err != nil {
-		return false, err
-	}
-
-	currentIsValid := false
-	nextIsValid := false
-	for _, cred := range app.PasswordCredentials {
-		notExpired := cred.EndDateTime.After(time.Now())
-
-		currentIdMatches := string(*cred.KeyID) == existing.Current.Password.KeyId
-		if currentIdMatches && notExpired {
-			currentIsValid = true
-		}
-
-		nextIdMatches := string(*cred.KeyID) == existing.Next.Password.KeyId
-		if nextIdMatches && notExpired {
-			nextIsValid = true
-		}
-	}
-
-	return currentIsValid && nextIsValid, nil
 }
 
 func (p passwordCredential) remove(tx transaction.Transaction, id azure.ClientId, keyId *msgraph.UUID) error {

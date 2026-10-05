@@ -2,12 +2,15 @@ package client
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/keycredential"
 	"github.com/nais/azureator/pkg/azure/client/passwordcredential"
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/transaction"
+	"github.com/nais/msgraph.go/v1.0"
 )
 
 type credentialsClient struct {
@@ -157,17 +160,60 @@ func (c credentialsClient) Rotate(tx transaction.Transaction) (credentials.Set, 
 
 // Validate validates the given credentials set against the actual state for the application in Azure AD.
 func (c credentialsClient) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
-	validPasswordCredentials, err := c.PasswordCredential().Validate(tx, existing)
+	app, err := c.Application().Get(tx)
 	if err != nil {
-		return false, fmt.Errorf("validating password credentials: %w", err)
+		return false, fmt.Errorf("validating credentials: %w", err)
+	}
+	problems := missingCredentials(app, existing, time.Now())
+	if len(problems) > 0 {
+		tx.Logger.Warnf("credential validation failed: %s (password key IDs: current=%s, next=%s; certificate key IDs: current=%s, next=%s)",
+			strings.Join(problems, "; "), existing.Current.Password.KeyId, existing.Next.Password.KeyId,
+			existing.Current.Certificate.KeyId, existing.Next.Certificate.KeyId)
+		return false, nil
+	}
+	return true, nil
+}
+
+func missingCredentials(app msgraph.Application, expected credentials.Set, now time.Time) []string {
+	passwords := make(map[string]*time.Time, len(app.PasswordCredentials))
+	for _, actual := range app.PasswordCredentials {
+		if actual.KeyID != nil {
+			passwords[string(*actual.KeyID)] = actual.EndDateTime
+		}
+	}
+	certificates := make(map[string]*time.Time, len(app.KeyCredentials))
+	for _, actual := range app.KeyCredentials {
+		if actual.KeyID != nil {
+			certificates[string(*actual.KeyID)] = actual.EndDateTime
+		}
 	}
 
-	validateKeyCredentials, err := c.KeyCredential().Validate(tx, existing)
-	if err != nil {
-		return false, fmt.Errorf("validating key credentials: %w", err)
+	var problems []string
+	for _, problem := range []string{
+		checkCredential("current password", expected.Current.Password.KeyId, passwords, now),
+		checkCredential("current certificate", expected.Current.Certificate.KeyId, certificates, now),
+		checkCredential("next password", expected.Next.Password.KeyId, passwords, now),
+		checkCredential("next certificate", expected.Next.Certificate.KeyId, certificates, now),
+	} {
+		if problem != "" {
+			problems = append(problems, problem)
+		}
 	}
+	return problems
+}
 
-	return validPasswordCredentials && validateKeyCredentials, nil
+// checkCredential returns a description of why the credential is invalid, or "" if it is valid.
+func checkCredential(name, id string, expiries map[string]*time.Time, now time.Time) string {
+	expiry, found := expiries[id]
+	switch {
+	case id == "" || !found:
+		return fmt.Sprintf("%s credential %q is missing", name, id)
+	case expiry == nil:
+		return fmt.Sprintf("%s credential %q is expired (missing expiry)", name, id)
+	case !expiry.After(now):
+		return fmt.Sprintf("%s credential %q is expired", name, id)
+	}
+	return ""
 }
 
 func NewCredentials(client Client) azure.Credentials {

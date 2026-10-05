@@ -22,7 +22,6 @@ type KeyCredential interface {
 	DeleteUnused(tx transaction.Transaction) error
 	Purge(tx transaction.Transaction) error
 	Rotate(tx transaction.Transaction) (*msgraph.KeyCredential, *crypto.Jwk, error)
-	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }
 
 type keyCredential struct {
@@ -124,31 +123,6 @@ func (k keyCredential) Rotate(tx transaction.Transaction) (*msgraph.KeyCredentia
 	}
 
 	return keyCredential, jwk, nil
-}
-
-func (k keyCredential) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
-	app, err := k.Application().Get(tx)
-	if err != nil {
-		return false, err
-	}
-
-	currentIsValid := false
-	nextIsValid := false
-	for _, cred := range app.KeyCredentials {
-		notExpired := cred.EndDateTime.After(time.Now())
-
-		currentIdMatches := string(*cred.KeyID) == existing.Current.Certificate.KeyId
-		if currentIdMatches && notExpired {
-			currentIsValid = true
-		}
-
-		nextIdMatches := string(*cred.KeyID) == existing.Next.Certificate.KeyId
-		if nextIdMatches && notExpired {
-			nextIsValid = true
-		}
-	}
-
-	return currentIsValid && nextIsValid, nil
 }
 
 func (k keyCredential) removeKeys(tx transaction.Transaction, reason string, filter func([]msgraph.KeyCredential) (kept, removed []msgraph.KeyCredential)) error {
