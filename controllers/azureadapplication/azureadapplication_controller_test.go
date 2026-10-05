@@ -248,6 +248,36 @@ func TestReconciler_UpdateAzureAdApplication_RotateAnnotation_ShouldRotateSecret
 	assertSecretsAreRotated(t, previousSecret, newSecret)
 }
 
+func TestReconciler_ResyncImmediatelyAfterRotationKeepsCredentials(t *testing.T) {
+	appName := "resync-after-rotation"
+	secretName := appName + "-secret"
+	if err := fixtures.New(cli, fixtures.Config{
+		AzureAppName:     appName,
+		SecretName:       secretName,
+		UnusedSecretName: unusedSecret,
+		NamespaceName:    namespace,
+	}).WithMinimalConfig().Setup(); err != nil {
+		t.Fatalf("failed to set up cluster fixtures: %v", err)
+	}
+	instance := assertApplicationExists(t, appName)
+	annotations.SetAnnotation(instance, annotations.RotateKey, strconv.FormatBool(true))
+	rotated := updateApplication(t, instance, func(updated *v1.AzureAdApplication) bool {
+		return syncTimeUpdated(instance, updated)
+	})
+
+	rotatedSecret := assertSecretExists(t, rotated.Spec.SecretName, rotated)
+	restoreValidationResult := az.SetCredentialValidationResult(false)
+	t.Cleanup(restoreValidationResult)
+	annotations.SetAnnotation(rotated, annotations.ResynchronizeKey, strconv.FormatBool(true))
+	resynced := updateApplication(t, rotated, func(updated *v1.AzureAdApplication) bool {
+		_, exists := updated.Annotations[annotations.ResynchronizeKey]
+		return syncTimeUpdated(rotated, updated) && !exists
+	})
+	resyncedSecret := assertSecretExists(t, resynced.Spec.SecretName, resynced)
+	assert.Positive(t, customresources.CredentialValidationDelay(resynced, 5*time.Minute))
+	assertSecretsAreNotRotated(t, rotatedSecret, resyncedSecret)
+}
+
 func TestReconciler_UpdateAzureAdApplication_NewSecretName_ShouldRotateCredentials(t *testing.T) {
 	instance := assertApplicationExists(t, az.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)

@@ -133,6 +133,33 @@ func TestHasExpiredSecrets(t *testing.T) {
 	}
 }
 
+func TestCredentialValidationDelay(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name         string
+		rotationTime *metav1.Time
+		inGrace      bool
+	}{
+		{name: "nil rotation time"},
+		{name: "inside grace period", rotationTime: new(metav1.NewTime(now.Add(-time.Minute))), inGrace: true},
+		{name: "outside grace period", rotationTime: new(metav1.NewTime(now.Add(-6 * time.Minute)))},
+		{name: "future rotation time", rotationTime: new(metav1.NewTime(now.Add(time.Minute)))},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := &nais_io_v1.AzureAdApplication{}
+			app.Status.SynchronizationSecretRotationTime = tt.rotationTime
+			remaining := customresources.CredentialValidationDelay(app, 5*time.Minute)
+			if tt.inGrace {
+				assert.Greater(t, remaining, 3*time.Minute)
+				assert.LessOrEqual(t, remaining, 4*time.Minute)
+			} else {
+				assert.Zero(t, remaining)
+			}
+		})
+	}
+}
+
 func TestAnnotationChecks(t *testing.T) {
 	checks := []struct {
 		name  string
