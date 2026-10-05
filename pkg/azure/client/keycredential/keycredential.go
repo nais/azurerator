@@ -1,6 +1,7 @@
 package keycredential
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"time"
@@ -177,7 +178,9 @@ func (k keyCredential) patch(tx transaction.Transaction, keyCredentials []msgrap
 	if len(keyCredentials) == 0 {
 		payload = &app{KeyCredentials: []msgraph.KeyCredential{}}
 	}
-	return k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), payload)
+	return credentials.RetryGraph(tx.Ctx, &tx.Logger, "patch key credentials", func(ctx context.Context) error {
+		return k.Application().Patch(ctx, tx.Instance.GetObjectId(), payload)
+	})
 }
 
 func (k keyCredential) new(tx transaction.Transaction) (*msgraph.KeyCredential, *crypto.Jwk, error) {

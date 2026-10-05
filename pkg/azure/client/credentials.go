@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/keycredential"
@@ -25,22 +24,27 @@ func (c credentialsClient) PasswordCredential() passwordcredential.PasswordCrede
 
 // Add adds credentials for an existing AAD application
 func (c credentialsClient) Add(tx transaction.Transaction) (credentials.Set, error) {
-	// sleep to prevent concurrent modification error from Microsoft
-	time.Sleep(c.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
 
 	currPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("adding current password credential: %w", err)
 	}
 
-	time.Sleep(c.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
 
 	nextPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("adding next password credential: %w", err)
 	}
 
-	time.Sleep(c.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
 
 	keyCredentialSet, err := c.KeyCredential().Add(tx)
 	if err != nil {
@@ -118,14 +122,18 @@ func (c credentialsClient) Purge(tx transaction.Transaction) error {
 
 // Rotate rotates credentials for an existing AAD application
 func (c credentialsClient) Rotate(tx transaction.Transaction) (credentials.Set, error) {
-	time.Sleep(c.DelayIntervalBetweenModifications()) // sleep to prevent concurrent modification error from Microsoft
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
 
 	nextPasswordCredential, err := c.PasswordCredential().Rotate(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("rotating password credential: %w", err)
 	}
 
-	time.Sleep(c.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
 
 	nextKeyCredential, nextJwk, err := c.KeyCredential().Rotate(tx)
 	if err != nil {

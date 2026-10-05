@@ -1,6 +1,7 @@
 package passwordcredential
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -46,7 +47,12 @@ func (p passwordCredential) Add(tx transaction.Transaction) (msgraph.PasswordCre
 
 	request := p.GraphClient().Applications().ID(objectId).AddPassword(requestParameter).Request()
 
-	response, err := request.Post(tx.Ctx)
+	var response *msgraph.PasswordCredential
+	err := credentials.RetryGraph(tx.Ctx, &tx.Logger, "add password credential", func(ctx context.Context) error {
+		var err error
+		response, err = request.Post(ctx)
+		return err
+	})
 	if err != nil {
 		return msgraph.PasswordCredential{}, fmt.Errorf("adding password credentials for application: %w", err)
 	}
@@ -110,8 +116,9 @@ func (p passwordCredential) Rotate(tx transaction.Transaction) (*msgraph.Passwor
 		}
 	}
 
-	// sleep to prevent concurrent modification error from Microsoft
-	time.Sleep(p.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, p.DelayIntervalBetweenModifications()); err != nil {
+		return nil, err
+	}
 
 	newCred, err := p.Add(tx)
 	if err != nil {
@@ -162,13 +169,23 @@ func (p passwordCredential) Validate(tx transaction.Transaction, existing creden
 }
 
 func (p passwordCredential) remove(tx transaction.Transaction, id azure.ClientId, keyId *msgraph.UUID) error {
-	// sleep to prevent concurrent modification error from Microsoft when removing credentials in quick succession
-	time.Sleep(p.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, p.DelayIntervalBetweenModifications()); err != nil {
+		return err
+	}
 
 	req := p.toRemoveRequest(keyId)
-	if err := p.GraphClient().Applications().ID(id).RemovePassword(req).Request().Post(tx.Ctx); err != nil {
-		// Microsoft returns HTTP 500 sometimes after adding new credentials due to concurrent modifications; we'll ignore this on our end for now
-		tx.Logger.Errorf("removing password credential with id '%s': '%v'; ignoring", string(*keyId), err)
+	if err := credentials.RetryGraph(tx.Ctx, &tx.Logger, "remove password credential", func(ctx context.Context) error {
+		return p.GraphClient().Applications().ID(id).RemovePassword(req).Request().Post(ctx)
+	}); err != nil {
+		// a failed response can hide a successful removal
+		app, getErr := p.Application().Get(tx)
+		removed := getErr == nil && !slices.ContainsFunc(app.PasswordCredentials, func(c msgraph.PasswordCredential) bool {
+			return c.KeyID != nil && *c.KeyID == *keyId
+		})
+		if removed {
+			return nil
+		}
+		return fmt.Errorf("removing password credential: %w", err)
 	}
 	return nil
 }
