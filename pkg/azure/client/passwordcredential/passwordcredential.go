@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,7 +14,6 @@ import (
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/transaction"
-	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
 type PasswordCredential interface {
@@ -187,55 +185,21 @@ func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.Applic
 	}
 }
 
+// revocationCandidates returns the passwords that the managed Secrets do not use.
 func (p passwordCredential) revocationCandidates(tx transaction.Transaction, app msgraph.Application) []msgraph.PasswordCredential {
-	nonCandidates := append(
-		tx.Secrets.KeyIDs.Used.Password,
+	inUse := append(
+		slices.Clone(tx.Secrets.KeyIDs.Used.Password),
 		tx.Secrets.LatestCredentials.Set.Current.Password.KeyId,
 		tx.Secrets.LatestCredentials.Set.Next.Password.KeyId,
 	)
-	nonCandidates = stringutils.RemoveDuplicates(nonCandidates)
-
-	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
-	// This case assumes the possibility of the Azure application being used in applications external to the cluster.
-	// There should always be at least one passwordcredential registered for an application.
-	var newest msgraph.PasswordCredential
-	var newestIndex int
-	hasManagedKey := false
-
-	for i, cred := range app.PasswordCredentials {
-		if newest.StartDateTime == nil || cred.StartDateTime.After(*newest.StartDateTime) {
-			newest = cred
-			newestIndex = i
-		}
-
-		if cred.DisplayName == nil {
-			continue
-		}
-
-		keyDisplayName := *cred.DisplayName
-		if strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix) {
-			hasManagedKey = true
-		}
-	}
-
-	// Return empty if application was managed outside azurerator
-	if !hasManagedKey {
-		return make([]msgraph.PasswordCredential, 0)
-	}
 
 	revoked := make([]msgraph.PasswordCredential, 0)
-	for i, password := range app.PasswordCredentials {
-		if hasMatchingKeyID(nonCandidates, password) || i == newestIndex {
+	for _, password := range app.PasswordCredentials {
+		if password.KeyID != nil && slices.Contains(inUse, string(*password.KeyID)) {
 			continue
 		}
 		revoked = append(revoked, password)
 	}
 
 	return revoked
-}
-
-func hasMatchingKeyID(ids []string, cred msgraph.PasswordCredential) bool {
-	keyId := string(*cred.KeyID)
-
-	return slices.Contains(ids, keyId)
 }

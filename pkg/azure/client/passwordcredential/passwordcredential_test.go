@@ -108,3 +108,21 @@ func passwordCredentialTransaction(t *testing.T) transaction.Transaction {
 		Logger:   *log.NewEntry(log.New()),
 	}
 }
+
+func TestRevocationCandidatesKeepsOnlyPasswordsInUse(t *testing.T) {
+	tx := passwordCredentialTransaction(t)
+	tx.Secrets.KeyIDs.Used.Password = []string{"used-id"}
+	tx.Secrets.LatestCredentials.Set = &credentials.Set{
+		Current: credentials.Credentials{Password: credentials.Password{KeyId: "current-id"}},
+		Next:    credentials.Credentials{Password: credentials.Password{KeyId: "next-id"}},
+	}
+	app := msgraph.Application{PasswordCredentials: []msgraph.PasswordCredential{
+		password("used-id"), password("current-id"), password("next-id"), password("orphan-id"), password("external-id"),
+	}}
+
+	var revoked []string
+	for _, cred := range (passwordCredential{}).revocationCandidates(tx, app) {
+		revoked = append(revoked, string(*cred.KeyID))
+	}
+	require.Equal(t, []string{"orphan-id", "external-id"}, revoked)
+}
