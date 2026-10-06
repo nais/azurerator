@@ -42,6 +42,7 @@ azure:
   clientSecret: # required if google.federatedAuth is disabled
   delay:
     betweenModifications: 10s
+    credentialGracePeriod: 1m
   permissionGrantResourceID: # required
   tenant:
     name: # required

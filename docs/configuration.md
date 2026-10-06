@@ -55,6 +55,7 @@ Additionally, one of the following authentication methods must be configured:
 | `--azure.auth.google.enabled`                           | bool     | `false`             | Use Google credentials as federated credentials for auth               |
 | `--azure.auth.google.project-id`                        | string   |                     | Google Project ID for Service Account when using federated credentials |
 | `--azure.delay.between-modifications`                   | duration | `10s`               | Delay between modification operations to the Graph API                 |
+| `--azure.delay.credential-grace-period`                 | duration | `1m`                | Time after a credential write before credential validation and cleanup |
 | `--azure.features.app-role-assignment-required.enabled` | bool     | `false`             | Enable `appRoleAssignmentRequired` for service principals              |
 | `--azure.features.claims-mapping-policies.enabled`      | bool     | `false`             | Assign custom claims-mapping policies to a service principal           |
 | `--azure.features.claims-mapping-policies.id`           | string   |                     | Claims-mapping policy ID                                               |

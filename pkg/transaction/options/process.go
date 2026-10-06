@@ -7,8 +7,6 @@ import (
 	"github.com/nais/azureator/pkg/customresources"
 )
 
-const credentialGracePeriod = 5 * time.Minute
-
 func (b optionsBuilder) Process() (ProcessOptions, error) {
 	instance := &b.instance
 
@@ -31,7 +29,7 @@ func (b optionsBuilder) Process() (ProcessOptions, error) {
 
 	var validationDelay time.Duration
 	if hasValidSecrets {
-		validationDelay = customresources.CredentialValidationDelay(instance, credentialGracePeriod)
+		validationDelay = customresources.CredentialValidationDelay(instance, b.config.Azure.Delay.CredentialGracePeriod)
 	}
 
 	return ProcessOptions{
@@ -65,6 +63,6 @@ type SecretOptions struct {
 	Valid   bool
 	Cleanup bool
 	// ValidationDelay is the time left before credential validation and cleanup resume after a rotation.
-	// Graph reads can lag behind credential writes, so validating too early detects false drift.
+	// Cleanup writes that closely follow rotation writes can overwrite them in Graph.
 	ValidationDelay time.Duration
 }

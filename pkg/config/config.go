@@ -50,7 +50,8 @@ type AzureAuth struct {
 }
 
 type AzureDelay struct {
-	BetweenModifications time.Duration `json:"between-modifications"`
+	BetweenModifications  time.Duration `json:"between-modifications"`
+	CredentialGracePeriod time.Duration `json:"credential-grace-period"`
 }
 
 type AzurePagination struct {
@@ -145,6 +146,7 @@ const (
 	AzureFeaturesAppRoleAssignmentRequiredEnabled = "azure.features.app-role-assignment-required.enabled"
 	AzureFeaturesCleanupOrphansEnabled            = "azure.features.cleanup-orphans.enabled"
 	AzureDelayBetweenModifications                = "azure.delay.between-modifications"
+	AzureDelayCredentialGracePeriod               = "azure.delay.credential-grace-period"
 	AzurePaginationMaxPages                       = "azure.pagination.max-pages"
 
 	ControllerContextTimeout          = "controller.context-timeout"
@@ -189,6 +191,7 @@ func init() {
 	flag.Bool(AzureFeaturesCleanupOrphansEnabled, false, "Feature toggle to enable cleanup of orphaned resources.")
 
 	flag.Duration(AzureDelayBetweenModifications, 10*time.Second, "Delay between modification operations to the Graph API.")
+	flag.Duration(AzureDelayCredentialGracePeriod, time.Minute, "Time after a credential write before credential validation and cleanup run.")
 
 	flag.Int(AzurePaginationMaxPages, 1000, "Max number of pages to fetch when fetching paginated resources from the Graph API.")
 
@@ -235,6 +238,11 @@ func (c Config) Validate(required []string) error {
 
 	if c.Azure.Features.ClaimsMappingPolicies.Enabled && len(c.Azure.Features.ClaimsMappingPolicies.ID) == 0 {
 		return fmt.Errorf("'%s' cannot be empty when '%s' is true", AzureFeaturesClaimsMappingPoliciesID, AzureFeaturesClaimsMappingPoliciesEnabled)
+	}
+
+	// Without a grace period, cleanup writes follow rotation writes closely enough to overwrite them.
+	if c.Azure.Delay.CredentialGracePeriod <= 0 {
+		return fmt.Errorf("'%s' must be greater than zero", AzureDelayCredentialGracePeriod)
 	}
 
 	return nil
