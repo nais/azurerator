@@ -8,6 +8,8 @@ import (
 )
 
 type Secrets struct {
+	// Certificates holds public certificate PEM by Azure key ID.
+	Certificates      map[string][]byte
 	DataKeys          secrets.SecretDataKeys
 	KeyIDs            credentials.KeyIDs
 	LatestCredentials Credentials

@@ -119,30 +119,37 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
-	err = r.Azure().DeleteExpiredCredentials(*tx)
-	if err != nil {
-		return r.HandleError(*tx, err)
-	}
-
-	// ensure that existing credentials set are in sync with Azure
-	validCredentials, err := r.Azure().ValidateCredentials(*tx)
-	if err != nil {
-		return r.HandleError(*tx, err)
-	}
-	if !validCredentials {
-		tx.Options.Process.Synchronize = true
-		tx.Options.Process.Secret.Valid = false
-	}
-
-	err = r.Secrets().DeleteUnused(*tx)
-	if err != nil {
-		return r.HandleError(*tx, err)
-	}
-
-	if tx.Options.Process.Secret.Cleanup && tx.Options.Process.Secret.Valid {
-		err = r.Azure().DeleteUnusedCredentials(*tx)
+	if delay := tx.Options.Process.Secret.ValidationDelay; delay > 0 {
+		tx.Logger.Debugf("skipping credential validation and cleanup during post-rotation grace period: %v remaining", delay)
+		if !tx.Options.Process.Synchronize {
+			return ctrl.Result{RequeueAfter: delay}, nil
+		}
+	} else {
+		err = r.Azure().DeleteExpiredCredentials(*tx)
 		if err != nil {
 			return r.HandleError(*tx, err)
+		}
+
+		// ensure that existing credentials set are in sync with Azure
+		validCredentials, err := r.Azure().ValidateCredentials(*tx)
+		if err != nil {
+			return r.HandleError(*tx, err)
+		}
+		if !validCredentials {
+			tx.Options.Process.Synchronize = true
+			tx.Options.Process.Secret.Valid = false
+		}
+
+		err = r.Secrets().DeleteUnused(*tx)
+		if err != nil {
+			return r.HandleError(*tx, err)
+		}
+
+		if tx.Options.Process.Secret.Cleanup && tx.Options.Process.Secret.Valid {
+			err = r.Azure().DeleteUnusedCredentials(*tx)
+			if err != nil {
+				return r.HandleError(*tx, err)
+			}
 		}
 	}
 

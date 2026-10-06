@@ -33,6 +33,19 @@ func HasExpiredSecrets(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Dura
 	return secretExpired
 }
 
+// CredentialValidationDelay returns the time left of the grace period after the last credential rotation, or 0 outside it.
+func CredentialValidationDelay(in *nais_io_v1.AzureAdApplication, grace time.Duration) time.Duration {
+	rotationTime := in.Status.SynchronizationSecretRotationTime
+	if rotationTime == nil {
+		return 0
+	}
+	elapsed := time.Since(rotationTime.Time)
+	if elapsed < 0 || elapsed >= grace {
+		return 0
+	}
+	return grace - elapsed
+}
+
 func HasResynchronizeAnnotation(in *nais_io_v1.AzureAdApplication) bool {
 	_, found := annotations.HasAnnotation(in, annotations.ResynchronizeKey)
 	return found

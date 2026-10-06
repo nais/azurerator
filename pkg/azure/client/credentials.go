@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/nais/azureator/pkg/azure"
@@ -9,6 +10,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/passwordcredential"
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/transaction"
+	"github.com/nais/msgraph.go/v1.0"
 )
 
 type credentialsClient struct {
@@ -25,26 +27,33 @@ func (c credentialsClient) PasswordCredential() passwordcredential.PasswordCrede
 
 // Add adds credentials for an existing AAD application
 func (c credentialsClient) Add(tx transaction.Transaction) (credentials.Set, error) {
-	// sleep to prevent concurrent modification error from Microsoft
-	time.Sleep(c.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
+
+	// Key credentials go first. A key credential PATCH that follows an addPassword
+	// can silently drop the new password, even 10 seconds later.
+	keyCredentialSet, err := c.KeyCredential().Add(tx)
+	if err != nil {
+		return credentials.Set{}, fmt.Errorf("adding key credential set: %w", err)
+	}
+
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
 
 	currPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("adding current password credential: %w", err)
 	}
 
-	time.Sleep(c.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
 
 	nextPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("adding next password credential: %w", err)
-	}
-
-	time.Sleep(c.DelayIntervalBetweenModifications())
-
-	keyCredentialSet, err := c.KeyCredential().Add(tx)
-	if err != nil {
-		return credentials.Set{}, fmt.Errorf("adding key credential set: %w", err)
 	}
 
 	return credentials.Set{
@@ -118,18 +127,23 @@ func (c credentialsClient) Purge(tx transaction.Transaction) error {
 
 // Rotate rotates credentials for an existing AAD application
 func (c credentialsClient) Rotate(tx transaction.Transaction) (credentials.Set, error) {
-	time.Sleep(c.DelayIntervalBetweenModifications()) // sleep to prevent concurrent modification error from Microsoft
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
+
+	// See Add for why key credentials go first.
+	nextKeyCredential, nextJwk, err := c.KeyCredential().Rotate(tx)
+	if err != nil {
+		return credentials.Set{}, fmt.Errorf("rotating key credential: %w", err)
+	}
+
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
 
 	nextPasswordCredential, err := c.PasswordCredential().Rotate(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("rotating password credential: %w", err)
-	}
-
-	time.Sleep(c.DelayIntervalBetweenModifications())
-
-	nextKeyCredential, nextJwk, err := c.KeyCredential().Rotate(tx)
-	if err != nil {
-		return credentials.Set{}, fmt.Errorf("rotating key credential: %w", err)
 	}
 
 	return credentials.Set{
@@ -149,17 +163,60 @@ func (c credentialsClient) Rotate(tx transaction.Transaction) (credentials.Set, 
 
 // Validate validates the given credentials set against the actual state for the application in Azure AD.
 func (c credentialsClient) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
-	validPasswordCredentials, err := c.PasswordCredential().Validate(tx, existing)
+	app, err := c.Application().Get(tx)
 	if err != nil {
-		return false, fmt.Errorf("validating password credentials: %w", err)
+		return false, fmt.Errorf("validating credentials: %w", err)
+	}
+	problems := missingCredentials(app, existing, time.Now())
+	if len(problems) > 0 {
+		tx.Logger.Warnf("credential validation failed: %s (password key IDs: current=%s, next=%s; certificate key IDs: current=%s, next=%s)",
+			strings.Join(problems, "; "), existing.Current.Password.KeyId, existing.Next.Password.KeyId,
+			existing.Current.Certificate.KeyId, existing.Next.Certificate.KeyId)
+		return false, nil
+	}
+	return true, nil
+}
+
+func missingCredentials(app msgraph.Application, expected credentials.Set, now time.Time) []string {
+	passwords := make(map[string]*time.Time, len(app.PasswordCredentials))
+	for _, actual := range app.PasswordCredentials {
+		if actual.KeyID != nil {
+			passwords[string(*actual.KeyID)] = actual.EndDateTime
+		}
+	}
+	certificates := make(map[string]*time.Time, len(app.KeyCredentials))
+	for _, actual := range app.KeyCredentials {
+		if actual.KeyID != nil {
+			certificates[string(*actual.KeyID)] = actual.EndDateTime
+		}
 	}
 
-	validateKeyCredentials, err := c.KeyCredential().Validate(tx, existing)
-	if err != nil {
-		return false, fmt.Errorf("validating key credentials: %w", err)
+	var problems []string
+	for _, problem := range []string{
+		checkCredential("current password", expected.Current.Password.KeyId, passwords, now),
+		checkCredential("current certificate", expected.Current.Certificate.KeyId, certificates, now),
+		checkCredential("next password", expected.Next.Password.KeyId, passwords, now),
+		checkCredential("next certificate", expected.Next.Certificate.KeyId, certificates, now),
+	} {
+		if problem != "" {
+			problems = append(problems, problem)
+		}
 	}
+	return problems
+}
 
-	return validPasswordCredentials && validateKeyCredentials, nil
+// checkCredential returns a description of why the credential is invalid, or "" if it is valid.
+func checkCredential(name, id string, expiries map[string]*time.Time, now time.Time) string {
+	expiry, found := expiries[id]
+	switch {
+	case id == "" || !found:
+		return fmt.Sprintf("%s credential %q is missing", name, id)
+	case expiry == nil:
+		return fmt.Sprintf("%s credential %q is expired (missing expiry)", name, id)
+	case !expiry.After(now):
+		return fmt.Sprintf("%s credential %q is expired", name, id)
+	}
+	return ""
 }
 
 func NewCredentials(client Client) azure.Credentials {

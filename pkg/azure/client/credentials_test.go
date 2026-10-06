@@ -1,0 +1,90 @@
+package client
+
+import (
+	"testing"
+	"time"
+
+	msgraph "github.com/nais/msgraph.go/v1.0"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/nais/azureator/pkg/azure/credentials"
+)
+
+func TestMissingCredentials(t *testing.T) {
+	now := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
+	expiry := now.Add(time.Hour)
+	expected := credentials.Set{
+		Current: credentials.Credentials{
+			Password:    credentials.Password{KeyId: "password-current"},
+			Certificate: credentials.Certificate{KeyId: "certificate-current"},
+		},
+		Next: credentials.Credentials{
+			Password:    credentials.Password{KeyId: "password-next"},
+			Certificate: credentials.Certificate{KeyId: "certificate-next"},
+		},
+	}
+	validApp := msgraph.Application{
+		PasswordCredentials: []msgraph.PasswordCredential{
+			{KeyID: uuid("password-current"), EndDateTime: &expiry},
+			{KeyID: uuid("password-next"), EndDateTime: &expiry},
+		},
+		KeyCredentials: []msgraph.KeyCredential{
+			{KeyID: uuid("certificate-current"), EndDateTime: &expiry},
+			{KeyID: uuid("certificate-next"), EndDateTime: &expiry},
+		},
+	}
+	tests := []struct {
+		name string
+		app  msgraph.Application
+		want []string
+	}{
+		{name: "valid", app: validApp},
+		{name: "missing password", app: msgraph.Application{
+			KeyCredentials: validApp.KeyCredentials,
+		}, want: []string{
+			`current password credential "password-current" is missing`,
+			`next password credential "password-next" is missing`,
+		}},
+		{name: "missing certificate", app: msgraph.Application{
+			PasswordCredentials: validApp.PasswordCredentials,
+		}, want: []string{
+			`current certificate credential "certificate-current" is missing`,
+			`next certificate credential "certificate-next" is missing`,
+		}},
+		{name: "expired", app: withExpiry(validApp, &now), want: []string{
+			`current password credential "password-current" is expired`,
+			`current certificate credential "certificate-current" is expired`,
+			`next password credential "password-next" is expired`,
+			`next certificate credential "certificate-next" is expired`,
+		}},
+		{name: "nil expiry", app: withExpiry(validApp, nil), want: []string{
+			`current password credential "password-current" is expired (missing expiry)`,
+			`current certificate credential "certificate-current" is expired (missing expiry)`,
+			`next password credential "password-next" is expired (missing expiry)`,
+			`next certificate credential "certificate-next" is expired (missing expiry)`,
+		}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.want, missingCredentials(test.app, expected, now))
+		})
+	}
+}
+
+func uuid(id string) *msgraph.UUID {
+	value := msgraph.UUID(id)
+	return &value
+}
+
+func withExpiry(app msgraph.Application, expiry *time.Time) msgraph.Application {
+	app.PasswordCredentials = append([]msgraph.PasswordCredential(nil), app.PasswordCredentials...)
+	app.KeyCredentials = append([]msgraph.KeyCredential(nil), app.KeyCredentials...)
+	for i := range app.PasswordCredentials {
+		app.PasswordCredentials[i].EndDateTime = expiry
+	}
+	for i := range app.KeyCredentials {
+		app.KeyCredentials[i].EndDateTime = expiry
+	}
+	return app
+}

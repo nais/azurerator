@@ -77,6 +77,7 @@ func (s secretsReconciler) Prepare(ctx context.Context, instance *v1.AzureAdAppl
 			Set:   credentialsSet,
 			Valid: validCredentials,
 		},
+		Certificates:   secretsExtractor.GetCertificates(),
 		DataKeys:       dataKeys,
 		KeyIDs:         keyIDs,
 		ManagedSecrets: managedSecrets,

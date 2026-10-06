@@ -1,9 +1,9 @@
 package passwordcredential
 
 import (
+	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,7 +14,6 @@ import (
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/transaction"
-	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
 type PasswordCredential interface {
@@ -23,7 +22,6 @@ type PasswordCredential interface {
 	DeleteUnused(tx transaction.Transaction) error
 	Purge(tx transaction.Transaction) error
 	Rotate(tx transaction.Transaction) (*msgraph.PasswordCredential, error)
-	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
 }
 
 type passwordCredential struct {
@@ -46,7 +44,12 @@ func (p passwordCredential) Add(tx transaction.Transaction) (msgraph.PasswordCre
 
 	request := p.GraphClient().Applications().ID(objectId).AddPassword(requestParameter).Request()
 
-	response, err := request.Post(tx.Ctx)
+	var response *msgraph.PasswordCredential
+	err := credentials.RetryGraph(tx.Ctx, &tx.Logger, "add password credential", func(ctx context.Context) error {
+		var err error
+		response, err = request.Post(ctx)
+		return err
+	})
 	if err != nil {
 		return msgraph.PasswordCredential{}, fmt.Errorf("adding password credentials for application: %w", err)
 	}
@@ -110,8 +113,9 @@ func (p passwordCredential) Rotate(tx transaction.Transaction) (*msgraph.Passwor
 		}
 	}
 
-	// sleep to prevent concurrent modification error from Microsoft
-	time.Sleep(p.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, p.DelayIntervalBetweenModifications()); err != nil {
+		return nil, err
+	}
 
 	newCred, err := p.Add(tx)
 	if err != nil {
@@ -136,39 +140,24 @@ func (p passwordCredential) Purge(tx transaction.Transaction) error {
 	return nil
 }
 
-func (p passwordCredential) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
-	app, err := p.Application().Get(tx)
-	if err != nil {
-		return false, err
-	}
-
-	currentIsValid := false
-	nextIsValid := false
-	for _, cred := range app.PasswordCredentials {
-		notExpired := cred.EndDateTime.After(time.Now())
-
-		currentIdMatches := string(*cred.KeyID) == existing.Current.Password.KeyId
-		if currentIdMatches && notExpired {
-			currentIsValid = true
-		}
-
-		nextIdMatches := string(*cred.KeyID) == existing.Next.Password.KeyId
-		if nextIdMatches && notExpired {
-			nextIsValid = true
-		}
-	}
-
-	return currentIsValid && nextIsValid, nil
-}
-
 func (p passwordCredential) remove(tx transaction.Transaction, id azure.ClientId, keyId *msgraph.UUID) error {
-	// sleep to prevent concurrent modification error from Microsoft when removing credentials in quick succession
-	time.Sleep(p.DelayIntervalBetweenModifications())
+	if err := credentials.Wait(tx.Ctx, p.DelayIntervalBetweenModifications()); err != nil {
+		return err
+	}
 
 	req := p.toRemoveRequest(keyId)
-	if err := p.GraphClient().Applications().ID(id).RemovePassword(req).Request().Post(tx.Ctx); err != nil {
-		// Microsoft returns HTTP 500 sometimes after adding new credentials due to concurrent modifications; we'll ignore this on our end for now
-		tx.Logger.Errorf("removing password credential with id '%s': '%v'; ignoring", string(*keyId), err)
+	if err := credentials.RetryGraph(tx.Ctx, &tx.Logger, "remove password credential", func(ctx context.Context) error {
+		return p.GraphClient().Applications().ID(id).RemovePassword(req).Request().Post(ctx)
+	}); err != nil {
+		// a failed response can hide a successful removal
+		app, getErr := p.Application().Get(tx)
+		removed := getErr == nil && !slices.ContainsFunc(app.PasswordCredentials, func(c msgraph.PasswordCredential) bool {
+			return c.KeyID != nil && *c.KeyID == *keyId
+		})
+		if removed {
+			return nil
+		}
+		return fmt.Errorf("removing password credential: %w", err)
 	}
 	return nil
 }
@@ -196,55 +185,21 @@ func (p passwordCredential) toRemoveRequest(keyId *msgraph.UUID) *msgraph.Applic
 	}
 }
 
+// revocationCandidates returns the passwords that the managed Secrets do not use.
 func (p passwordCredential) revocationCandidates(tx transaction.Transaction, app msgraph.Application) []msgraph.PasswordCredential {
-	nonCandidates := append(
-		tx.Secrets.KeyIDs.Used.Password,
+	inUse := append(
+		slices.Clone(tx.Secrets.KeyIDs.Used.Password),
 		tx.Secrets.LatestCredentials.Set.Current.Password.KeyId,
 		tx.Secrets.LatestCredentials.Set.Next.Password.KeyId,
 	)
-	nonCandidates = stringutils.RemoveDuplicates(nonCandidates)
-
-	// Keep the newest registered credential in case the app already exists in Azure and is not referenced by resources in the cluster.
-	// This case assumes the possibility of the Azure application being used in applications external to the cluster.
-	// There should always be at least one passwordcredential registered for an application.
-	var newest msgraph.PasswordCredential
-	var newestIndex int
-	hasManagedKey := false
-
-	for i, cred := range app.PasswordCredentials {
-		if newest.StartDateTime == nil || cred.StartDateTime.After(*newest.StartDateTime) {
-			newest = cred
-			newestIndex = i
-		}
-
-		if cred.DisplayName == nil {
-			continue
-		}
-
-		keyDisplayName := *cred.DisplayName
-		if strings.HasPrefix(keyDisplayName, azure.AzureratorPrefix) {
-			hasManagedKey = true
-		}
-	}
-
-	// Return empty if application was managed outside azurerator
-	if !hasManagedKey {
-		return make([]msgraph.PasswordCredential, 0)
-	}
 
 	revoked := make([]msgraph.PasswordCredential, 0)
-	for i, password := range app.PasswordCredentials {
-		if hasMatchingKeyID(nonCandidates, password) || i == newestIndex {
+	for _, password := range app.PasswordCredentials {
+		if password.KeyID != nil && slices.Contains(inUse, string(*password.KeyID)) {
 			continue
 		}
 		revoked = append(revoked, password)
 	}
 
 	return revoked
-}
-
-func hasMatchingKeyID(ids []string, cred msgraph.PasswordCredential) bool {
-	keyId := string(*cred.KeyID)
-
-	return slices.Contains(ids, keyId)
 }

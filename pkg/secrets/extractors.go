@@ -2,6 +2,7 @@ package secrets
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/nais/liberator/pkg/kubernetes"
@@ -67,6 +68,26 @@ func (e Extractor) GetKeyIDs() credentials.KeyIDs {
 			Password:    unusedPasswordIDs,
 		},
 	}
+}
+
+// GetCertificates returns the public certificate PEM of every credential in the managed secrets, keyed by Azure key ID.
+func (e Extractor) GetCertificates() map[string][]byte {
+	slots := []struct{ keyID, jwk string }{
+		{e.keys.CurrentCredentials.CertificateKeyId, e.keys.CurrentCredentials.Jwk},
+		{e.keys.NextCredentials.CertificateKeyId, e.keys.NextCredentials.Jwk},
+	}
+	certificates := make(map[string][]byte)
+	for _, secret := range slices.Concat(e.secretLists.Used.Items, e.secretLists.Unused.Items) {
+		for _, slot := range slots {
+			keyID := string(secret.Data[slot.keyID])
+			var jwk jose.JSONWebKey
+			if keyID == "" || jwk.UnmarshalJSON(secret.Data[slot.jwk]) != nil || len(jwk.Certificates) == 0 {
+				continue
+			}
+			certificates[keyID] = crypto.ConvertToPem(jwk.Certificates[0])
+		}
+	}
+	return certificates
 }
 
 // GetPreviousCredentialsSet extracts the previous (if any) credential set from all the secrets matching this AzureAdApplication.

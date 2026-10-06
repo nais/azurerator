@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"strings"
+	"sync/atomic"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraphlib "github.com/nais/msgraph.go/v1.0"
@@ -19,6 +20,13 @@ import (
 type fakeAzureClient struct{}
 
 type fakeAzureCredentialsClient struct{}
+
+var fakeCredentialsInvalid atomic.Bool
+
+func SetCredentialValidationResult(valid bool) func() {
+	previous := fakeCredentialsInvalid.Swap(!valid)
+	return func() { fakeCredentialsInvalid.Store(previous) }
+}
 
 const (
 	ApplicationNotExistsName = "not-exists-in-azure"
@@ -83,7 +91,7 @@ func (a fakeAzureCredentialsClient) Purge(tx transaction.Transaction) error {
 }
 
 func (a fakeAzureCredentialsClient) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
-	return true, nil
+	return !fakeCredentialsInvalid.Load(), nil
 }
 
 func (a fakeAzureClient) Update(tx transaction.Transaction) (*result.Application, error) {
