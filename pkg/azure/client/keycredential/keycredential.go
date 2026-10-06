@@ -3,19 +3,16 @@ package keycredential
 import (
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	msgraph "github.com/nais/msgraph.go/v1.0"
 
-	"github.com/nais/azureator/pkg/azure"
 	"github.com/nais/azureator/pkg/azure/client/application"
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/util"
 	"github.com/nais/azureator/pkg/transaction"
 	"github.com/nais/azureator/pkg/util/crypto"
-	stringutils "github.com/nais/azureator/pkg/util/strings"
 )
 
 type KeyCredential interface {
@@ -48,7 +45,7 @@ func NewKeyCredential(client Client) KeyCredential {
 }
 
 func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCredentialSet, error) {
-	actualApp, err := k.Client.Application().Get(tx)
+	existing, err := k.Application().Get(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -63,10 +60,8 @@ func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCre
 		return nil, err
 	}
 
-	actualApp.KeyCredentials = append(actualApp.KeyCredentials, *currentKeyCredential, *nextKeyCredential)
-
-	app := util.EmptyApplication().Keys(actualApp.KeyCredentials).Build()
-	if err := k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
+	keyCredentials := append(slices.Clone(existing.KeyCredentials), *currentKeyCredential, *nextKeyCredential)
+	if err := k.patch(tx, keyCredentials); err != nil {
 		return nil, fmt.Errorf("updating application with keycredential set: %w", err)
 	}
 
@@ -83,49 +78,38 @@ func (k keyCredential) Add(tx transaction.Transaction) (*credentials.AddedKeyCre
 }
 
 func (k keyCredential) DeleteExpired(tx transaction.Transaction) error {
-	actualApp, err := k.Application().Get(tx)
-	if err != nil {
-		return err
-	}
-
-	desiredCredentials := make([]msgraph.KeyCredential, 0)
-
-	for _, cred := range actualApp.KeyCredentials {
-		notExpired := cred.EndDateTime.After(time.Now())
-		if notExpired {
-			desiredCredentials = append(desiredCredentials, cred)
-		} else if cred.DisplayName != nil && cred.KeyID != nil {
-			tx.Logger.Debugf("revoking expired key credential '%s' (ID: %s, expired: %s)", *cred.DisplayName, *cred.KeyID, cred.EndDateTime)
+	return k.removeKeys(tx, "expired", func(keys []msgraph.KeyCredential) (kept, removed []msgraph.KeyCredential) {
+		now := time.Now()
+		for _, cred := range keys {
+			if cred.EndDateTime == nil || cred.EndDateTime.After(now) {
+				kept = append(kept, cred)
+			} else {
+				removed = append(removed, cred)
+			}
 		}
-	}
-
-	app := &app{
-		KeyCredentials: desiredCredentials,
-	}
-	return k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app)
+		return kept, removed
+	})
 }
 
 func (k keyCredential) DeleteUnused(tx transaction.Transaction) error {
-	keysInUse, err := k.filterRevokedKeys(tx)
-	if err != nil {
-		return err
-	}
+	return k.removeKeys(tx, "unused", func(keys []msgraph.KeyCredential) ([]msgraph.KeyCredential, []msgraph.KeyCredential) {
+		return filterRevokedKeys(tx, keys)
+	})
+}
 
-	app := util.EmptyApplication().Keys(keysInUse).Build()
-	if err := k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
-		return fmt.Errorf("updating application with keycredential: %w", err)
-	}
-
-	return nil
+func (k keyCredential) Purge(tx transaction.Transaction) error {
+	return k.patch(tx, []msgraph.KeyCredential{})
 }
 
 // Rotate generates a new set of key credentials, removing any key not in use (as indicated by AzureAdApplication.Status.CertificateKeyIds).
 // Except new applications, there should always be at least two active keys available at any given time so that running applications are not interfered with.
 func (k keyCredential) Rotate(tx transaction.Transaction) (*msgraph.KeyCredential, *crypto.Jwk, error) {
-	keysInUse, err := k.filterRevokedKeys(tx)
+	existing, err := k.Application().Get(tx)
 	if err != nil {
 		return nil, nil, err
 	}
+	keysInUse, removed := filterRevokedKeys(tx, existing.KeyCredentials)
+	logRemoved(tx, "unused", removed)
 
 	keyCredential, jwk, err := k.new(tx)
 	if err != nil {
@@ -134,20 +118,11 @@ func (k keyCredential) Rotate(tx transaction.Transaction) (*msgraph.KeyCredentia
 
 	keysInUse = append(keysInUse, *keyCredential)
 
-	app := util.EmptyApplication().Keys(keysInUse).Build()
-	if err := k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app); err != nil {
+	if err := k.patch(tx, keysInUse); err != nil {
 		return nil, nil, fmt.Errorf("updating application with keycredential: %w", err)
 	}
 
 	return keyCredential, jwk, nil
-}
-
-func (k keyCredential) Purge(tx transaction.Transaction) error {
-	app := &app{
-		KeyCredentials: make([]msgraph.KeyCredential, 0),
-	}
-
-	return k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), app)
 }
 
 func (k keyCredential) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
@@ -175,54 +150,34 @@ func (k keyCredential) Validate(tx transaction.Transaction, existing credentials
 	return currentIsValid && nextIsValid, nil
 }
 
-func (k keyCredential) filterRevokedKeys(tx transaction.Transaction) ([]msgraph.KeyCredential, error) {
-	keyIdsInUse := append(
-		tx.Secrets.KeyIDs.Used.Certificate,
-		tx.Secrets.LatestCredentials.Set.Current.Certificate.KeyId,
-		tx.Secrets.LatestCredentials.Set.Next.Certificate.KeyId,
-	)
-	keyIdsInUse = stringutils.RemoveDuplicates(keyIdsInUse)
-
-	actualApp, err := k.Application().Get(tx)
+func (k keyCredential) removeKeys(tx transaction.Transaction, reason string, filter func([]msgraph.KeyCredential) (kept, removed []msgraph.KeyCredential)) error {
+	existing, err := k.Application().Get(tx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	var newest msgraph.KeyCredential
-	var newestIndex int
-	hasManagedKey := false
-
-	for i, cred := range actualApp.KeyCredentials {
-		if newest.StartDateTime == nil || cred.StartDateTime.After(*newest.StartDateTime) {
-			newest = cred
-			newestIndex = i
-		}
-
-		if cred.DisplayName == nil {
-			continue
-		}
-
-		name := *cred.DisplayName
-		if strings.HasPrefix(name, azure.AzureratorPrefix) {
-			hasManagedKey = true
-		}
+	kept, removed := filter(existing.KeyCredentials)
+	if len(removed) == 0 {
+		return nil
 	}
-
-	// Return existing keys if application was managed outside azurerator
-	if !hasManagedKey {
-		return actualApp.KeyCredentials, nil
+	logRemoved(tx, reason, removed)
+	if err := k.patch(tx, kept); err != nil {
+		return fmt.Errorf("removing %s key credentials: %w", reason, err)
 	}
+	return nil
+}
 
-	filtered := make([]msgraph.KeyCredential, 0)
-	for i, cred := range actualApp.KeyCredentials {
-		if hasMatchingKeyID(keyIdsInUse, cred) || i == newestIndex {
-			filtered = append(filtered, cred)
-		} else if cred.DisplayName != nil && cred.KeyID != nil {
-			tx.Logger.Debugf("revoking unused key credential '%s' (ID: %s)", *cred.DisplayName, *cred.KeyID)
-		}
+// patch replaces the application's key credentials. Graph omits certificate bytes on reads,
+// but rejects entries without them. patch takes the bytes from the managed Secrets and drops
+// certificates that no Secret holds, because nobody has their private key.
+func (k keyCredential) patch(tx transaction.Transaction, keyCredentials []msgraph.KeyCredential) error {
+	keyCredentials, unmanaged := withKeyBytes(keyCredentials, tx.Secrets.Certificates)
+	logRemoved(tx, "unmanaged", unmanaged)
+
+	var payload any = util.EmptyApplication().Keys(keyCredentials).Build()
+	if len(keyCredentials) == 0 {
+		payload = &app{KeyCredentials: []msgraph.KeyCredential{}}
 	}
-
-	return filtered, nil
+	return k.Application().Patch(tx.Ctx, tx.Instance.GetObjectId(), payload)
 }
 
 func (k keyCredential) new(tx transaction.Transaction) (*msgraph.KeyCredential, *crypto.Jwk, error) {
@@ -248,7 +203,50 @@ func (k keyCredential) toKeyCredential(jwkPair crypto.Jwk) msgraph.KeyCredential
 	}
 }
 
-func hasMatchingKeyID(ids []string, cred msgraph.KeyCredential) bool {
-	keyId := string(*cred.KeyID)
-	return slices.Contains(ids, keyId)
+// filterRevokedKeys splits keys into kept and removed. It keeps the keys that the managed Secrets use.
+func filterRevokedKeys(tx transaction.Transaction, keyCredentials []msgraph.KeyCredential) (kept, removed []msgraph.KeyCredential) {
+	keyIDsInUse := append(
+		slices.Clone(tx.Secrets.KeyIDs.Used.Certificate),
+		tx.Secrets.LatestCredentials.Set.Current.Certificate.KeyId,
+		tx.Secrets.LatestCredentials.Set.Next.Certificate.KeyId,
+	)
+	for _, cred := range keyCredentials {
+		if slices.Contains(keyIDsInUse, keyID(cred)) {
+			kept = append(kept, cred)
+		} else {
+			removed = append(removed, cred)
+		}
+	}
+	return kept, removed
+}
+
+// withKeyBytes fills missing key bytes from keys by key ID. It drops the entries that remain without key bytes.
+func withKeyBytes(keyCredentials []msgraph.KeyCredential, keys map[string][]byte) (kept, dropped []msgraph.KeyCredential) {
+	for _, cred := range keyCredentials {
+		if cred.Key == nil || len(*cred.Key) == 0 {
+			key, ok := keys[keyID(cred)]
+			if !ok {
+				dropped = append(dropped, cred)
+				continue
+			}
+			cred.Key = new(msgraph.Binary(key))
+		}
+		kept = append(kept, cred)
+	}
+	return kept, dropped
+}
+
+func keyID(cred msgraph.KeyCredential) string {
+	if cred.KeyID == nil {
+		return ""
+	}
+	return string(*cred.KeyID)
+}
+
+func logRemoved(tx transaction.Transaction, reason string, removed []msgraph.KeyCredential) {
+	for _, cred := range removed {
+		if cred.DisplayName != nil && cred.KeyID != nil {
+			tx.Logger.Debugf("revoking %s key credential '%s' (ID: %s)", reason, *cred.DisplayName, *cred.KeyID)
+		}
+	}
 }
