@@ -31,6 +31,17 @@ func (c credentialsClient) Add(tx transaction.Transaction) (credentials.Set, err
 		return credentials.Set{}, err
 	}
 
+	// Key credentials go first. A key credential PATCH that follows an addPassword
+	// can silently drop the new password, even 10 seconds later.
+	keyCredentialSet, err := c.KeyCredential().Add(tx)
+	if err != nil {
+		return credentials.Set{}, fmt.Errorf("adding key credential set: %w", err)
+	}
+
+	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
+		return credentials.Set{}, err
+	}
+
 	currPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("adding current password credential: %w", err)
@@ -43,15 +54,6 @@ func (c credentialsClient) Add(tx transaction.Transaction) (credentials.Set, err
 	nextPasswordCredential, err := c.PasswordCredential().Add(tx)
 	if err != nil {
 		return credentials.Set{}, fmt.Errorf("adding next password credential: %w", err)
-	}
-
-	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
-		return credentials.Set{}, err
-	}
-
-	keyCredentialSet, err := c.KeyCredential().Add(tx)
-	if err != nil {
-		return credentials.Set{}, fmt.Errorf("adding key credential set: %w", err)
 	}
 
 	return credentials.Set{
@@ -129,18 +131,19 @@ func (c credentialsClient) Rotate(tx transaction.Transaction) (credentials.Set, 
 		return credentials.Set{}, err
 	}
 
-	nextPasswordCredential, err := c.PasswordCredential().Rotate(tx)
+	// See Add for why key credentials go first.
+	nextKeyCredential, nextJwk, err := c.KeyCredential().Rotate(tx)
 	if err != nil {
-		return credentials.Set{}, fmt.Errorf("rotating password credential: %w", err)
+		return credentials.Set{}, fmt.Errorf("rotating key credential: %w", err)
 	}
 
 	if err := credentials.Wait(tx.Ctx, c.DelayIntervalBetweenModifications()); err != nil {
 		return credentials.Set{}, err
 	}
 
-	nextKeyCredential, nextJwk, err := c.KeyCredential().Rotate(tx)
+	nextPasswordCredential, err := c.PasswordCredential().Rotate(tx)
 	if err != nil {
-		return credentials.Set{}, fmt.Errorf("rotating key credential: %w", err)
+		return credentials.Set{}, fmt.Errorf("rotating password credential: %w", err)
 	}
 
 	return credentials.Set{
