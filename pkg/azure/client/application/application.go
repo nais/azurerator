@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	cache "github.com/Code-Hex/go-generics-cache"
@@ -99,6 +101,11 @@ func (a application) Exists(tx transaction.Transaction) (*msgraph.Application, b
 
 func (a application) Delete(tx transaction.Transaction) error {
 	if err := a.GraphClient().Applications().ID(tx.Instance.GetObjectId()).Request().Delete(tx.Ctx); err != nil {
+		var response *msgraph.ErrorResponse
+		if errors.As(err, &response) && response.StatusCode() == http.StatusNotFound && response.ErrorObject.Code == "Request_ResourceNotFound" {
+			tx.Logger.Debug("Azure application already absent - skipping deletion")
+			return nil
+		}
 		return fmt.Errorf("failed to delete application: %w", err)
 	}
 	return nil

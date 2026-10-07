@@ -167,7 +167,8 @@ func (c Client) Delete(tx transaction.Transaction) error {
 		return c.Application().Delete(tx)
 	}
 
-	return fmt.Errorf("application does not exist: %s (clientId: %s, objectId: %s)", tx.UniformResourceName, tx.Instance.GetClientId(), tx.Instance.GetObjectId())
+	tx.Logger.Debug("Azure application already absent - skipping deletion")
+	return nil
 }
 
 // Exists returns an indication of whether the application exists in AAD or not
