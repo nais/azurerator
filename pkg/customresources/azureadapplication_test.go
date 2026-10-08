@@ -133,6 +133,15 @@ func TestIsSecretRotationDue(t *testing.T) {
 	}
 }
 
+func TestSecretRotationCheckDelay(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		app := fixtures.MinimalApplication()
+		app.Status.SynchronizationSecretRotationTime = new(metav1.Now())
+		time.Sleep(10 * time.Minute)
+		assert.Equal(t, 50*time.Minute, customresources.SecretRotationCheckDelay(app, time.Hour))
+	})
+}
+
 func TestCredentialValidationDelay(t *testing.T) {
 	now := time.Now()
 	tests := []struct {

@@ -122,7 +122,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if delay := tx.Options.Process.Secret.ValidationDelay; delay > 0 {
 		tx.Logger.Debugf("deferring credential cleanup during post-rotation grace period: %v remaining", delay)
 		if !tx.Options.Process.Synchronize {
-			return ctrl.Result{RequeueAfter: delay}, nil
+			requeueAfter := customresources.SecretRotationCheckDelay(tx.Instance, r.Config.SecretRotation.MaxAge)
+			return ctrl.Result{RequeueAfter: min(delay, requeueAfter)}, nil
 		}
 		if tx.Options.Process.Secret.Rotate {
 			if err := r.validateCredentials(tx); err != nil {
@@ -154,10 +155,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if !tx.Options.Process.Synchronize {
 		// controller-runtime cache resync events are ignored when EventFilter is used,
 		// so we requeue manually after a period of time to evaluate secret rotation
-		requeueAfter := r.Config.SecretRotation.MaxAge - orphanedSecretCleanupGracePeriod
-		if requeueAfter <= 0 {
-			requeueAfter = r.Config.SecretRotation.MaxAge
-		}
+		requeueAfter := customresources.SecretRotationCheckDelay(tx.Instance, r.Config.SecretRotation.MaxAge)
 		return ctrl.Result{RequeueAfter: requeueAfter}, nil
 	}
 
@@ -311,7 +309,7 @@ func (r *Reconciler) Complete(tx transaction.Transaction) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{RequeueAfter: orphanedSecretCleanupGracePeriod}, nil
+	return ctrl.Result{RequeueAfter: min(orphanedSecretCleanupGracePeriod, customresources.SecretRotationCheckDelay(tx.Instance, r.Config.SecretRotation.MaxAge))}, nil
 }
 
 func (r *Reconciler) UpdateApplication(ctx context.Context, app *v1.AzureAdApplication, updateFunc func(existing *v1.AzureAdApplication) error) error {

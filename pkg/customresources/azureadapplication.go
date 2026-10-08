@@ -29,6 +29,17 @@ func IsSecretRotationDue(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Du
 	return time.Since(in.Status.SynchronizationSecretRotationTime.Time) >= maxSecretAge
 }
 
+func SecretRotationCheckDelay(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Duration) time.Duration {
+	if in.Status.SynchronizationSecretRotationTime == nil {
+		return maxSecretAge
+	}
+	delay := maxSecretAge - time.Since(in.Status.SynchronizationSecretRotationTime.Time)
+	if delay <= 0 {
+		return time.Second
+	}
+	return delay
+}
+
 // CredentialValidationDelay returns the time left of the grace period after the last credential rotation, or 0 outside it.
 func CredentialValidationDelay(in *nais_io_v1.AzureAdApplication, grace time.Duration) time.Duration {
 	rotationTime := in.Status.SynchronizationSecretRotationTime
