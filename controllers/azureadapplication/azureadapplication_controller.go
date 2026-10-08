@@ -120,26 +120,23 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if delay := tx.Options.Process.Secret.ValidationDelay; delay > 0 {
-		tx.Logger.Debugf("skipping credential validation and cleanup during post-rotation grace period: %v remaining", delay)
+		tx.Logger.Debugf("deferring credential cleanup during post-rotation grace period: %v remaining", delay)
 		if !tx.Options.Process.Synchronize {
 			return ctrl.Result{RequeueAfter: delay}, nil
+		}
+		if tx.Options.Process.Secret.Rotate {
+			if err := r.validateCredentials(tx); err != nil {
+				return r.HandleError(*tx, err)
+			}
 		}
 	} else {
 		err = r.Azure().DeleteExpiredCredentials(*tx)
 		if err != nil {
 			return r.HandleError(*tx, err)
 		}
-
-		// ensure that existing credentials set are in sync with Azure
-		validCredentials, err := r.Azure().ValidateCredentials(*tx)
-		if err != nil {
+		if err := r.validateCredentials(tx); err != nil {
 			return r.HandleError(*tx, err)
 		}
-		if !validCredentials {
-			tx.Options.Process.Synchronize = true
-			tx.Options.Process.Secret.Valid = false
-		}
-
 		err = r.Secrets().DeleteUnused(*tx)
 		if err != nil {
 			return r.HandleError(*tx, err)
@@ -161,7 +158,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if requeueAfter <= 0 {
 			requeueAfter = r.Config.SecretRotation.MaxAge
 		}
-
 		return ctrl.Result{RequeueAfter: requeueAfter}, nil
 	}
 
@@ -172,6 +168,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	tx.Logger.Info("successfully synchronized")
 	return r.Complete(*tx)
+}
+
+func (r *Reconciler) validateCredentials(tx *transaction.Transaction) error {
+	valid, err := r.Azure().ValidateCredentials(*tx)
+	if err != nil {
+		return err
+	}
+	if !valid {
+		tx.Options.Process.Synchronize = true
+		tx.Options.Process.Secret.Valid = false
+	}
+	return nil
 }
 
 func (r *Reconciler) Prepare(ctx context.Context, req ctrl.Request) (*transaction.Transaction, error) {

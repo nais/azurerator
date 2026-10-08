@@ -81,7 +81,7 @@ func TestIsSecretNameChanged(t *testing.T) {
 	}
 }
 
-func TestHasExpiredSecrets(t *testing.T) {
+func TestIsSecretRotationDue(t *testing.T) {
 	maxAge := 10 * time.Minute
 
 	tests := []struct {
@@ -127,7 +127,7 @@ func TestHasExpiredSecrets(t *testing.T) {
 				app := fixtures.MinimalApplication()
 				tt.mutate(app)
 				time.Sleep(tt.sleep)
-				assert.Equal(t, tt.want, customresources.HasExpiredSecrets(app, maxAge))
+				assert.Equal(t, tt.want, customresources.IsSecretRotationDue(app, maxAge))
 			})
 		})
 	}

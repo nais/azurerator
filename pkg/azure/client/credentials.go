@@ -162,12 +162,12 @@ func (c credentialsClient) Rotate(tx transaction.Transaction) (credentials.Set, 
 }
 
 // Validate validates the given credentials set against the actual state for the application in Azure AD.
-func (c credentialsClient) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
+func (c credentialsClient) Validate(tx transaction.Transaction, existing credentials.Set, minimumNextExpiry time.Time) (bool, error) {
 	app, err := c.Application().Get(tx)
 	if err != nil {
 		return false, fmt.Errorf("validating credentials: %w", err)
 	}
-	problems := missingCredentials(app, existing, time.Now())
+	problems := missingCredentials(app, existing, time.Now(), minimumNextExpiry)
 	if len(problems) > 0 {
 		tx.Logger.Warnf("credential validation failed: %s (password key IDs: current=%s, next=%s; certificate key IDs: current=%s, next=%s)",
 			strings.Join(problems, "; "), existing.Current.Password.KeyId, existing.Next.Password.KeyId,
@@ -177,7 +177,7 @@ func (c credentialsClient) Validate(tx transaction.Transaction, existing credent
 	return true, nil
 }
 
-func missingCredentials(app msgraph.Application, expected credentials.Set, now time.Time) []string {
+func missingCredentials(app msgraph.Application, expected credentials.Set, now time.Time, minimumNextExpiry time.Time) []string {
 	passwords := make(map[string]*time.Time, len(app.PasswordCredentials))
 	for _, actual := range app.PasswordCredentials {
 		if actual.KeyID != nil {
@@ -193,10 +193,10 @@ func missingCredentials(app msgraph.Application, expected credentials.Set, now t
 
 	var problems []string
 	for _, problem := range []string{
-		checkCredential("current password", expected.Current.Password.KeyId, passwords, now),
-		checkCredential("current certificate", expected.Current.Certificate.KeyId, certificates, now),
-		checkCredential("next password", expected.Next.Password.KeyId, passwords, now),
-		checkCredential("next certificate", expected.Next.Certificate.KeyId, certificates, now),
+		checkCredential("current password", expected.Current.Password.KeyId, passwords, now, time.Time{}),
+		checkCredential("current certificate", expected.Current.Certificate.KeyId, certificates, now, time.Time{}),
+		checkCredential("next password", expected.Next.Password.KeyId, passwords, now, minimumNextExpiry),
+		checkCredential("next certificate", expected.Next.Certificate.KeyId, certificates, now, minimumNextExpiry),
 	} {
 		if problem != "" {
 			problems = append(problems, problem)
@@ -206,7 +206,7 @@ func missingCredentials(app msgraph.Application, expected credentials.Set, now t
 }
 
 // checkCredential returns a description of why the credential is invalid, or "" if it is valid.
-func checkCredential(name, id string, expiries map[string]*time.Time, now time.Time) string {
+func checkCredential(name, id string, expiries map[string]*time.Time, now, minimumExpiry time.Time) string {
 	expiry, found := expiries[id]
 	switch {
 	case id == "" || !found:
@@ -215,6 +215,8 @@ func checkCredential(name, id string, expiries map[string]*time.Time, now time.T
 		return fmt.Sprintf("%s credential %q is expired (missing expiry)", name, id)
 	case !expiry.After(now):
 		return fmt.Sprintf("%s credential %q is expired", name, id)
+	case !expiry.After(minimumExpiry):
+		return fmt.Sprintf("%s credential %q expires before required rotation window", name, id)
 	}
 	return ""
 }

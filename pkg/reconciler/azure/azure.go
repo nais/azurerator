@@ -220,13 +220,19 @@ func (a azureReconciler) ValidateCredentials(tx transaction.Transaction) (bool, 
 		return false, nil
 	}
 
-	valid, err := a.azureClient.Credentials().Validate(tx, *tx.Secrets.LatestCredentials.Set)
+	var minimumNextExpiry time.Time
+	if tx.Options.Process.Secret.Rotate {
+		minimumNextExpiry = time.Now().Add(a.config.SecretRotation.MaxAge + config.SecretRotationExpirySafetyMargin)
+	}
+	valid, err := a.azureClient.Credentials().Validate(tx, *tx.Secrets.LatestCredentials.Set, minimumNextExpiry)
 	if err != nil {
 		return false, err
 	}
 
 	if valid {
 		tx.Logger.Debug("existing credentials are valid and in sync with Azure")
+	} else if tx.Options.Process.Secret.Rotate {
+		tx.Logger.Warn("existing credentials cannot cover the requested rotation; replacing the credential set")
 	} else {
 		tx.Logger.Warnf("existing credentials are not in sync with Azure")
 	}

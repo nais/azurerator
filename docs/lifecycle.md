@@ -294,22 +294,39 @@ The associated cluster resources for the `AzureAdApplication` will also be updat
 
 ### 2.1 Credential Rotation
 
-Whenever the `spec.secretName` in the `AzureAdApplication` resource changes or when the annotation `azure.nais.io/rotate=true`
-is applied, the operator will generate a new set of credentials and associate these with the application.
+The operator rotates credentials when:
 
-In order to ensure zero downtime when rotating credentials, the following algorithm is used:
+- `spec.secretName` changes.
+- The resource has the annotation `azure.nais.io/rotate=true`.
+- The time since the last successful credential creation or rotation reaches `secret-rotation.max-age`.
 
-1. A new set of credentials is added to the application in Entra ID.
-2. If the application only has a single set of registered credentials, then these will not be revoked.
-3. Any set of credentials that exist in `corev1.Secret` resources in use by matching pods (i.e. pods with the label `app=<metadata.name>`) will not be
-   revoked.
-4. Any other key registered in Entra ID not matching the above will be revoked, i.e. any key deemed to be unused.
+The binary defaults `secret-rotation.max-age` to 120 days. The Helm chart defaults it to `168h` (seven days).
+See [configuration](configuration.md) for its limits.
+Each password and certificate expires in Entra ID one year after creation. `secret-rotation.max-age` does not change that expiry.
 
-Additionally, during reconciliation of the resource, the operator will attempt to add a new set of credentials to the application 
-if it detects that the period between last rotation and now is greater than the configured `secret-rotation.max-age` property (defaults to 120 days).
-If added, the existing Kubernetes Secret will be updated in-place - which means that you're responsible for restarting any Pods using this Secret.
+Each Secret contains current and next passwords and certificates. Rotation makes the previous next password and certificate current without extending their expiry.
+Before promotion, the operator checks that both remain valid beyond the next scheduled rotation, plus a one-day safety margin.
 
-The previous set of credentials are also revoked in Entra ID about 5 minutes later. This can be disabled by setting the `secret-rotation.cleanup` flag to `false`.
+- If the check passes, it makes the next credentials current and generates new next credentials.
+- If either next credential expires too soon, it generates new current and next credentials instead.
+- If any credential is missing or expired, it also generates new current and next credentials.
+
+With intervals of 183 days or more, each scheduled rotation replaces both current and next credentials instead of promoting them.
+
+When `spec.secretName` stays the same, the operator updates the existing Secret in place.
+Restart Pods that use this Secret to load the new credentials.
+
+The operator sets `reloader.stakater.com/match: "true"` on its Secrets for [Stakater Reloader](https://github.com/stakater/Reloader).
+With Reloader installed, set `reloader.stakater.com/search: "true"` on the workload to restart it automatically when a referenced Secret changes.
+
+The operator checks Pods and ReplicaSets in the same namespace with `app=<AzureAdApplication.metadata.name>`.
+It retains credentials from operator-managed Secrets they reference, including scaled-down ReplicaSets.
+It also retains the latest Secret's current and next credentials.
+
+After a credential write, `azure.delay.credential-grace-period` defers validation and cleanup; it defaults to one minute.
+Further rotations still check credential expiry during this period.
+Subsequent cleanup removes unused Secrets and their credentials.
+Set `secret-rotation.cleanup=false` to disable unused-credential cleanup between rotations, not revocation within rotation itself.
 
 ## 3 Cluster Resources
 

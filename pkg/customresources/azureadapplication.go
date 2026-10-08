@@ -21,16 +21,12 @@ func SecretNameChanged(in *nais_io_v1.AzureAdApplication) bool {
 	return in.Status.SynchronizationSecretName != in.Spec.SecretName
 }
 
-func HasExpiredSecrets(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Duration) bool {
+func IsSecretRotationDue(in *nais_io_v1.AzureAdApplication, maxSecretAge time.Duration) bool {
 	if in.Status.SynchronizationSecretRotationTime == nil {
 		return false
 	}
 
-	lastRotationTime := *in.Status.SynchronizationSecretRotationTime
-	diff := time.Since(lastRotationTime.Time)
-	secretExpired := diff >= maxSecretAge
-
-	return secretExpired
+	return time.Since(in.Status.SynchronizationSecretRotationTime.Time) >= maxSecretAge
 }
 
 // CredentialValidationDelay returns the time left of the grace period after the last credential rotation, or 0 outside it.

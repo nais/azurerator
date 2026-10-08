@@ -18,13 +18,13 @@ func (b optionsBuilder) Process() (ProcessOptions, error) {
 	secretNameChanged := customresources.SecretNameChanged(instance)
 	hasResynchronizeAnnotation := customresources.HasResynchronizeAnnotation(instance)
 	hasRotateAnnotation := customresources.HasRotateAnnotation(instance)
-	hasExpiredSecrets := customresources.HasExpiredSecrets(instance, b.config.SecretRotation.MaxAge)
+	secretRotationDue := customresources.IsSecretRotationDue(instance, b.config.SecretRotation.MaxAge)
 	tenantUnchanged := strings.Contains(instance.Status.SynchronizationTenant, b.config.Azure.Tenant.Id)
 
-	needsSynchronization := hashChanged || secretNameChanged || hasExpiredSecrets || hasResynchronizeAnnotation || hasRotateAnnotation
+	needsSynchronization := hashChanged || secretNameChanged || secretRotationDue || hasResynchronizeAnnotation || hasRotateAnnotation
 	needsAzureSynchronization := hashChanged || hasResynchronizeAnnotation
-	hasValidSecrets := !hasExpiredSecrets && tenantUnchanged && b.secrets.LatestCredentials.Valid && b.secrets.LatestCredentials.Set != nil
-	needsSecretRotation := secretNameChanged || hasRotateAnnotation
+	hasValidSecrets := tenantUnchanged && b.secrets.LatestCredentials.Valid && b.secrets.LatestCredentials.Set != nil
+	needsSecretRotation := secretNameChanged || hasRotateAnnotation || secretRotationDue
 	needsCleanup := !needsSecretRotation && b.config.SecretRotation.Cleanup
 
 	var validationDelay time.Duration

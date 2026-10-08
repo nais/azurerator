@@ -248,6 +248,31 @@ func TestReconciler_UpdateAzureAdApplication_RotateAnnotation_ShouldRotateSecret
 	assertSecretsAreRotated(t, previousSecret, newSecret)
 }
 
+func TestReconciler_RotationDuringGraceValidatesCredentialsBeforeChoosingRotate(t *testing.T) {
+	appName := "rotate-during-credential-grace"
+	secretName := appName + "-secret"
+	if err := fixtures.New(cli, fixtures.Config{
+		AzureAppName:     appName,
+		SecretName:       secretName,
+		UnusedSecretName: unusedSecret,
+		NamespaceName:    namespace,
+	}).WithMinimalConfig().Setup(); err != nil {
+		t.Fatalf("failed to set up cluster fixtures: %v", err)
+	}
+	instance := assertApplicationExists(t, appName)
+	previousSecret := assertSecretExists(t, secretName, instance)
+
+	restoreValidationResult := az.SetCredentialValidationResult(false)
+	t.Cleanup(restoreValidationResult)
+	annotations.SetAnnotation(instance, annotations.RotateKey, strconv.FormatBool(true))
+	updated := updateApplication(t, instance, func(updated *v1.AzureAdApplication) bool {
+		_, exists := updated.Annotations[annotations.RotateKey]
+		return syncTimeUpdated(instance, updated) && !exists
+	})
+
+	assertSecretsAreAdded(t, previousSecret, assertSecretExists(t, secretName, updated))
+}
+
 func TestReconciler_ResyncImmediatelyAfterRotationKeepsCredentials(t *testing.T) {
 	appName := "resync-after-rotation"
 	secretName := appName + "-secret"
@@ -325,7 +350,7 @@ func TestReconciler_UpdateAzureAdApplication_SpecChangeAndNotExpiredSecret_Shoul
 	assertSecretsAreNotRotated(t, previousSecret, newSecret)
 }
 
-func TestReconciler_UpdateAzureAdApplication_SpecChangeAndExpiredSecret_ShouldAddNewCredentials(t *testing.T) {
+func TestReconciler_UpdateAzureAdApplication_SpecChangeAndRotationDue_ShouldRotateCredentials(t *testing.T) {
 	instance := assertApplicationExists(t, az.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
@@ -350,10 +375,10 @@ func TestReconciler_UpdateAzureAdApplication_SpecChangeAndExpiredSecret_ShouldAd
 	assert.Len(t, updatedInstance.Status.CertificateKeyIds, 2, "Certificate Key IDs are updated")
 
 	newSecret := assertSecretExists(t, previousSecretName, instance)
-	assertSecretsAreAdded(t, previousSecret, newSecret)
+	assertSecretsAreRotated(t, previousSecret, newSecret)
 }
 
-func TestReconciler_UpdateAzureAdApplication_NewSecretNameAndExpired_ShouldAddNewCredentials(t *testing.T) {
+func TestReconciler_UpdateAzureAdApplication_NewSecretNameAndRotationDue_ShouldRotateCredentials(t *testing.T) {
 	instance := assertApplicationExists(t, az.ApplicationExists)
 	assert.NotEmpty(t, instance.Status.SynchronizationSecretRotationTime)
 
@@ -383,7 +408,7 @@ func TestReconciler_UpdateAzureAdApplication_NewSecretNameAndExpired_ShouldAddNe
 	assert.Len(t, updatedInstance.Status.CertificateKeyIds, 2, "Certificate Key IDs are updated")
 
 	newSecret := assertSecretExists(t, newSecretName, instance)
-	assertSecretsAreAdded(t, previousSecret, newSecret)
+	assertSecretsAreRotated(t, previousSecret, newSecret)
 }
 
 func TestReconciler_UpdateAzureAdApplication_MissingSecretRotationTimeAndNewSecretName_ShouldRotateCredentials(t *testing.T) {
@@ -470,11 +495,11 @@ func assertApplicationExists(t *testing.T, name string) *v1.AzureAdApplication {
 		isHashChanged, err := customresources.IsHashChanged(instance)
 		assert.NoError(t, err)
 
-		hasExpiredSecrets := customresources.HasExpiredSecrets(instance, maxSecretAge)
+		secretRotationDue := customresources.IsSecretRotationDue(instance, maxSecretAge)
 		secretNameChanged := customresources.SecretNameChanged(instance)
 		hasSynchronizeAnnotation := customresources.HasResynchronizeAnnotation(instance)
 		hasRotateAnnotation := customresources.HasRotateAnnotation(instance)
-		return !isHashChanged && !hasExpiredSecrets && !secretNameChanged && !hasSynchronizeAnnotation && !hasRotateAnnotation
+		return !isHashChanged && !secretRotationDue && !secretNameChanged && !hasSynchronizeAnnotation && !hasRotateAnnotation
 	}, timeout, interval, "AzureAdApplication should be synchronized")
 
 	assert.True(t, controllerutil.ContainsFinalizer(instance, finalizer.Name), "AzureAdApplication should contain a finalizer")

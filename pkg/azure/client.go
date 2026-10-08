@@ -2,6 +2,7 @@ package azure
 
 import (
 	"context"
+	"time"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/msgraph.go/v1.0"
@@ -32,5 +33,5 @@ type Credentials interface {
 	DeleteUnused(tx transaction.Transaction) error
 	Purge(tx transaction.Transaction) error
 	Rotate(tx transaction.Transaction) (credentials.Set, error)
-	Validate(tx transaction.Transaction, existing credentials.Set) (bool, error)
+	Validate(tx transaction.Transaction, existing credentials.Set, minimumNextExpiry time.Time) (bool, error)
 }

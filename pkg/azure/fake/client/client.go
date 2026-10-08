@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	v1 "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	msgraphlib "github.com/nais/msgraph.go/v1.0"
@@ -90,7 +91,7 @@ func (a fakeAzureCredentialsClient) Purge(tx transaction.Transaction) error {
 	return nil
 }
 
-func (a fakeAzureCredentialsClient) Validate(tx transaction.Transaction, existing credentials.Set) (bool, error) {
+func (a fakeAzureCredentialsClient) Validate(tx transaction.Transaction, existing credentials.Set, minimumNextExpiry time.Time) (bool, error) {
 	return !fakeCredentialsInvalid.Load(), nil
 }
 

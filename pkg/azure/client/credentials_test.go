@@ -13,6 +13,7 @@ import (
 func TestMissingCredentials(t *testing.T) {
 	now := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
 	expiry := now.Add(time.Hour)
+	shortExpiry := expiry.Add(-2 * time.Second)
 	expected := credentials.Set{
 		Current: credentials.Credentials{
 			Password:    credentials.Password{KeyId: "password-current"},
@@ -34,9 +35,10 @@ func TestMissingCredentials(t *testing.T) {
 		},
 	}
 	tests := []struct {
-		name string
-		app  msgraph.Application
-		want []string
+		name          string
+		app           msgraph.Application
+		minimumExpiry time.Time
+		want          []string
 	}{
 		{name: "valid", app: validApp},
 		{name: "missing password", app: msgraph.Application{
@@ -51,7 +53,7 @@ func TestMissingCredentials(t *testing.T) {
 			`current certificate credential "certificate-current" is missing`,
 			`next certificate credential "certificate-next" is missing`,
 		}},
-		{name: "expired", app: withExpiry(validApp, &now), want: []string{
+		{name: "expired", app: withExpiry(validApp, &now), minimumExpiry: expiry, want: []string{
 			`current password credential "password-current" is expired`,
 			`current certificate credential "certificate-current" is expired`,
 			`next password credential "password-next" is expired`,
@@ -63,11 +65,34 @@ func TestMissingCredentials(t *testing.T) {
 			`next password credential "password-next" is expired (missing expiry)`,
 			`next certificate credential "certificate-next" is expired (missing expiry)`,
 		}},
+		{name: "short next password", app: msgraph.Application{
+			PasswordCredentials: []msgraph.PasswordCredential{
+				{KeyID: uuid("password-current"), EndDateTime: &expiry},
+				{KeyID: uuid("password-next"), EndDateTime: &shortExpiry},
+			},
+			KeyCredentials: validApp.KeyCredentials,
+		}, minimumExpiry: expiry.Add(-time.Second), want: []string{
+			`next password credential "password-next" expires before required rotation window`,
+		}},
+		{name: "short next certificate", app: msgraph.Application{
+			PasswordCredentials: validApp.PasswordCredentials,
+			KeyCredentials: []msgraph.KeyCredential{
+				{KeyID: uuid("certificate-current"), EndDateTime: &expiry},
+				{KeyID: uuid("certificate-next"), EndDateTime: &shortExpiry},
+			},
+		}, minimumExpiry: expiry.Add(-time.Second), want: []string{
+			`next certificate credential "certificate-next" expires before required rotation window`,
+		}},
+		{name: "next credentials meet rotation window", app: validApp, minimumExpiry: expiry.Add(-time.Second)},
+		{name: "next credentials expire at rotation boundary", app: validApp, minimumExpiry: expiry, want: []string{
+			`next password credential "password-next" expires before required rotation window`,
+			`next certificate credential "certificate-next" expires before required rotation window`,
+		}},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assert.Equal(t, test.want, missingCredentials(test.app, expected, now))
+			assert.Equal(t, test.want, missingCredentials(test.app, expected, now, test.minimumExpiry))
 		})
 	}
 }

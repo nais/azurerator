@@ -14,6 +14,11 @@ import (
 	"github.com/nais/azureator/pkg/azure/client/application/groupmembershipclaim"
 )
 
+const (
+	SecretRotationExpirySafetyMargin = 24 * time.Hour
+	maxSecretRotationAge             = 364 * 24 * time.Hour
+)
+
 type Config struct {
 	Azure          AzureConfig    `json:"azure"`
 	ClusterName    string         `json:"cluster-name"`
@@ -207,8 +212,8 @@ func init() {
 	flag.Bool(LeaderElectionEnabled, false, "Leader election toggle.")
 	flag.String(LeaderElectionNamespace, "", "Leader election namespace.")
 
-	flag.Duration(SecretRotationMaxAge, 120*24*time.Hour, "Maximum duration since last rotation before triggering rotation on next reconciliation, regardless of secret name being changed.")
-	flag.Bool(SecretRotationCleanup, true, "Clean up unused credentials in Azure AD after rotation.")
+	flag.Duration(SecretRotationMaxAge, 120*24*time.Hour, "Rotation interval; must be greater than zero and at most 8736h (364 days).")
+	flag.Bool(SecretRotationCleanup, true, "Clean up unused credentials between rotations.")
 }
 
 func (c Config) Validate(required []string) error {
@@ -243,6 +248,9 @@ func (c Config) Validate(required []string) error {
 	// Without a grace period, cleanup writes follow rotation writes closely enough to overwrite them.
 	if c.Azure.Delay.CredentialGracePeriod <= 0 {
 		return fmt.Errorf("'%s' must be greater than zero", AzureDelayCredentialGracePeriod)
+	}
+	if c.SecretRotation.MaxAge <= 0 || c.SecretRotation.MaxAge > maxSecretRotationAge {
+		return fmt.Errorf("'%s' must be greater than zero and no more than 364 days", SecretRotationMaxAge)
 	}
 
 	return nil

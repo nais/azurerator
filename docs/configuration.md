@@ -48,38 +48,38 @@ Additionally, one of the following authentication methods must be configured:
 
 ## All Flags
 
-| Flag                                                    | Type     | Default             | Description                                                            |
-|---------------------------------------------------------|----------|---------------------|------------------------------------------------------------------------|
-| `--azure.auth.client-id`                                | string   |                     | Client ID for authentication                                           |
-| `--azure.auth.client-secret`                            | string   |                     | Client secret for authentication                                       |
-| `--azure.auth.google.enabled`                           | bool     | `false`             | Use Google credentials as federated credentials for auth               |
-| `--azure.auth.google.project-id`                        | string   |                     | Google Project ID for Service Account when using federated credentials |
-| `--azure.delay.between-modifications`                   | duration | `10s`               | Delay between modification operations to the Graph API                 |
-| `--azure.delay.credential-grace-period`                 | duration | `1m`                | Time after a credential write before credential validation and cleanup |
-| `--azure.features.app-role-assignment-required.enabled` | bool     | `false`             | Enable `appRoleAssignmentRequired` for service principals              |
-| `--azure.features.claims-mapping-policies.enabled`      | bool     | `false`             | Assign custom claims-mapping policies to a service principal           |
-| `--azure.features.claims-mapping-policies.id`           | string   |                     | Claims-mapping policy ID                                               |
-| `--azure.features.cleanup-orphans.enabled`              | bool     | `false`             | Enable cleanup of orphaned resources                                   |
-| `--azure.features.custom-security-attributes.enabled`   | bool     | `false`             | Set custom security attributes on service principals                   |
-| `--azure.features.federated-credentials.enabled`        | bool     | `false`             | Manage federated identity credentials on applications                  |
-| `--azure.features.group-membership-claim.default`       | string   | `ApplicationGroup`  | Default group membership claim. Only affects new registrations         |
-| `--azure.features.groups-assignment.all-users-group-id` | strings  |                     | List of Group IDs containing all users in the tenant                   |
-| `--azure.features.groups-assignment.enabled`            | bool     | `false`             | Assign groups to applications                                          |
-| `--azure.pagination.max-pages`                          | int      | `1000`              | Max pages to fetch from the Graph API                                  |
-| `--azure.permissiongrant-resource-id`                   | string   |                     | Object ID for Graph API permissions grant                              |
-| `--azure.tenant.id`                                     | string   |                     | Tenant ID                                                              |
-| `--azure.tenant.name`                                   | string   |                     | Alias/name of tenant                                                   |
-| `--cluster-name`                                        | string   |                     | The cluster in which this application runs                             |
-| `--controller.context-timeout`                          | duration | `5m`                | Context timeout for the reconciliation loop                            |
-| `--controller.max-concurrent-reconciles`                | int      | `10`                | Max concurrent reconciles                                              |
-| `--controller.sweep-interval`                           | duration | `5m`                | Interval between periodic sweeps for unassigned preAuthorizedApps      |
-| `--leader-election.enabled`                             | bool     | `false`             | Leader election toggle                                                 |
-| `--leader-election.namespace`                           | string   |                     | Leader election namespace                                              |
-| `--metrics-address`                                     | string   | `:8080`             | Metrics endpoint bind address                                          |
-| `--probes-address`                                      | string   | `:8081`             | Health probe listener bind address                                     |
-| `--secret-rotation.cleanup`                             | bool     | `true`              | Clean up unused credentials after rotation                             |
-| `--secret-rotation.max-age`                             | duration | `2880h`             | Max duration before triggering automatic rotation                      |
-| `--validations.tenant.required`                         | bool     | `false`             | Only process resources that have a tenant defined in the spec          |
+| Flag                                                    | Type     | Default            | Description                                                                 |
+|---------------------------------------------------------|----------|--------------------|-----------------------------------------------------------------------------|
+| `--azure.auth.client-id`                                | string   |                    | Client ID for authentication                                                |
+| `--azure.auth.client-secret`                            | string   |                    | Client secret for authentication                                            |
+| `--azure.auth.google.enabled`                           | bool     | `false`            | Use Google credentials as federated credentials for auth                    |
+| `--azure.auth.google.project-id`                        | string   |                    | Google Project ID for Service Account when using federated credentials      |
+| `--azure.delay.between-modifications`                   | duration | `10s`              | Delay between modification operations to the Graph API                      |
+| `--azure.delay.credential-grace-period`                 | duration | `1m`               | Time after a credential write before credential validation and cleanup      |
+| `--azure.features.app-role-assignment-required.enabled` | bool     | `false`            | Enable `appRoleAssignmentRequired` for service principals                   |
+| `--azure.features.claims-mapping-policies.enabled`      | bool     | `false`            | Assign custom claims-mapping policies to a service principal                |
+| `--azure.features.claims-mapping-policies.id`           | string   |                    | Claims-mapping policy ID                                                    |
+| `--azure.features.cleanup-orphans.enabled`              | bool     | `false`            | Enable cleanup of orphaned resources                                        |
+| `--azure.features.custom-security-attributes.enabled`   | bool     | `false`            | Set custom security attributes on service principals                        |
+| `--azure.features.federated-credentials.enabled`        | bool     | `false`            | Manage federated identity credentials on applications                       |
+| `--azure.features.group-membership-claim.default`       | string   | `ApplicationGroup` | Default group membership claim. Only affects new registrations              |
+| `--azure.features.groups-assignment.all-users-group-id` | strings  |                    | List of Group IDs containing all users in the tenant                        |
+| `--azure.features.groups-assignment.enabled`            | bool     | `false`            | Assign groups to applications                                               |
+| `--azure.pagination.max-pages`                          | int      | `1000`             | Max pages to fetch from the Graph API                                       |
+| `--azure.permissiongrant-resource-id`                   | string   |                    | Object ID for Graph API permissions grant                                   |
+| `--azure.tenant.id`                                     | string   |                    | Tenant ID                                                                   |
+| `--azure.tenant.name`                                   | string   |                    | Alias/name of tenant                                                        |
+| `--cluster-name`                                        | string   |                    | The cluster in which this application runs                                  |
+| `--controller.context-timeout`                          | duration | `5m`               | Context timeout for the reconciliation loop                                 |
+| `--controller.max-concurrent-reconciles`                | int      | `10`               | Max concurrent reconciles                                                   |
+| `--controller.sweep-interval`                           | duration | `5m`               | Interval between periodic sweeps for unassigned preAuthorizedApps           |
+| `--leader-election.enabled`                             | bool     | `false`            | Leader election toggle                                                      |
+| `--leader-election.namespace`                           | string   |                    | Leader election namespace                                                   |
+| `--metrics-address`                                     | string   | `:8080`            | Metrics endpoint bind address                                               |
+| `--probes-address`                                      | string   | `:8081`            | Health probe listener bind address                                          |
+| `--secret-rotation.cleanup`                             | bool     | `true`             | Clean up unused credentials between rotations                               |
+| `--secret-rotation.max-age`                             | duration | `2880h`            | Rotation interval; must be greater than zero and at most `8736h` (364 days) |
+| `--validations.tenant.required`                         | bool     | `false`            | Only process resources that have a tenant defined in the spec               |
 
 ## Example Configuration (YAML)
 
