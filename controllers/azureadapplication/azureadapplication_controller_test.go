@@ -287,7 +287,8 @@ func TestReconciler_ResyncImmediatelyAfterRotationKeepsCredentials(t *testing.T)
 	instance := assertApplicationExists(t, appName)
 	annotations.SetAnnotation(instance, annotations.RotateKey, strconv.FormatBool(true))
 	rotated := updateApplication(t, instance, func(updated *v1.AzureAdApplication) bool {
-		return syncTimeUpdated(instance, updated)
+		_, exists := updated.Annotations[annotations.RotateKey]
+		return syncTimeUpdated(instance, updated) && !exists
 	})
 
 	rotatedSecret := assertSecretExists(t, rotated.Spec.SecretName, rotated)
