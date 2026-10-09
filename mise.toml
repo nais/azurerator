@@ -2,15 +2,15 @@
 pin = true
 
 [tools]
-go = "1.27.1"
-helm = "4.2.4"
-kubectl = "1.37.0"
+go = "1.27.2"
+helm = "4.3.0"
+kubectl = "1.37.1"
 "go:github.com/sethvargo/ratchet" = "0.12.0"
-"go:golang.org/x/tools/cmd/deadcode" = "0.49.0"
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.7.0"
+"go:golang.org/x/tools/cmd/deadcode" = "0.51.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
 "go:honnef.co/go/tools/cmd/staticcheck" = "0.8.1"
 "go:mvdan.cc/gofumpt" = "0.12.0"
-"go:sigs.k8s.io/controller-runtime/tools/setup-envtest" = "0.25.0"
+"go:sigs.k8s.io/controller-runtime/tools/setup-envtest" = "0.25.2"
 
 [tasks."build"]
 description = "Build the manager binary"
