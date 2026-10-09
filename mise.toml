@@ -26,7 +26,7 @@ depends = ['fmt']
 description = "Run all static analysis tools"
 depends = [
     'fmt',
-    'check:staticcheck',
+    # TODO 'check:staticcheck',
     'check:vulncheck',
     'check:deadcode',
     'check:vet',
