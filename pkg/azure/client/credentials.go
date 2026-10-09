@@ -169,6 +169,7 @@ func (c credentialsClient) Validate(tx transaction.Transaction, existing credent
 	}
 	problems := missingCredentials(app, existing, time.Now(), minimumNextExpiry)
 	if len(problems) > 0 {
+		tx.Logger.Debugf("adding new credentials because Azure credential validation failed: %s", strings.Join(problems, "; "))
 		tx.Logger.Warnf("credential validation failed: %s (password key IDs: current=%s, next=%s; certificate key IDs: current=%s, next=%s)",
 			strings.Join(problems, "; "), existing.Current.Password.KeyId, existing.Next.Password.KeyId,
 			existing.Current.Certificate.KeyId, existing.Next.Certificate.KeyId)
@@ -214,9 +215,9 @@ func checkCredential(name, id string, expiries map[string]*time.Time, now, minim
 	case expiry == nil:
 		return fmt.Sprintf("%s credential %q is expired (missing expiry)", name, id)
 	case !expiry.After(now):
-		return fmt.Sprintf("%s credential %q is expired", name, id)
+		return fmt.Sprintf("%s credential %q is expired (expired at %s)", name, id, expiry.UTC().Format(time.RFC3339))
 	case !expiry.After(minimumExpiry):
-		return fmt.Sprintf("%s credential %q expires before required rotation window", name, id)
+		return fmt.Sprintf("%s credential %q expires before required rotation window (expires at %s, must expire after %s)", name, id, expiry.UTC().Format(time.RFC3339), minimumExpiry.UTC().Format(time.RFC3339))
 	}
 	return ""
 }

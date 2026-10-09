@@ -54,10 +54,10 @@ func TestMissingCredentials(t *testing.T) {
 			`next certificate credential "certificate-next" is missing`,
 		}},
 		{name: "expired", app: withExpiry(validApp, &now), minimumExpiry: expiry, want: []string{
-			`current password credential "password-current" is expired`,
-			`current certificate credential "certificate-current" is expired`,
-			`next password credential "password-next" is expired`,
-			`next certificate credential "certificate-next" is expired`,
+			`current password credential "password-current" is expired (expired at 2025-01-02T03:04:05Z)`,
+			`current certificate credential "certificate-current" is expired (expired at 2025-01-02T03:04:05Z)`,
+			`next password credential "password-next" is expired (expired at 2025-01-02T03:04:05Z)`,
+			`next certificate credential "certificate-next" is expired (expired at 2025-01-02T03:04:05Z)`,
 		}},
 		{name: "nil expiry", app: withExpiry(validApp, nil), want: []string{
 			`current password credential "password-current" is expired (missing expiry)`,
@@ -72,7 +72,7 @@ func TestMissingCredentials(t *testing.T) {
 			},
 			KeyCredentials: validApp.KeyCredentials,
 		}, minimumExpiry: expiry.Add(-time.Second), want: []string{
-			`next password credential "password-next" expires before required rotation window`,
+			`next password credential "password-next" expires before required rotation window (expires at 2025-01-02T04:04:03Z, must expire after 2025-01-02T04:04:04Z)`,
 		}},
 		{name: "short next certificate", app: msgraph.Application{
 			PasswordCredentials: validApp.PasswordCredentials,
@@ -81,12 +81,12 @@ func TestMissingCredentials(t *testing.T) {
 				{KeyID: uuid("certificate-next"), EndDateTime: &shortExpiry},
 			},
 		}, minimumExpiry: expiry.Add(-time.Second), want: []string{
-			`next certificate credential "certificate-next" expires before required rotation window`,
+			`next certificate credential "certificate-next" expires before required rotation window (expires at 2025-01-02T04:04:03Z, must expire after 2025-01-02T04:04:04Z)`,
 		}},
 		{name: "next credentials meet rotation window", app: validApp, minimumExpiry: expiry.Add(-time.Second)},
 		{name: "next credentials expire at rotation boundary", app: validApp, minimumExpiry: expiry, want: []string{
-			`next password credential "password-next" expires before required rotation window`,
-			`next certificate credential "certificate-next" expires before required rotation window`,
+			`next password credential "password-next" expires before required rotation window (expires at 2025-01-02T04:04:05Z, must expire after 2025-01-02T04:04:05Z)`,
+			`next certificate credential "certificate-next" expires before required rotation window (expires at 2025-01-02T04:04:05Z, must expire after 2025-01-02T04:04:05Z)`,
 		}},
 	}
 

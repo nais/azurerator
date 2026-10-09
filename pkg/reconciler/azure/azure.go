@@ -14,6 +14,7 @@ import (
 	"github.com/nais/azureator/pkg/azure/credentials"
 	"github.com/nais/azureator/pkg/azure/result"
 	"github.com/nais/azureator/pkg/config"
+	"github.com/nais/azureator/pkg/customresources"
 	"github.com/nais/azureator/pkg/metrics"
 	"github.com/nais/azureator/pkg/reconciler"
 	"github.com/nais/azureator/pkg/retry"
@@ -188,7 +189,13 @@ func (a azureReconciler) DeleteExpiredCredentials(tx transaction.Transaction) er
 }
 
 func (a azureReconciler) RotateCredentials(tx transaction.Transaction) (*credentials.Set, credentials.KeyID, error) {
-	tx.Logger.Info("rotating credentials for Azure application...")
+	tx.Logger.WithFields(log.Fields{
+		"LastCredentialRotation": tx.Instance.Status.SynchronizationSecretRotationTime,
+		"MaxSecretAge":           a.config.SecretRotation.MaxAge,
+		"PreviousSecretName":     tx.Instance.Status.SynchronizationSecretName,
+		"SecretName":             tx.Instance.Spec.SecretName,
+		"RotateAnnotation":       customresources.HasRotateAnnotation(tx.Instance),
+	}).Info("rotating credentials for Azure application...")
 
 	credentialsSet, err := a.azureClient.Credentials().Rotate(tx)
 	if err != nil {
