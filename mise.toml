@@ -8,7 +8,7 @@ kubectl = "1.37.1"
 "go:github.com/sethvargo/ratchet" = "0.12.0"
 "go:golang.org/x/tools/cmd/deadcode" = "0.51.0"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
-"go:honnef.co/go/tools/cmd/staticcheck" = "0.8.1"
+"go:honnef.co/go/tools/cmd/staticcheck" = "0.8.2"
 "go:mvdan.cc/gofumpt" = "0.12.0"
 "go:sigs.k8s.io/controller-runtime/tools/setup-envtest" = "0.25.2"
 
@@ -26,7 +26,7 @@ depends = ['fmt']
 description = "Run all static analysis tools"
 depends = [
     'fmt',
-    # TODO 'check:staticcheck',
+    'check:staticcheck',
     'check:vulncheck',
     'check:deadcode',
     'check:vet',
