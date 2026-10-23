@@ -2,12 +2,12 @@
 pin = true
 
 [tools]
-go = "1.27.2"
-helm = "4.3.0"
+go = "1.27.3"
+helm = "4.3.1"
 kubectl = "1.37.1"
 "go:github.com/sethvargo/ratchet" = "0.12.0"
-"go:golang.org/x/tools/cmd/deadcode" = "0.51.0"
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
+"go:golang.org/x/tools/cmd/deadcode" = "0.52.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 "go:honnef.co/go/tools/cmd/staticcheck" = "0.8.2"
 "go:mvdan.cc/gofumpt" = "0.12.0"
 "go:sigs.k8s.io/controller-runtime/tools/setup-envtest" = "0.25.2"
