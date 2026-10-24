@@ -22,10 +22,14 @@ jobs:
     steps:
       - name: Checkout latest code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # ratchet:actions/setup-go@v7
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
-          go-version-file: "go.mod"
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ runner.arch }}-${{ matrix.task }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ runner.arch }}-${{ matrix.task }}-
       - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # ratchet:jdx/mise-action@v5.2.2
       - run: mise run ${{ matrix.task }}
   build_and_push:
