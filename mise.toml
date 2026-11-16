@@ -2,7 +2,7 @@
 pin = true
 
 [tools]
-go = "1.27.3"
+go = "1.27.4"
 helm = "4.3.1"
 kubectl = "1.37.1"
 "go:github.com/sethvargo/ratchet" = "0.12.0"
