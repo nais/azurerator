@@ -58,7 +58,7 @@ jobs:
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
       - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # ratchet:azure/setup-helm@v5
         with:
-          version: "v3.12.2"
+          version: "v3.22.1"
       - name: Package chart
         id: package_chart
         env:
